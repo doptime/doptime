@@ -7,7 +7,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
-	"github.com/yangkequn/saavuu/config"
+	"github.com/yangkequn/goflow/config"
 )
 
 func defaultXReadGroupArgs(serviceNames []string) *redis.XReadGroupArgs {
@@ -22,7 +22,7 @@ func defaultXReadGroupArgs(serviceNames []string) *redis.XReadGroupArgs {
 	}
 
 	//ServiceBatchSize is the number of tasks that a service can read from redis at the same time
-	args := &redis.XReadGroupArgs{Streams: streams, Block: time.Second * 20, Count: config.Cfg.Api.ServiceBatchSize, NoAck: true, Group: "group0", Consumer: "saavuu"}
+	args := &redis.XReadGroupArgs{Streams: streams, Block: time.Second * 20, Count: config.Cfg.Api.ServiceBatchSize, NoAck: true, Group: "group0", Consumer: "goflow"}
 	return args
 }
 func XGroupEnsureCreated(c context.Context, ServiceNames []string, rds *redis.Client) (err error) {

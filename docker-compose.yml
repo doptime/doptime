@@ -1,7 +1,7 @@
 version: '3.1'
 services:
-  saavuu:
-    image: saavuu:latest
+  goflow:
+    image: goflow:latest
     environment:
       - RedisAddress=docker.vm:6379
       - RedisPassword=

@@ -2,9 +2,7 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -29,7 +27,7 @@ type ConfigRedis struct {
 	Username string `env:"Username"`
 	Password string `env:"Password"`
 	Host     string `env:"Host,required=true"`
-	Port     string `env:"Port,required=true"`
+	Port     int64  `env:"Port,required=true"`
 	DB       int64  `env:"DB,required=true"`
 }
 type ConfigJWT struct {
@@ -44,8 +42,8 @@ type ConfigData struct {
 	//AutoAuth should never be true in production
 	AutoAuth bool `env:"AutoAuth,default=false"`
 }
-
 type Configuration struct {
+	ConfigUrl string
 	//redis server, format: username:password@address:port/db
 	Redis []*ConfigRedis
 	Jwt   ConfigJWT
@@ -58,12 +56,13 @@ type Configuration struct {
 
 // set default values
 var Cfg Configuration = Configuration{
-	Redis:    []*ConfigRedis{},
-	Jwt:      ConfigJWT{Secret: "", Fields: "*"},
-	Http:     ConfigHttp{CORES: "*", Port: 80, Path: "/", Enable: false, MaxBufferSize: 10485760},
-	Api:      ConfigAPI{ServiceBatchSize: 64},
-	Data:     ConfigData{AutoAuth: false},
-	LogLevel: 1,
+	ConfigUrl: "",
+	Redis:     []*ConfigRedis{},
+	Jwt:       ConfigJWT{Secret: "", Fields: "*"},
+	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", Enable: false, MaxBufferSize: 10485760},
+	Api:       ConfigAPI{ServiceBatchSize: 64},
+	Data:      ConfigData{AutoAuth: false},
+	LogLevel:  1,
 }
 
 var Rds map[string]*redis.Client = map[string]*redis.Client{}
@@ -80,84 +79,19 @@ func GetRdsClientByName(name string) (rds *redis.Client, err error) {
 	return rds, nil
 }
 
-func LoadConfig() (err error) {
-	var envMap = map[string]string{}
-
-	for _, env := range os.Environ() {
-		kvs := strings.SplitN(env, "=", 2)
-		if len(kvs) == 2 && len(kvs[0]) > 0 && len(kvs[1]) > 0 {
-			envMap[kvs[0]] = kvs[1]
-		}
-	}
-	//load redis items
-	for key, val := range envMap {
-		var rdsCfg = &ConfigRedis{}
-		//if it is Redis, then change it to Redis_default
-		if key == "Redis" {
-			key = "Redis_default"
-		}
-		//if it is not in the format of Redis_*, then skip
-		if strings.Index(key, "Redis") != 0 || len(val) <= 6 || key[5] != '_' {
-			continue
-		}
-
-		//read in value, if it is not in the format of {Username,Password,Host,Port,DB}, then skip
-		if val = strings.TrimSpace(val); val[0] != '{' || val[len(val)-1] != '}' {
-			continue
-		}
-
-		if err := json.Unmarshal([]byte(val), &rdsCfg); err != nil {
-			correctFormat := "{Name,Username,Password,Host,Port,DB},{Name,Username,Password,Host,Port,DB}"
-			log.Fatal().Err(err).Str("redis key", key).Str("redisEnv", val).Msg("Step1.0 Load Env/Redis failed, correct format: " + correctFormat)
-		}
-		// read in the name of the redis server
-		//if the name is default, then set it to empty
-		if rdsCfg.Name = key[6:]; rdsCfg.Name == "default" {
-			rdsCfg.Name = ""
-		}
-		Cfg.Redis = append(Cfg.Redis, rdsCfg)
-	}
-
-	// Load and parse JWT config
-	if jwtEnv, ok := envMap["Jwt"]; ok && jwtEnv != "" {
-		if err := json.Unmarshal([]byte(jwtEnv), &Cfg.Jwt); err != nil {
-			log.Fatal().Err(err).Str("jwtEnv", jwtEnv).Msg("Step1.0 Load Env/Jwt failed")
-		}
-	}
-
-	// Load and parse HTTP config
-	Cfg.Http.Enable, Cfg.Http.Path, Cfg.Http.CORES = true, "/", "*"
-	if httpEnv, ok := envMap["Http"]; ok && len(httpEnv) > 0 {
-		if err := json.Unmarshal([]byte(httpEnv), &Cfg.Http); err != nil {
-			log.Fatal().Err(err).Str("httpEnv", httpEnv).Msg("Step1.0 Load Env/Http failed")
-		}
-	}
-
-	// Load and parse API config
-	if apiEnv, ok := envMap["Api"]; ok && apiEnv != "" {
-		if err := json.Unmarshal([]byte(apiEnv), &Cfg.Api); err != nil {
-			log.Fatal().Err(err).Str("apiEnv", apiEnv).Msg("Step1.0 Load Env/Api failed")
-		}
-	}
-	if dataEnv, ok := envMap["Data"]; ok && dataEnv != "" {
-		if err := json.Unmarshal([]byte(dataEnv), &Cfg.Data); err != nil {
-			log.Fatal().Err(err).Str("dataEnv", dataEnv).Msg("Step1.0 Load Env/data env failed")
-		}
-	}
-
-	// Load LogLevel
-	if logLevelEnv, ok := envMap["LogLevel"]; ok && len(logLevelEnv) > 0 {
-		if logLevel, err := strconv.ParseInt(logLevelEnv, 10, 8); err == nil {
-			Cfg.LogLevel = int8(logLevel)
-		}
-	}
-	return nil
-}
 func init() {
 	log.Info().Msg("Step1.0: App Start! load config from OS env")
-	if err := LoadConfig(); err != nil {
-		log.Info().AnErr("Step1.0 ERROR LoadConfig", err).Send()
-		log.Info().Msg("saavuu data & api will no be able to be used. please check your env and restart the app if you want to use itß")
+	//step1: load config from file
+	LoadConfig_FromFile()
+	//step2: load config from env. this will overwrite the config from file
+	LoadConfig_FromEnv()
+	//step3: load config from web. this will overwrite the config from env.
+	//warning local config will be overwritten by the config from web, to prevent falldown of config from web.
+	LoadConfig_FromWeb()
+
+	if _, ok := Rds[""]; !ok {
+		log.Info().Msg("Step1.0 ERROR LoadConfig")
+		log.Info().Msg("goflow data & api will no be able to be used. please check your env and restart the app if you want to use it")
 		return
 	}
 	zerolog.SetGlobalLevel(zerolog.Level(Cfg.LogLevel))
@@ -172,7 +106,7 @@ func init() {
 	for _, rdsCfg := range Cfg.Redis {
 		//apply configuration
 		redisOption := &redis.Options{
-			Addr:         rdsCfg.Host + ":" + rdsCfg.Port,
+			Addr:         rdsCfg.Host + ":" + strconv.Itoa(int(rdsCfg.Port)),
 			Username:     rdsCfg.Username,
 			Password:     rdsCfg.Password, // no password set
 			DB:           int(rdsCfg.DB),  // use default DB

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/yangkequn/saavuu/specification"
+	"github.com/yangkequn/goflow/specification"
 )
 
 func CallByHTTP(ServiceName string, paramIn map[string]interface{}, req *http.Request) (ret interface{}, err error) {

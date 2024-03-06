@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/yangkequn/saavuu/config"
+	"github.com/yangkequn/goflow/config"
 )
 
 func CorsChecked(r *http.Request, w http.ResponseWriter) bool {

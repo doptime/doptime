@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/yangkequn/saavuu/config"
-	_ "github.com/yangkequn/saavuu/https"
+	"github.com/yangkequn/goflow/config"
+	_ "github.com/yangkequn/goflow/https"
 )
 
 func TestHTTPPostMsgPack(t *testing.T) {

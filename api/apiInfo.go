@@ -6,7 +6,7 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
-	"github.com/yangkequn/saavuu/config"
+	"github.com/yangkequn/goflow/config"
 )
 
 type ApiInfo struct {

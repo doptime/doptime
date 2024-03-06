@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/yangkequn/saavuu/config"
-	"github.com/yangkequn/saavuu/permission"
+	"github.com/yangkequn/goflow/config"
+	"github.com/yangkequn/goflow/permission"
 )
 
 var ErrEmptyKeyOrField = errors.New("empty key or field")

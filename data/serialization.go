@@ -7,14 +7,14 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/yangkequn/saavuu"
+	"github.com/yangkequn/goflow"
 )
 
 func (db *Ctx[k, v]) toKeyStr(key k) (keyStr string, err error) {
 	//if k == nil {
 	vv := reflect.ValueOf(key)
 	if !vv.IsValid() || (vv.Kind() == reflect.Ptr && vv.IsNil()) {
-		return keyStr, saavuu.ErrInvalidField
+		return keyStr, goflow.ErrInvalidField
 	}
 	//if key is a string, directly append to keyBytes
 	if strkey, ok := interface{}(key).(string); ok {
@@ -82,11 +82,11 @@ func (db *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []strin
 			//type check, should be of type k and v
 			if key, ok = interface{}(keyValue[i]).(k); !ok {
 				log.Error().Any(" key must be of type k", key).Any("raw", keyValue[i+1]).Send()
-				return nil, saavuu.ErrInvalidField
+				return nil, goflow.ErrInvalidField
 			}
 			if value, ok = interface{}(keyValue[i+1]).(v); !ok {
 				log.Error().Any(" value must be of type v", value).Any("raw", keyValue[i+1]).Send()
-				return nil, saavuu.ErrInvalidField
+				return nil, goflow.ErrInvalidField
 			}
 			if strkey, err = db.toKeyStr(key); err != nil {
 				return nil, err
@@ -98,7 +98,7 @@ func (db *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []strin
 			keyValStrs = append(keyValStrs, strkey, strvalue)
 		}
 	} else {
-		return nil, saavuu.ErrInvalidField
+		return nil, goflow.ErrInvalidField
 	}
 	return keyValStrs, nil
 }

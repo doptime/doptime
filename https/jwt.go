@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yangkequn/saavuu/config"
+	"github.com/yangkequn/goflow/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )

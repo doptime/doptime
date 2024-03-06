@@ -1,8 +1,9 @@
-module github.com/yangkequn/saavuu
+module github.com/yangkequn/goflow
 
 go 1.20
 
 require (
+	github.com/BurntSushi/toml v1.3.2
 	github.com/bits-and-blooms/bloom/v3 v3.6.0
 	github.com/go-ping/ping v1.1.0
 	github.com/golang-jwt/jwt/v5 v5.0.0-rc.1

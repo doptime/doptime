@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yangkequn/saavuu/api"
-	_ "github.com/yangkequn/saavuu/https"
+	"github.com/yangkequn/goflow/api"
+	_ "github.com/yangkequn/goflow/https"
 )
 
 type Demo struct {

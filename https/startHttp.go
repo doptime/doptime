@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/yangkequn/saavuu/config"
-	"github.com/yangkequn/saavuu/permission"
+	"github.com/yangkequn/goflow/config"
+	"github.com/yangkequn/goflow/permission"
 )
 
 // listten to a port and start http server

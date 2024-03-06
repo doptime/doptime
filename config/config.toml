@@ -1,8 +1,0 @@
-RedisAddress = "127.0.0.1:6379"
-RedisPassword = ""
-RedisDb = 0
-
-JwtSecret = "secret"
-JwtFieldsKept="id,sub,pub"
-MaxBufferSize = 33000000
-CORS = "*"

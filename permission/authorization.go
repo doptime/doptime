@@ -6,8 +6,8 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/rs/zerolog/log"
-	"github.com/yangkequn/saavuu/config"
-	"github.com/yangkequn/saavuu/data"
+	"github.com/yangkequn/goflow/config"
+	"github.com/yangkequn/goflow/data"
 )
 
 var rdsPermit = data.New[string, string](data.Option.WithKey("_permissions"))

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/yangkequn/saavuu/config"
+	"github.com/yangkequn/goflow/config"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
