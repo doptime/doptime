@@ -7,7 +7,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func MarshalApiInput(paramIn interface{}) (out []byte, err error) {
+func MarshalApiInput(paramIn interface{}) (output []byte, err error) {
 	//ensure the paramIn is a map or struct
 	paramType := reflect.TypeOf(paramIn)
 	if paramType.Kind() == reflect.Struct {
@@ -18,8 +18,8 @@ func MarshalApiInput(paramIn interface{}) (out []byte, err error) {
 		return nil, err
 	}
 
-	if out, err = msgpack.Marshal(paramIn); err != nil {
+	if output, err = msgpack.Marshal(paramIn); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return output, nil
 }
