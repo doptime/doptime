@@ -89,11 +89,6 @@ func init() {
 	//warning local config will be overwritten by the config from web, to prevent falldown of config from web.
 	LoadConfig_FromWeb()
 
-	if _, ok := Rds[""]; !ok {
-		log.Info().Msg("Step1.0 ERROR LoadConfig")
-		log.Info().Msg("goflow data & api will no be able to be used. please check your env and restart the app if you want to use it")
-		return
-	}
 	zerolog.SetGlobalLevel(zerolog.Level(Cfg.LogLevel))
 
 	if Cfg.Jwt.Fields != "" {
@@ -130,7 +125,12 @@ func init() {
 		pingServer(rdsCfg.Host)
 
 	}
-
+	//check if default redis is set
+	if _, ok := Rds[""]; !ok {
+		log.Info().Msg("Step1.0 ERROR LoadConfig")
+		log.Info().Msg("goflow data & api will no be able to be used. please check your env and restart the app if you want to use it")
+		return
+	}
 	log.Info().Msg("Step1.E: App loaded done")
 
 }
