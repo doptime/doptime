@@ -6,6 +6,7 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 	"github.com/yangkequn/goflow/config"
 )
 
@@ -27,10 +28,16 @@ func apiServiceNames() (serviceNames []string) {
 	}
 	return serviceNames
 }
-func GetServiceDB(serviceName string) *redis.Client {
+func GetServiceDB(serviceName string) (db *redis.Client) {
+	var (
+		ok bool
+	)
 	serviceInfo, _ := ApiServices.Get(serviceName)
 	DataSource := serviceInfo.DataSource
-	return config.Rds[DataSource]
+	if db, ok = config.Rds[DataSource]; !ok {
+		log.Panic().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
+	}
+	return db
 }
 
 var fun2ApiInfoMap = &sync.Map{}
