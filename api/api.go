@@ -11,16 +11,16 @@ import (
 	"github.com/yangkequn/goflow/specification"
 )
 
-// crate ApiFun. the created Api can be used as normal function:
+// crate ApiFun. the created New can be used as normal function:
 //
 //	f := func(InParam *InDemo) (ret string, err error) , this is logic function
 //	options. there are 2 poosible options:
-//		1. api.Name("ServiceName")  //set the ServiceName of the Api. which is string. default is the name of the InParameter type but with "In" removed
+//		1. api.Name("ServiceName")  //set the ServiceName of the New. which is string. default is the name of the InParameter type but with "In" removed
 //		2. api.DB("RedisDatabaseName")  //set the DB name of the job. default is the name of the function
 //
 // ServiceName is defined as "In" + ServiceName in the InParameter
 // ServiceName is automatically converted to lower case
-func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiOption) (retf func(InParam i) (ret o, err error)) {
+func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiOption) (retf func(InParam i) (ret o, err error)) {
 	var (
 		option                *ApiOption = &ApiOption{}
 		NonEmptyOrZeroToCheck []int
