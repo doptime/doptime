@@ -14,7 +14,7 @@ import (
 )
 
 // listten to a port and start http server
-func RedisHttpStart(path string, port int64) {
+func httpStart(path string, port int64) {
 	//get item
 	router := http.NewServeMux()
 	router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
@@ -90,17 +90,21 @@ func RedisHttpStart(path string, port int64) {
 	}
 	if err := server.ListenAndServe(); err != nil {
 		log.Error().Err(err).Msg("http server ListenAndServe error")
+		return
 	}
-	log.Info().Any("port", port).Any("path", path).Msg("Step3.E: http server start completed!")
+	log.Info().Any("port", port).Any("path", path).Msg("GoFlow http server started!")
 }
-func init() {
-	log.Info().Any("Step3.1: http service enabled", config.Cfg.Http.Enable).Send()
+func Start(shouldReturn ...bool) {
+	log.Info().Any("Http service enabled", config.Cfg.Http.Enable).Send()
 	if !config.Cfg.Http.Enable {
 		return
 	}
 	for !permission.ConfigurationLoaded {
 		time.Sleep(time.Millisecond * 10)
 	}
-	log.Info().Any("port", config.Cfg.Http.Port).Any("path", config.Cfg.Http.Path).Msg("Step3.2: http server is starting")
-	go RedisHttpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
+	log.Info().Any("port", config.Cfg.Http.Port).Any("path", config.Cfg.Http.Path).Msg("GoFlow http server is starting")
+	httpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
+	for foreverLoop := len(shouldReturn) > 0 && !shouldReturn[0]; foreverLoop; {
+		time.Sleep(time.Second)
+	}
 }

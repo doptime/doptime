@@ -1,4 +1,4 @@
-package goflow
+package vars
 
 import (
 	"errors"
