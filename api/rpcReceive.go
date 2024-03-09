@@ -63,12 +63,16 @@ func rpcReceiveOneDatasource(serviceNames []string, rds *redis.Client) {
 		if cmd = rds.XReadGroup(c, args); cmd.Err() == redis.Nil {
 			continue
 		} else if cmd.Err() != nil {
-			log.Error().AnErr("rpcReceive", cmd.Err()).Send()
+			log.Error().AnErr("rpcReceiveError", cmd.Err()).Send()
 			//ensure the stream is created
 			if errStr := cmd.Err().Error(); strings.Contains("No such key '", errStr) {
-				apiName = strings.Split(errStr, "No such key '")[1]
-				apiName = strings.Split(apiName, "'")[0]
-				go XGroupEnsureCreated(c, []string{apiName}, rds)
+				if items := strings.Split(errStr, "No such key '"); len(items) > 1 {
+					if apiName = strings.Split(errStr, "No such key '")[1]; strings.Contains(apiName, "'") {
+						apiName = strings.Split(apiName, "'")[0]
+						log.Info().Str("recreating stream group", apiName).Send()
+						go XGroupEnsureCreated(c, []string{apiName}, rds)
+					}
+				}
 			}
 
 			time.Sleep(time.Second)

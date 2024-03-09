@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,6 +41,7 @@ func XGroupEnsureCreated(c context.Context, ServiceNames []string, rds *redis.Cl
 		//if stream key does not exist, create a placeholder stream
 		//other wise, NOGROUP No such key will be returned
 		if cmdStream = rds.XInfoStream(c, serviceName); cmdStream.Err() != nil {
+			log.Info().AnErr("XInfoStream not exist", cmdStream.Err()).Str("try recreating streadming", serviceName).Send()
 			if cmdStream.Err() == redis.Nil {
 				//create a placeholder stream
 				if cmd := rds.XAdd(c, &redis.XAddArgs{Stream: serviceName, MaxLen: 4096, Values: []string{"data", ""}}); cmd.Err() != nil {
@@ -53,13 +55,26 @@ func XGroupEnsureCreated(c context.Context, ServiceNames []string, rds *redis.Cl
 		}
 		//continue if the group already exists
 		if cmdXInfoGroups = rds.XInfoGroups(c, serviceName); cmdXInfoGroups.Err() == nil && len(cmdXInfoGroups.Val()) > 0 {
-			return nil
+			var groups []string
+			var group0Exists bool = false
+			for _, group := range cmdXInfoGroups.Val() {
+				if group.Name == "group0" {
+					group0Exists = true
+				}
+
+				groups = append(groups, group.Name)
+			}
+			log.Info().Str("existing groups :", strings.Join(groups, ",")).Any("group0 exists", group0Exists).Send()
+			if group0Exists {
+				return nil
+			}
 		}
 		//create a group if none exists
 		if cmd := rds.XGroupCreateMkStream(c, serviceName, "group0", "$"); cmd.Err() != nil {
 			log.Info().AnErr("XGroupCreateOne", cmd.Err()).Send()
 			return cmd.Err()
 		}
+		log.Info().Str("XGroupCreateOne success", serviceName).Send()
 
 		return nil
 	}
