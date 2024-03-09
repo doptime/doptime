@@ -35,16 +35,11 @@ func XGroupEnsureCreatedOneGroup(c context.Context, serviceName string, rds *red
 	//if stream key does not exist, create a placeholder stream
 	//other wise, NOGROUP No such key will be returned
 	if cmdStream = rds.XInfoStream(c, serviceName); cmdStream.Err() != nil {
-		log.Info().AnErr("XInfoStream not exist", cmdStream.Err()).Str("try recreating streadming", serviceName).Send()
-		if cmdStream.Err() == redis.Nil {
-			//create a placeholder stream
-			if cmd := rds.XAdd(c, &redis.XAddArgs{Stream: serviceName, MaxLen: 4096, Values: []string{"data", ""}}); cmd.Err() != nil {
-				log.Info().AnErr("XAdd", cmd.Err()).Send()
-				return cmd.Err()
-			}
-		} else {
-			log.Info().AnErr("XInfoStream", cmdStream.Err()).Send()
-			return cmdStream.Err()
+		log.Info().AnErr("XInfoStream not exist", cmdStream.Err()).Str("try recreating stream", serviceName).Send()
+		//create a placeholder stream
+		if cmd := rds.XAdd(c, &redis.XAddArgs{Stream: serviceName, MaxLen: 4096, Values: []string{"data", ""}}); cmd.Err() != nil {
+			log.Info().AnErr("XAdd err in recreating stream while XGroupEnsureCreatedOneGroup", cmd.Err()).Send()
+			return cmd.Err()
 		}
 	} else {
 		log.Info().Str("XInfoStream success, key already exists", serviceName).Send()
