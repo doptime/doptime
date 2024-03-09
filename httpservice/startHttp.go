@@ -1,4 +1,4 @@
-package https
+package httpservice
 
 import (
 	"bytes"

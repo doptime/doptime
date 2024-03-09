@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/yangkequn/goflow/api"
-	_ "github.com/yangkequn/goflow/https"
+	_ "github.com/yangkequn/goflow/httpservice"
 )
 
 type Demo struct {

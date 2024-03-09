@@ -10,7 +10,7 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/yangkequn/goflow/config"
-	_ "github.com/yangkequn/goflow/https"
+	_ "github.com/yangkequn/goflow/httpservice"
 )
 
 func TestHTTPPostMsgPack(t *testing.T) {
