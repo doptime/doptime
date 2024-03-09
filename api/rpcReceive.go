@@ -73,6 +73,8 @@ func rpcReceiveOneDatasource(serviceNames []string, rds *redis.Client) {
 						go XGroupEnsureCreated(c, []string{apiName}, rds)
 					}
 				}
+			} else {
+				log.Error().AnErr("No API name Captured between No such key 'xxx'", cmd.Err()).Send()
 			}
 
 			time.Sleep(time.Second)
