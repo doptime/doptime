@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -55,7 +56,6 @@ func rpcReceiveOneDatasource(serviceNames []string, rds *redis.Client) {
 	ApiStartingWaiter()
 
 	c := context.Background()
-	XGroupEnsureCreated(c, serviceNames, rds)
 
 	//deprecate using list command LRange, to avoid continually query consumption
 	//use xreadgroup to receive data ,2023-01-31
@@ -63,8 +63,15 @@ func rpcReceiveOneDatasource(serviceNames []string, rds *redis.Client) {
 		if cmd = rds.XReadGroup(c, args); cmd.Err() == redis.Nil {
 			continue
 		} else if cmd.Err() != nil {
-			time.Sleep(time.Second)
 			log.Error().AnErr("rpcReceive", cmd.Err()).Send()
+			//ensure the stream is created
+			if errStr := cmd.Err().Error(); strings.Contains("No such key '", errStr) {
+				apiName = strings.Split(errStr, "No such key '")[1]
+				apiName = strings.Split(apiName, "'")[0]
+				go XGroupEnsureCreated(c, []string{apiName}, rds)
+			}
+
+			time.Sleep(time.Second)
 		}
 
 		for _, stream := range cmd.Val() {
