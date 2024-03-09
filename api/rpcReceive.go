@@ -65,13 +65,11 @@ func rpcReceiveOneDatasource(serviceNames []string, rds *redis.Client) {
 		} else if cmd.Err() != nil {
 			log.Error().AnErr("rpcReceiveError", cmd.Err()).Send()
 			//ensure the stream is created
-			if errStr := cmd.Err().Error(); strings.Contains("No such key '", errStr) {
-				if items := strings.Split(errStr, "No such key '"); len(items) > 1 {
-					if apiName = strings.Split(errStr, "No such key '")[1]; strings.Contains(apiName, "'") {
-						apiName = strings.Split(apiName, "'")[0]
-						log.Info().Str("recreating stream group", apiName).Send()
-						go XGroupEnsureCreated(c, []string{apiName}, rds)
-					}
+			if items := strings.Split(cmd.Err().Error(), "api:"); len(items) > 1 {
+				if items2 := strings.Split(items[1], "'"); len(items2) > 1 {
+					apiName = "api:" + items2[0]
+					log.Info().Str("recreating stream group", items2[0]).Send()
+					go XGroupEnsureCreated(c, []string{apiName}, rds)
 				}
 			} else {
 				log.Error().AnErr("No API name Captured between No such key 'xxx'", cmd.Err()).Send()
