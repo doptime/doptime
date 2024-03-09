@@ -103,8 +103,9 @@ func Start(shouldReturn ...bool) {
 		time.Sleep(time.Millisecond * 10)
 	}
 	log.Info().Any("port", config.Cfg.Http.Port).Any("path", config.Cfg.Http.Path).Msg("GoFlow http server is starting")
-	httpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
-	for foreverLoop := len(shouldReturn) > 0 && !shouldReturn[0]; foreverLoop; {
-		time.Sleep(time.Second)
+	if _shouldReturn := len(shouldReturn) > 0 && shouldReturn[0]; _shouldReturn {
+		go httpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
+	} else {
+		httpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
 	}
 }
