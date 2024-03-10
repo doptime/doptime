@@ -99,14 +99,14 @@ func init() {
 	log.Info().Msg("Step1.0: App Start! load config from OS env")
 	//step1: load config from file
 	LoadConfig_FromFile()
-	log.Info().Str("Step1.1.1 Current Configuration after loading toml file", Cfg.String()).Send()
+	log.Info().Str("Step1.1.1 Current config after apply config.toml", Cfg.String()).Send()
 	//step2: load config from env. this will overwrite the config from file
 	LoadConfig_FromEnv()
-	log.Info().Str("Step1.1.2 Current Configuration after loading enviroment variables", Cfg.String()).Send()
+	log.Info().Str("Step1.1.2 Current config after apply enviroment json", Cfg.String()).Send()
 	//step3: load config from web. this will overwrite the config from env.
 	//warning local config will be overwritten by the config from web, to prevent falldown of config from web.
 	LoadConfig_FromWeb()
-	log.Info().Str("Step1.1.3 Current Configuration after loading web config toml", Cfg.String()).Send()
+	log.Info().Str("Step1.1.3 Current config after apply web config toml", Cfg.String()).Send()
 
 	zerolog.SetGlobalLevel(zerolog.Level(Cfg.LogLevel))
 
@@ -130,7 +130,7 @@ func init() {
 		rdsClient := redis.NewClient(redisOption)
 		//test connection
 		if _, err := rdsClient.Ping(context.Background()).Result(); err != nil {
-			log.Fatal().Err(err).Any("Step1.3 Redis server not rechable", rdsCfg.Host).Send()
+			log.Fatal().Err(err).Any("Step1.3 Redis server ping error", rdsCfg.Host).Any("Username", rdsCfg.Username).Any("Password", rdsCfg.Password).Send()
 			return //if redis server is not valid, exit
 		}
 		//save to the list
