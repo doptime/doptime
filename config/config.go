@@ -37,10 +37,12 @@ type ConfigJWT struct {
 	Secret string `env:"Secret"`
 	Fields string `env:"Fields"`
 }
+
+// the configuration will be copy & modified to hide the secret. so do not use pointer on it's fields to simplify the code
 type Configuration struct {
 	ConfigUrl string
 	//redis server, format: username:password@address:port/db
-	Redis []*ConfigRedis
+	Redis []ConfigRedis
 	Jwt   ConfigJWT
 	Http  ConfigHttp
 	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
@@ -72,7 +74,7 @@ func (c Configuration) String() string {
 // set default values
 var Cfg Configuration = Configuration{
 	ConfigUrl: "",
-	Redis:     []*ConfigRedis{},
+	Redis:     []ConfigRedis{},
 	Jwt:       ConfigJWT{Secret: "", Fields: "*"},
 	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", Enable: false, MaxBufferSize: 10485760},
 	LogLevel:  1,
@@ -130,7 +132,7 @@ func init() {
 		rdsClient := redis.NewClient(redisOption)
 		//test connection
 		if _, err := rdsClient.Ping(context.Background()).Result(); err != nil {
-			log.Fatal().Err(err).Any("Step1.3 Redis server ping error", rdsCfg.Host).Any("Username", rdsCfg.Username).Any("Password", rdsCfg.Password).Send()
+			log.Fatal().Err(err).Any("Step1.3 Redis server ping error", rdsCfg.Host).Send()
 			return //if redis server is not valid, exit
 		}
 		//save to the list

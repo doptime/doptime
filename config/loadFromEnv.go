@@ -20,7 +20,7 @@ func LoadConfig_FromEnv() (err error) {
 	}
 	//load redis items
 	for key, val := range envMap {
-		var rdsCfg = &ConfigRedis{}
+		var rdsCfg = ConfigRedis{}
 		//if it is not in the format of Redis_*, then skip
 		if strings.Index(key, "REDIS") != 0 || len(val) <= 6 || key[5] != '_' {
 			continue
