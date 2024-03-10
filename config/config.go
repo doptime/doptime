@@ -1,7 +1,9 @@
 package config
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -38,7 +40,6 @@ type ConfigJWT struct {
 	Fields string `env:"Fields"`
 }
 
-// the configuration will be copy & modified to hide the secret. so do not use pointer on it's fields to simplify the code
 type Configuration struct {
 	ConfigUrl string
 	//redis server, format: username:password@address:port/db
@@ -53,13 +54,21 @@ type Configuration struct {
 var ServiceBatchSize int64 = 64
 
 func (c Configuration) String() string {
+	var (
+		c1  Configuration
+		buf bytes.Buffer
+	)
 	HideCharsButLat4 := func(s string) string {
 		if len(s) <= 4 {
 			return strings.Repeat("*", len(s))
 		}
 		return strings.Repeat("*", len(s)-4) + s[len(s)-4:]
 	}
-	var c1 Configuration = c
+	//use gob to deep copy, to prevent error modification of the original secret
+	if err := gob.NewEncoder(&buf).Encode(c); err != nil {
+		return "error: " + err.Error() + " when encoding config to gob string"
+	}
+	gob.NewDecoder(&buf).Decode(&c1)
 	//hide the secret , but leaving last 4 chars
 	c1.Jwt.Secret = HideCharsButLat4(c1.Jwt.Secret)
 	//hide the password, but leaving last 4 chars
