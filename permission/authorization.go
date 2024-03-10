@@ -1,7 +1,6 @@
 package permission
 
 import (
-	"fmt"
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -16,18 +15,20 @@ var permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 // this version of IsPermitted is design for fast searching & modifying
 func IsPermitted(dataKey string, operation string) (ok bool) {
 	var (
-		autoPermit                bool   = config.Cfg.Data.AutoAuth
-		keyAllowed, keyDisAllowed string = fmt.Sprintf("%s::%s::on", dataKey, operation), fmt.Sprintf("%s::%s::off", dataKey, operation)
+		autoPermit                            bool   = config.Cfg.Data.AutoAuth
+		permitKey                             string = dataKey + "::" + operation
+		permitKeyAllowed, permitKeyDisallowed string = permitKey + "::on", permitKey + "::off"
 	)
-	if _, ok := permitmap.Get(keyAllowed); ok {
-		return true
-	}
-	if _, ok := permitmap.Get(keyDisAllowed); ok {
+	//blacklist first
+	if _, ok := permitmap.Get(permitKeyDisallowed); ok {
 		return false
 	}
+	if _, ok := permitmap.Get(permitKeyAllowed); ok {
+		return true
+	}
 	if autoPermit {
-		permitmap.Set(keyAllowed, true)
-		rdsPermit.HSet(keyAllowed, time.Now().Format("2006-01-02 15:04:05"))
+		permitmap.Set(permitKeyAllowed, true)
+		rdsPermit.HSet(permitKeyAllowed, time.Now().Format("2006-01-02 15:04:05"))
 	}
 	return autoPermit
 }
@@ -36,11 +37,12 @@ var ConfigurationLoaded bool = false
 
 func LoadPermissionTable() {
 	var (
-		keys []string
-		err  error
+		keys       []string
+		err        error
+		_permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 	)
 
-	if keys, err = rdsPermit.Keys(); !ConfigurationLoaded {
+	if keys, err = rdsPermit.HKeys(); !ConfigurationLoaded {
 		if err != nil {
 			log.Warn().AnErr("Step2.1: start permission loading from redis failed", err).Send()
 		} else {
@@ -48,18 +50,10 @@ func LoadPermissionTable() {
 		}
 		ConfigurationLoaded = true
 	}
-	latestKeys := map[string]bool{}
 	for _, key := range keys {
-		latestKeys[key] = true
-		if _, ok := permitmap.Get(key); !ok {
-			permitmap.Set(key, true)
-		}
+		_permitmap.Set(key, true)
 	}
-	for _, key := range permitmap.Keys() {
-		if _, ok := latestKeys[key]; !ok {
-			permitmap.Remove(key)
-		}
-	}
+	permitmap = _permitmap
 	go func() {
 		time.Sleep(time.Minute)
 		LoadPermissionTable()
