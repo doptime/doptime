@@ -85,7 +85,7 @@ func TestCallAtCancel(t *testing.T) {
 	if err = callAt(param); err != nil {
 		t.Error(err)
 	}
-	if ok := api.CallAtCancel(DemoRpc, timeToRun); !ok {
+	if err = api.CallAtCancel(DemoRpc, timeToRun); err != nil {
 		t.Error("cancel failed")
 	}
 	time.Sleep(30 * time.Second)

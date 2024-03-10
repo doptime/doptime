@@ -20,20 +20,19 @@ import (
 func CallAt[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time) (retf func(InParam i) (err error)) {
 	var (
 		db     *redis.Client
-		ok     bool
-		ctx               = context.Background()
-		option *ApiOption = &ApiOption{}
+		err    error
+		ctx    = context.Background()
+		option *ApiOption
 	)
 	funcPtr := reflect.ValueOf(f).Pointer()
 	if apiInfo, ok := fun2ApiInfoMap.Load(funcPtr); !ok {
 		log.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
 	} else {
 		_apiInfo := apiInfo.(*ApiInfo)
-		option.Name = _apiInfo.Name
-		option.DataSource = _apiInfo.DataSource
+		option = &ApiOption{DataSource: _apiInfo.DataSource, Name: _apiInfo.Name}
 	}
 
-	if db, ok = config.Rds[option.DataSource]; !ok {
+	if db, err = config.GetRdsClientByName(option.DataSource); err != nil {
 		log.Info().Str("DataSource not defined in enviroment", option.DataSource).Send()
 		return nil
 	}

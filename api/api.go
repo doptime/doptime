@@ -22,7 +22,7 @@ import (
 // ServiceName is automatically converted to lower case
 func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiOption) (retf func(InParam i) (ret o, err error)) {
 	var (
-		option                *ApiOption = &ApiOption{}
+		option                *ApiOption = &ApiOption{DataSource: "default"}
 		NonEmptyOrZeroToCheck []int
 	)
 	if len(options) > 0 {
@@ -42,6 +42,11 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiO
 	if _, ok := specification.DisAllowedServiceNames[option.Name]; ok {
 		log.Error().Str("service misnamed", option.Name).Send()
 	}
+	//warn if DataSource not defined in the environment
+	//however, the DataSource may be specified later in the environment, by dynamic loading from remove config file
+	if _, err := config.GetRdsClientByName(option.DataSource); err != nil {
+		log.Warn().Str("this data source specified in the api is not defined in the environment. Please check the configuration", option.DataSource).Send()
+	}
 
 	log.Debug().Str("Api service create start. name", option.Name).Send()
 	NonEmptyOrZeroToCheck = fieldsToCheck(reflect.TypeOf(new(i)).Elem())
@@ -54,10 +59,6 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiO
 			_map map[string]interface{} = map[string]interface{}{}
 			//datapack DataPacked
 		)
-		//check configureation is loaded
-		if config.Rds == nil {
-			log.Panic().Msg("config.ParamRedis is nil.")
-		}
 		// case double pointer decoding
 		if vType := reflect.TypeOf((*i)(nil)).Elem(); vType.Kind() == reflect.Ptr {
 			pIn = reflect.New(vType.Elem()).Interface()

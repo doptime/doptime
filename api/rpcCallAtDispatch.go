@@ -116,6 +116,7 @@ func rpcCallAtTasksLoad() {
 		timeAtStrs []string
 		cmd        []redis.Cmder
 		err        error
+		rds        *redis.Client
 	)
 	log.Info().Msg("rpcCallAtTasksLoading started")
 	var _TasksAtFutureList = []*TaskAtFuture{}
@@ -124,7 +125,10 @@ func rpcCallAtTasksLoad() {
 		if !ok {
 			continue
 		}
-		rds := config.Rds[dataSource]
+		if rds, err = config.GetRdsClientByName(dataSource); err != nil {
+			log.Info().AnErr("err LoadDelayApiTask, ", err).Send()
+			continue
+		}
 		pipeline := rds.Pipeline()
 		for _, service := range services {
 			pipeline.HKeys(context.Background(), service+":delay")

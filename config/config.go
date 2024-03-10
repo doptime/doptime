@@ -78,18 +78,21 @@ var Cfg Configuration = Configuration{
 	LogLevel:  1,
 }
 
-var Rds map[string]*redis.Client = map[string]*redis.Client{}
+var rds map[string]*redis.Client = map[string]*redis.Client{}
 
-func GetRdsClientByName(name string) (rds *redis.Client, err error) {
+func GetRdsCount() int {
+	return len(rds)
+}
+func GetRdsClientByName(name string) (rc *redis.Client, err error) {
 	var (
 		ok bool
 	)
-	if rds, ok = Rds[name]; !ok {
-		err = fmt.Errorf("redis client with name %s not found", name)
+	if rc, ok = rds[name]; !ok {
+		err = fmt.Errorf("redis client with name %s not defined in environment", name)
 		return nil, err
 	}
 
-	return rds, nil
+	return rc, nil
 }
 
 func init() {
@@ -132,7 +135,7 @@ func init() {
 		}
 		//save to the list
 		log.Info().Str("Step1.3 Redis Load ", "Success").Any("RedisUsername", rdsCfg.Username).Any("RedisHost", rdsCfg.Host).Any("RedisPort", rdsCfg.Port).Send()
-		Rds[rdsCfg.Name] = rdsClient
+		rds[rdsCfg.Name] = rdsClient
 		timeCmd := rdsClient.Time(context.Background())
 		log.Info().Any("Step1.4 Redis server time: ", timeCmd.Val().String()).Send()
 		//ping the address of redisAddress, if failed, print to log
@@ -140,8 +143,8 @@ func init() {
 
 	}
 	//check if default redis is set
-	if _, ok := Rds[""]; !ok {
-		log.Warn().Msg("Step1.0 \"default\" redis server missing in Configuration. Please ensure this is what your want")
+	if _, ok := rds["default"]; !ok {
+		log.Warn().Msg("Step1.0 \"default\" redis server missing in Configuration. RPC will can not be received. Please ensure this is what your want")
 		return
 	}
 	log.Info().Msg("Step1.E: App loaded done")

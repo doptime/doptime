@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 	"github.com/yangkequn/goflow/config"
 )
 
@@ -21,8 +22,12 @@ var ApiLockKey = New(func(req *InLockKey) (ok bool, err error) {
 		now    int64 = time.Now().UnixMilli()
 		timeAt int64 = now + req.DurationMs
 		score  float64
-		rds    *redis.Client = config.Rds[""]
+		rds    *redis.Client
 	)
+	if rds, err = config.GetRdsClientByName("default"); err != nil {
+		log.Error().Err(err).Str("DataSource name not defined in enviroment while calling ApiLockKey", "default").Send()
+		return false, err
+	}
 	if score, err = rds.ZScore(context.Background(), "KeyLocker", req.Key).Result(); err != nil {
 		if err != redis.Nil {
 			return false, err

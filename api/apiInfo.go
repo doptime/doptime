@@ -30,11 +30,11 @@ func apiServiceNames() (serviceNames []string) {
 }
 func GetServiceDB(serviceName string) (db *redis.Client) {
 	var (
-		ok bool
+		err error
 	)
 	serviceInfo, _ := ApiServices.Get(serviceName)
 	DataSource := serviceInfo.DataSource
-	if db, ok = config.Rds[DataSource]; !ok {
+	if db, err = config.GetRdsClientByName(DataSource); err != nil {
 		log.Panic().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
 	}
 	return db

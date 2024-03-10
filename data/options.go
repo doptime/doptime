@@ -12,14 +12,14 @@ var Option *DataOption
 // WithKey purpose of ApiNamed is to allow different API to have the same input type
 func (o *DataOption) WithKey(key string) (out *DataOption) {
 	if out = o; o == Option {
-		out = &DataOption{}
+		out = &DataOption{DataSource: "default"}
 	}
 	out.Key = key
 	return out
 }
 func (o *DataOption) WithDataSource(dataSource string) (out *DataOption) {
 	if out = o; o == Option {
-		out = &DataOption{}
+		out = &DataOption{DataSource: "default"}
 	}
 	out.DataSource = dataSource
 	return out

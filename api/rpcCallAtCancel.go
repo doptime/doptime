@@ -12,7 +12,7 @@ import (
 	"github.com/yangkequn/goflow/specification"
 )
 
-func CallAtCancel[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time) (ok bool) {
+func CallAtCancel[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time) (err error) {
 	var (
 		Rds     *redis.Client
 		apiInfo *ApiInfo
@@ -24,16 +24,15 @@ func CallAtCancel[i any, o any](f func(InParam i) (ret o, err error), timeAt tim
 	} else {
 		apiInfo = _apiInfo.(*ApiInfo)
 	}
-	if Rds, ok = config.Rds[apiInfo.DataSource]; !ok {
-		log.Info().Str("DataSource not defined in enviroment", apiInfo.DataSource).Send()
-		return false
+	if Rds, err = config.GetRdsClientByName(apiInfo.DataSource); err != nil {
+		return err
 	}
 	Values = []string{"timeAt", strconv.FormatInt(timeAt.UnixNano(), 10), "data", ""}
 	args := &redis.XAddArgs{Stream: apiInfo.Name, Values: Values, MaxLen: 4096}
 	//use Rds.XAdd rather than Rds.HSet, to prevent Hset before receiing the result of  XAdd
 	if cmd := Rds.XAdd(context.Background(), args); cmd.Err() != nil {
 		log.Info().AnErr("Do XAdd", cmd.Err()).Send()
-		return false
+		return cmd.Err()
 	}
-	return true
+	return nil
 }

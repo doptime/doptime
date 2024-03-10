@@ -19,9 +19,9 @@ import (
 func Rpc[i any, o any](options ...*ApiOption) (retf func(InParam i) (ret o, err error)) {
 	var (
 		db     *redis.Client
-		ok     bool
+		err    error
 		ctx               = context.Background()
-		option *ApiOption = &ApiOption{}
+		option *ApiOption = &ApiOption{DataSource: "default"}
 	)
 	if len(options) > 0 {
 		option = options[0]
@@ -37,7 +37,7 @@ func Rpc[i any, o any](options ...*ApiOption) (retf func(InParam i) (ret o, err 
 		log.Error().Str("service misnamed", option.Name).Send()
 	}
 
-	if db, ok = config.Rds[option.DataSource]; !ok {
+	if db, err = config.GetRdsClientByName(option.DataSource); err != nil {
 		log.Info().Str("DataSource not defined in enviroment", option.DataSource).Send()
 		return nil
 	}
