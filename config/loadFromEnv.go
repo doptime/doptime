@@ -33,15 +33,17 @@ func LoadConfig_FromEnv() (err error) {
 
 		if err := json.Unmarshal([]byte(val), &rdsCfg); err != nil {
 			correctFormat := "{Name,Username,Password,Host,Port,DB},{Name,Username,Password,Host,Port,DB}"
-			log.Fatal().Err(err).Str("redis key", key).Str("redisEnv", val).Msg("Step1.0 Load Env/Redis failed, correct format: " + correctFormat)
+			log.Fatal().Err(err).Str("redis key", key).Str("redisEnv", val).Msg("Step1.1.2 Load Env/Redis failed, correct format: " + correctFormat)
 		}
+		//read redis name from env key
+		rdsCfg.Name = strings.Replace(key[6:], "default", "", -1)
 		Cfg.Redis = append(Cfg.Redis, rdsCfg)
 	}
 
 	// Load and parse JWT config
 	if jwtEnv, ok := envMap["JWT"]; ok && jwtEnv != "" {
 		if err := json.Unmarshal([]byte(jwtEnv), &Cfg.Jwt); err != nil {
-			log.Fatal().Err(err).Str("jwtEnv", jwtEnv).Msg("Step1.0 Load Env/Jwt failed")
+			log.Fatal().Err(err).Str("jwtEnv", jwtEnv).Msg("Step1.1.2 Load Env/Jwt failed")
 		}
 	}
 
@@ -49,7 +51,7 @@ func LoadConfig_FromEnv() (err error) {
 	Cfg.Http.Enable, Cfg.Http.Path, Cfg.Http.CORES = true, "/", "*"
 	if httpEnv, ok := envMap["HTTP"]; ok && len(httpEnv) > 0 {
 		if err := json.Unmarshal([]byte(httpEnv), &Cfg.Http); err != nil {
-			log.Fatal().Err(err).Str("httpEnv", httpEnv).Msg("Step1.0 Load Env/Http failed")
+			log.Fatal().Err(err).Str("httpEnv", httpEnv).Msg("Step1.1.2 Load Env/Http failed")
 		}
 	}
 
