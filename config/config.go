@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strconv"
@@ -21,6 +22,8 @@ type ConfigHttp struct {
 	Enable bool   `env:"Enable,default=false"`
 	//MaxBufferSize is the max size of a task in bytes, default 10M
 	MaxBufferSize int64 `env:"MaxBufferSize,default=10485760"`
+	//AutoAuth should never be true in production
+	AutoAuth bool `env:"AutoAuth,default=false"`
 }
 type ConfigRedis struct {
 	Name     string
@@ -34,24 +37,36 @@ type ConfigJWT struct {
 	Secret string `env:"Secret"`
 	Fields string `env:"Fields"`
 }
-type ConfigAPI struct {
-	//ServiceBatchSize is the number of tasks that a service can read from redis at the same time
-	ServiceBatchSize int64 `env:"ServiceBatchSize,default=64"`
-}
-type ConfigData struct {
-	//AutoAuth should never be true in production
-	AutoAuth bool `env:"AutoAuth,default=false"`
-}
 type Configuration struct {
 	ConfigUrl string
 	//redis server, format: username:password@address:port/db
 	Redis []*ConfigRedis
 	Jwt   ConfigJWT
 	Http  ConfigHttp
-	Api   ConfigAPI
-	Data  ConfigData
 	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
 	LogLevel int8 `env:"LogLevel,default=1"`
+}
+
+// ServiceBatchSize is the number of tasks that a service can read from redis at the same time
+var ServiceBatchSize int64 = 64
+
+func (c Configuration) String() string {
+	HideCharsButLat4 := func(s string) string {
+		if len(s) <= 4 {
+			return strings.Repeat("*", len(s))
+		}
+		return strings.Repeat("*", len(s)-4) + s[len(s)-4:]
+	}
+	var c1 Configuration = c
+	//hide the secret , but leaving last 4 chars
+	c1.Jwt.Secret = HideCharsButLat4(c1.Jwt.Secret)
+	//hide the password, but leaving last 4 chars
+	for _, rds := range c1.Redis {
+		rds.Password = HideCharsButLat4(rds.Password)
+	}
+	//convert c1 to json string
+	jsonstr, _ := json.Marshal(c1)
+	return string(jsonstr)
 }
 
 // set default values
@@ -60,8 +75,6 @@ var Cfg Configuration = Configuration{
 	Redis:     []*ConfigRedis{},
 	Jwt:       ConfigJWT{Secret: "", Fields: "*"},
 	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", Enable: false, MaxBufferSize: 10485760},
-	Api:       ConfigAPI{ServiceBatchSize: 64},
-	Data:      ConfigData{AutoAuth: false},
 	LogLevel:  1,
 }
 
@@ -83,19 +96,20 @@ func init() {
 	log.Info().Msg("Step1.0: App Start! load config from OS env")
 	//step1: load config from file
 	LoadConfig_FromFile()
+	log.Info().Str("Step1.1.1 Current Configuration after loading toml file", Cfg.String()).Send()
 	//step2: load config from env. this will overwrite the config from file
 	LoadConfig_FromEnv()
+	log.Info().Str("Step1.1.2 Current Configuration after loading enviroment variables", Cfg.String()).Send()
 	//step3: load config from web. this will overwrite the config from env.
 	//warning local config will be overwritten by the config from web, to prevent falldown of config from web.
 	LoadConfig_FromWeb()
+	log.Info().Str("Step1.1.3 Current Configuration after loading enviroment variables", Cfg.String()).Send()
 
 	zerolog.SetGlobalLevel(zerolog.Level(Cfg.LogLevel))
 
 	if Cfg.Jwt.Fields != "" {
 		Cfg.Jwt.Fields = strings.ToLower(Cfg.Jwt.Fields)
 	}
-	log.Info().Any("Step1.1 Current Envs:", Cfg).Msg("Load config from env success")
-
 	log.Info().Str("Step1.2 Checking Redis", "Start").Send()
 
 	for _, rdsCfg := range Cfg.Redis {
@@ -117,7 +131,7 @@ func init() {
 			return //if redis server is not valid, exit
 		}
 		//save to the list
-		log.Info().Str("Step1.3 Redis Load ", "Success").Any("RedisUsername", rdsCfg.Username).Any("RedisPassword", rdsCfg.Password).Any("RedisHost", rdsCfg.Host).Any("RedisPort", rdsCfg.Port).Send()
+		log.Info().Str("Step1.3 Redis Load ", "Success").Any("RedisUsername", rdsCfg.Username).Any("RedisHost", rdsCfg.Host).Any("RedisPort", rdsCfg.Port).Send()
 		Rds[rdsCfg.Name] = rdsClient
 		timeCmd := rdsClient.Time(context.Background())
 		log.Info().Any("Step1.4 Redis server time: ", timeCmd.Val().String()).Send()
@@ -127,8 +141,7 @@ func init() {
 	}
 	//check if default redis is set
 	if _, ok := Rds[""]; !ok {
-		log.Info().Msg("Step1.0 ERROR LoadConfig")
-		log.Info().Msg("goflow data & api will no be able to be used. please check your env and restart the app if you want to use it")
+		log.Warn().Msg("Step1.0 \"default\" redis server missing in Configuration. Please ensure this is what your want")
 		return
 	}
 	log.Info().Msg("Step1.E: App loaded done")
