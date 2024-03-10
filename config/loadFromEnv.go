@@ -36,7 +36,7 @@ func LoadConfig_FromEnv() (err error) {
 			log.Fatal().Err(err).Str("redis key", key).Str("redisEnv", val).Msg("Step1.1.2 Load Env/Redis failed, correct format: " + correctFormat)
 		}
 		//read redis name from env key
-		rdsCfg.Name = strings.Replace(key[6:], "default", "", -1)
+		rdsCfg.Name = key[6:]
 		Cfg.Redis = append(Cfg.Redis, rdsCfg)
 	}
 

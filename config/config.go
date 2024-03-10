@@ -106,7 +106,7 @@ func init() {
 	//step3: load config from web. this will overwrite the config from env.
 	//warning local config will be overwritten by the config from web, to prevent falldown of config from web.
 	LoadConfig_FromWeb()
-	log.Info().Str("Step1.1.3 Current Configuration after loading enviroment variables", Cfg.String()).Send()
+	log.Info().Str("Step1.1.3 Current Configuration after loading web config toml", Cfg.String()).Send()
 
 	zerolog.SetGlobalLevel(zerolog.Level(Cfg.LogLevel))
 
