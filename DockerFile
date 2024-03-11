@@ -18,11 +18,18 @@ COPY . .
 # compile binary file
 RUN GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -ldflags="-s -w" -installsuffix cgo -o /go/release/goflowapp ./main.go
 
+# certs are required for secure connection
+FROM alpine:latest as certs
+RUN apk --update add ca-certificates
+
 # create a new minimal image
 FROM scratch as prod
 
 # set timezone
 #COPY --from=build /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+# 从 certs 阶段复制证书
+COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # copy binary file from build image
 COPY --from=build /go/release/goflowapp /

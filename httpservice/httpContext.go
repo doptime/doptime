@@ -43,7 +43,13 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 		return nil, ErrIncompleteRequest
 	}
 	// cmd and key and field, i.g. /HGET/UserAvatar?F=fa4Y3oyQk2swURaJ
-	svcContext.Cmd, svcContext.Key = CmdKeyFields[0], CmdKeyFields[1]
+	// both cmd and key are required
+	if svcContext.Cmd, svcContext.Key = CmdKeyFields[0], CmdKeyFields[1]; svcContext.Cmd == "" || svcContext.Key == "" {
+		return nil, ErrIncompleteRequest
+	} else if svcContext.Cmd == "TIME" {
+		//to fix permission issue, that svcContext.Key may be client time string, and unable to build permission successfully
+		svcContext.Key = "default_ds"
+	}
 	//url decoded already
 	svcContext.Field = r.FormValue("F")
 
