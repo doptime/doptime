@@ -16,7 +16,7 @@ var permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 func IsPermitted(dataKey string, operation string) (ok bool) {
 	var (
 		autoPermit                            bool   = config.Cfg.Http.AutoAuth
-		permitKey                             string = dataKey + "::" + operation
+		permitKey                             string = operation + "::" + dataKey
 		permitKeyAllowed, permitKeyDisallowed string = permitKey + "::on", permitKey + "::off"
 	)
 	//blacklist first
