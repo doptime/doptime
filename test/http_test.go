@@ -14,9 +14,6 @@ import (
 )
 
 func TestHTTPPostMsgPack(t *testing.T) {
-	if !config.Cfg.Http.Enable {
-		return
-	}
 	var (
 		body  []byte
 		err   error
@@ -47,9 +44,6 @@ func TestHTTPPostMsgPack(t *testing.T) {
 }
 
 func TestHTTPPostJson(t *testing.T) {
-	if !config.Cfg.Http.Enable {
-		return
-	}
 	var (
 		body  []byte
 		err   error
@@ -80,9 +74,6 @@ func TestHTTPPostJson(t *testing.T) {
 }
 
 func TestHTTPPOSTJson(t *testing.T) {
-	if !config.Cfg.Http.Enable {
-		return
-	}
 	var (
 		body []byte
 		err  error
@@ -111,9 +102,6 @@ func TestHTTPPOSTJson(t *testing.T) {
 }
 
 func TestHTTPGetJson(t *testing.T) {
-	if !config.Cfg.Http.Enable {
-		return
-	}
 	var (
 		body []byte
 		err  error
@@ -144,9 +132,6 @@ func TestHTTPGetJson(t *testing.T) {
 }
 
 func TestHTTPCheckNonEmpty(t *testing.T) {
-	if !config.Cfg.Http.Enable {
-		return
-	}
 	var (
 		err  error
 		url  = "http://127.0.0.1:" + strconv.Itoa(int(config.Cfg.Http.Port)) + "/API-!demo1"

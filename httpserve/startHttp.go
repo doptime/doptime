@@ -1,4 +1,4 @@
-package httpservice
+package httpserve
 
 import (
 	"bytes"
@@ -94,24 +94,18 @@ func httpStart(path string, port int64) {
 	}
 	log.Info().Any("port", port).Any("path", path).Msg("GoFlow http server started!")
 }
-func Start(shouldReturn ...bool) {
-	var _shouldReturn = len(shouldReturn) > 0 && shouldReturn[0]
-	log.Info().Any("Http service enabled", config.Cfg.Http.Enable).Send()
-	if !config.Cfg.Http.Enable {
-		//forever loop  to keep hehavior as empty service
-		for !_shouldReturn {
-			time.Sleep(time.Second)
-		}
-		return
-	}
-	//wait, till the permission table is loaded
-	for !permission.ConfigurationLoaded {
+
+// Start the http server
+// This function will be halt on listen and serve http server. call go Start() if you don't want this behavior
+func Start() {
+}
+
+func init() {
+	//wait 1s, till the permission table is loaded
+	for i := 0; !permission.ConfigurationLoaded && i < 100; i++ {
 		time.Sleep(time.Millisecond * 10)
 	}
+	//wait, till all the apis are loaded
 	log.Info().Any("port", config.Cfg.Http.Port).Any("path", config.Cfg.Http.Path).Msg("GoFlow http server is starting")
-	if _shouldReturn {
-		go httpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
-	} else {
-		httpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
-	}
+	go httpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
 }

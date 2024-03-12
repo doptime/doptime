@@ -37,18 +37,16 @@ var ConfigurationLoaded bool = false
 
 func LoadPermissionTable() {
 	var (
-		keys       []string
-		err        error
 		_permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 	)
-
-	if keys, err = rdsPermit.HKeys(); !ConfigurationLoaded {
+	keys, err := rdsPermit.HKeys()
+	// show log if it is the first time to load
+	for ; !ConfigurationLoaded; ConfigurationLoaded = true {
 		if err != nil {
 			log.Warn().AnErr("Step2.1: start permission loading from redis failed", err).Send()
 		} else {
 			log.Info().Msg("Step2.2: start permission loaded from redis")
 		}
-		ConfigurationLoaded = true
 	}
 	for _, key := range keys {
 		_permitmap.Set(key, true)

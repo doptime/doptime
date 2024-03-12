@@ -1,4 +1,4 @@
-package httpservice
+package httpserve
 
 import (
 	"errors"

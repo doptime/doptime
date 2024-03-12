@@ -48,7 +48,6 @@ func LoadConfig_FromEnv() (err error) {
 	}
 
 	// Load and parse HTTP config
-	Cfg.Http.Enable, Cfg.Http.Path, Cfg.Http.CORES = true, "/", "*"
 	if httpEnv, ok := envMap["HTTP"]; ok && len(httpEnv) > 0 {
 		if err := json.Unmarshal([]byte(httpEnv), &Cfg.Http); err != nil {
 			log.Fatal().Err(err).Str("httpEnv", httpEnv).Msg("Step1.1.2 Load Env/Http failed")

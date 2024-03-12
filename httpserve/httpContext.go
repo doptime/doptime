@@ -1,4 +1,4 @@
-package httpservice
+package httpserve
 
 import (
 	"context"
@@ -63,21 +63,21 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 			param = param[:ind+1]
 		}
 		switch param {
-		case "JSON":
+		case "rt~JSON":
 			svcContext.ResponseContentType = "application/json"
-		case "JPG":
+		case "rt~JPG":
 			svcContext.ResponseContentType = "image/jpeg"
-		case "OGG":
+		case "rt~OGG":
 			svcContext.ResponseContentType = "audio/ogg"
-		case "MPEG":
+		case "rt~MPEG":
 			svcContext.ResponseContentType = "video/mpeg"
-		case "MP4":
+		case "rt~MP4":
 			svcContext.ResponseContentType = "video/mp4"
-		case "TEXT":
+		case "rt~TEXT":
 			svcContext.ResponseContentType = "text/plain"
-		case "STREAM":
+		case "rt~STREAM":
 			svcContext.ResponseContentType = "application/octet-stream"
-		case "DS=": //redis db name RDB=redisDataSource
+		case "ds~": //redis db name RDB=redisDataSource
 			if svcContext.RedisDataSource, err = url.QueryUnescape(CmdKeyFields[i][3:]); err != nil {
 				return nil, err
 			}
