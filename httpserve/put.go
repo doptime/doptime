@@ -3,9 +3,9 @@ package httpserve
 import (
 	"errors"
 
+	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/permission"
 	"github.com/redis/go-redis/v9"
-	"github.com/yangkequn/goflow/config"
-	"github.com/yangkequn/goflow/permission"
 )
 
 var ErrEmptyKeyOrField = errors.New("empty key or field")

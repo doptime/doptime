@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/doptime/doptime/config"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
-	"github.com/yangkequn/goflow/config"
 )
 
 type InLockKey struct {

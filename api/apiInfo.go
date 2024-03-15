@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/doptime/doptime/config"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
-	"github.com/yangkequn/goflow/config"
 )
 
 type ApiInfo struct {

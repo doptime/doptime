@@ -1,5 +1,5 @@
-## goflow, the most concise, redis based web-server framework
-    the name goflow borrow from "杀悟",means kill bad wisdom。 I hate bad tools.
+## doptime, the most concise, redis based web-server framework
+    the name doptime borrow from "杀悟",means kill bad wisdom。 I hate bad tools.
 ### major advantages on API design
 * APIs you defined, support both monolithic and microservice architecture. perfect!
 * very simple to define and use API. just see the golang example demo.
@@ -7,7 +7,7 @@
 * Very easy to upgrade API , just change the data structure. no extra schema definition needed.
 * You don't need to write any CREATE GET PUT or DELETE  Logic. Just use redis to query，modify or delete. That means most CURD can be done at frontend, needs no backend job.
 * You can focus on operations with multiple data logic only.  We call it "API".
-    goflow will put API data to redis stream, and the API receive and process the stream data.
+    doptime will put API data to redis stream, and the API receive and process the stream data.
 * redis pipeline  brings high batch process performance.  
 ### major advantages on Data Op
 * Using most welcomed redis compatible db. no database but redis compatible KEYDB. With flash storage supportion, KEYDB brings both memory speed and whole disk capacity
@@ -29,7 +29,7 @@
 package main
 
 import (
-	"github.com/yangkequn/goflow/api"
+	"github.com/doptime/doptime/api"
 )
 
 type InDemo struct {
@@ -41,7 +41,7 @@ var keyInDemo = data.NewStruct[*InDemo]()
 ApiDemo,_=api.Api(func(req *InDemo) (ret string, err error) {
     // your logic here
     if req.Id == "" || len(req.Data) == 0 {
-        return nil, goflow.ErrInvalidInput
+        return nil, doptime.ErrInvalidInput
     }
     keyInDemo.HSET(req.Id, req)
     return `{data:"ok"}`, nil
@@ -62,7 +62,7 @@ HGET("UserInfo", id).then((data) => {
 ```
 
 ## about configuration 
-    goflow reads configuration from enviroment variables. Make sure enviroment variables are added to your IDE (launch.json for vs code) or docker. 
+    doptime reads configuration from enviroment variables. Make sure enviroment variables are added to your IDE (launch.json for vs code) or docker. 
     these are the default example:
 ```
     "RedisAddress_PARAM": "127.0.0.1:6379",

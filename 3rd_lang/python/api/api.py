@@ -42,10 +42,10 @@ class api():
                     print("create groupd: "+cmd)
             except Exception as e:
                 print(str(e))
-            # create consumer goflow for each stream
+            # create consumer doptime for each stream
             try:
                 cmd = rds.xgroup_createconsumer(
-                    name=serviceName, groupname="group0", consumername="goflow")
+                    name=serviceName, groupname="group0", consumername="doptime")
                 if cmd == True:
                     print("create consumer: "+cmd)
             except Exception as e:
@@ -58,7 +58,7 @@ class api():
         while True:
             try:
                 # read group using group0, python as consumer, '>' as the last id, 20s timeout, 64 batch size
-                ret = rds.xreadgroup(groupname="group0", consumername="goflow",
+                ret = rds.xreadgroup(groupname="group0", consumername="doptime",
                                     streams=streams, count=api.batch_size, block=2000, noack=True)
                 if ret == None or len(ret) == 0:
                     continue

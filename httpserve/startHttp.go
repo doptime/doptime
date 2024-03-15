@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/permission"
 	"github.com/rs/zerolog/log"
-	"github.com/yangkequn/goflow/config"
-	"github.com/yangkequn/goflow/permission"
 )
 
 // listten to a port and start http server
@@ -92,7 +92,7 @@ func httpStart(path string, port int64) {
 		log.Error().Err(err).Msg("http server ListenAndServe error")
 		return
 	}
-	log.Info().Any("port", port).Any("path", path).Msg("GoFlow http server started!")
+	log.Info().Any("port", port).Any("path", path).Msg("doptime http server started!")
 }
 
 // Start the http server
@@ -106,6 +106,6 @@ func init() {
 		time.Sleep(time.Millisecond * 10)
 	}
 	//wait, till all the apis are loaded
-	log.Info().Any("port", config.Cfg.Http.Port).Any("path", config.Cfg.Http.Path).Msg("GoFlow http server is starting")
+	log.Info().Any("port", config.Cfg.Http.Port).Any("path", config.Cfg.Http.Path).Msg("doptime http server is starting")
 	go httpStart(config.Cfg.Http.Path, config.Cfg.Http.Port)
 }

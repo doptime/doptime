@@ -3,10 +3,10 @@ package permission
 import (
 	"time"
 
+	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/data"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/rs/zerolog/log"
-	"github.com/yangkequn/goflow/config"
-	"github.com/yangkequn/goflow/data"
 )
 
 var rdsPermit = data.New[string, string](data.Option.WithKey("_permissions"))

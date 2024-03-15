@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/doptime/doptime/config"
+	_ "github.com/doptime/doptime/httpservice"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/yangkequn/goflow/config"
-	_ "github.com/yangkequn/goflow/httpservice"
 )
 
 func TestHTTPPostMsgPack(t *testing.T) {

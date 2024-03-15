@@ -1,4 +1,4 @@
-module github.com/yangkequn/goflow
+module github.com/doptime/doptime
 
 go 1.20
 

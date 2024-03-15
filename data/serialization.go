@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/doptime/doptime/vars"
 	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/yangkequn/goflow/vars"
 )
 
 func (db *Ctx[k, v]) toKeyStr(key k) (keyStr string, err error) {

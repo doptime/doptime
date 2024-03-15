@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/doptime/doptime/tools"
 	"github.com/rs/zerolog/log"
-	"github.com/yangkequn/goflow/tools"
 )
 
 var apiCounter tools.Counter = tools.Counter{}

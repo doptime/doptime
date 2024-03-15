@@ -1,7 +1,7 @@
 version: '3.1'
 services:
-  goflow:
-    image: goflow:latest
+  doptime:
+    image: doptime:latest
     environment:
       - RedisAddress=docker.vm:6379
       - RedisPassword=

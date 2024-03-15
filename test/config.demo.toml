@@ -3,7 +3,7 @@ LogLevel = 1
 
 [[Redis]]
   Name = "redis_server_demo"
-  Username = "goflow"
+  Username = "doptime"
   Password = "yourpasswordhere"
   Host = "drangonflydb.local"
   Port = 6379

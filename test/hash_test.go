@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/yangkequn/goflow/data"
+	"github.com/doptime/doptime/data"
 )
 
 type TestHash struct {

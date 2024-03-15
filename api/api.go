@@ -4,11 +4,11 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/specification"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/yangkequn/goflow/config"
-	"github.com/yangkequn/goflow/specification"
 )
 
 // crate ApiFun. the created New can be used as normal function:

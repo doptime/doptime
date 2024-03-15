@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/doptime/doptime/config"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
-	"github.com/yangkequn/goflow/config"
 )
 
 // ensure all apis can be called by rpc
