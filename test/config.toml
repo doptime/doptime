@@ -1,8 +1,7 @@
 ConfigUrl = ""
-LogLevel = 1
 
 [[Redis]]
-  Name = "redis_server_demo"
+  Name = "default"
   Username = "doptime"
   Password = "yourpasswordhere"
   Host = "drangonflydb.local"
@@ -25,3 +24,6 @@ LogLevel = 1
 
 [Data]
   AutoAuth = false
+
+[Setting]
+  LogLevel = 1
