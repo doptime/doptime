@@ -55,7 +55,7 @@ func LoadConfig_FromEnv() (err error) {
 	}
 
 	// Load LogLevel
-	if logLevelEnv, ok := envMap["LogLevel"]; ok && len(logLevelEnv) > 0 {
+	if logLevelEnv, ok := envMap["LOGLEVEL"]; ok && len(logLevelEnv) > 0 {
 		if logLevel, err := strconv.ParseInt(logLevelEnv, 10, 8); err == nil {
 			Cfg.LogLevel = int8(logLevel)
 		}

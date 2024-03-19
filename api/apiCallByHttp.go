@@ -34,7 +34,7 @@ func CallByHTTP(ServiceName string, paramIn map[string]interface{}, req *http.Re
 			}
 		}
 		// copy ip address from req to paramIn
-		paramIn["Header"+"Ip"] = req.RemoteAddr
+		paramIn["Header"+"RemoteAddr"] = req.RemoteAddr
 		paramIn["Header"+"Host"] = req.Host
 		paramIn["Header"+"Method"] = req.Method
 		paramIn["Header"+"Path"] = req.URL.Path

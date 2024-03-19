@@ -3,6 +3,6 @@ package api
 type InEmpty struct {
 }
 type InIDPub struct {
-	Id  int64 `msgpack:"alias:JWT_id"`
-	Pub int64 `msgpack:"alias:JWT_pub"`
+	Id  int64 `msgpack:"alias:Jwtid"`
+	Pub int64 `msgpack:"alias:Jwtpub"`
 }
