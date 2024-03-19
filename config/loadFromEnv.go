@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -55,9 +54,9 @@ func LoadConfig_FromEnv() (err error) {
 	}
 
 	// Load LogLevel
-	if logLevelEnv, ok := envMap["LOGLEVEL"]; ok && len(logLevelEnv) > 0 {
-		if logLevel, err := strconv.ParseInt(logLevelEnv, 10, 8); err == nil {
-			Cfg.LogLevel = int8(logLevel)
+	if settingEnv, ok := envMap["SETTING"]; ok && len(settingEnv) > 0 {
+		if err := json.Unmarshal([]byte(settingEnv), &Cfg.Http); err != nil {
+			log.Fatal().Err(err).Str("settingEnv", settingEnv).Msg("Step1.1.2 Load Env/Http failed")
 		}
 	}
 	return nil

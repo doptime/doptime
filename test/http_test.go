@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/doptime/doptime/config"
-	_ "github.com/doptime/doptime/httpservice"
+	_ "github.com/doptime/doptime/httpserve"
 	"github.com/vmihailenco/msgpack/v5"
 )
 

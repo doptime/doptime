@@ -18,7 +18,7 @@ import (
 )
 
 type ConfigHttp struct {
-	CORES string `env:"CORES,default=*"`
+	CORES string
 	Port  int64  `env:"Port,default=80"`
 	Path  string `env:"Path,default=/"`
 	//MaxBufferSize is the max size of a task in bytes, default 10M
@@ -38,15 +38,18 @@ type ConfigJWT struct {
 	Secret string `env:"Secret"`
 	Fields string `env:"Fields"`
 }
+type ConfigSettings struct {
+	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
+	LogLevel int8
+}
 
 type Configuration struct {
 	ConfigUrl string
 	//redis server, format: username:password@address:port/db
-	Redis []ConfigRedis
-	Jwt   ConfigJWT
-	Http  ConfigHttp
-	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
-	LogLevel int8 `env:"LogLevel,default=1"`
+	Redis   []ConfigRedis
+	Jwt     ConfigJWT
+	Http    ConfigHttp
+	Setting ConfigSettings
 }
 
 // ServiceBatchSize is the number of tasks that a service can read from redis at the same time
@@ -85,7 +88,7 @@ var Cfg Configuration = Configuration{
 	Redis:     []ConfigRedis{},
 	Jwt:       ConfigJWT{Secret: "", Fields: "*"},
 	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", MaxBufferSize: 10485760},
-	LogLevel:  1,
+	Setting:   ConfigSettings{LogLevel: 1},
 }
 
 var rds map[string]*redis.Client = map[string]*redis.Client{}
@@ -118,7 +121,7 @@ func init() {
 	LoadConfig_FromWeb()
 	log.Info().Str("Step1.1.3 Current config after apply web config toml", Cfg.String()).Send()
 
-	zerolog.SetGlobalLevel(zerolog.Level(Cfg.LogLevel))
+	zerolog.SetGlobalLevel(zerolog.Level(Cfg.Setting.LogLevel))
 
 	if Cfg.Jwt.Fields != "" {
 		Cfg.Jwt.Fields = strings.ToLower(Cfg.Jwt.Fields)
