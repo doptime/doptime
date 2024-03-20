@@ -46,10 +46,10 @@ type ConfigSettings struct {
 type Configuration struct {
 	ConfigUrl string
 	//redis server, format: username:password@address:port/db
-	Redis   []ConfigRedis
-	Jwt     ConfigJWT
-	Http    ConfigHttp
-	Setting ConfigSettings
+	Redis    []ConfigRedis
+	Jwt      ConfigJWT
+	Http     ConfigHttp
+	Settings ConfigSettings
 }
 
 // ServiceBatchSize is the number of tasks that a service can read from redis at the same time
@@ -88,7 +88,7 @@ var Cfg Configuration = Configuration{
 	Redis:     []ConfigRedis{},
 	Jwt:       ConfigJWT{Secret: "", Fields: "*"},
 	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", MaxBufferSize: 10485760},
-	Setting:   ConfigSettings{LogLevel: 1},
+	Settings:  ConfigSettings{LogLevel: 1},
 }
 
 var rds map[string]*redis.Client = map[string]*redis.Client{}
@@ -121,7 +121,7 @@ func init() {
 	LoadConfig_FromWeb()
 	log.Info().Str("Step1.1.3 Current config after apply web config toml", Cfg.String()).Send()
 
-	zerolog.SetGlobalLevel(zerolog.Level(Cfg.Setting.LogLevel))
+	zerolog.SetGlobalLevel(zerolog.Level(Cfg.Settings.LogLevel))
 
 	if Cfg.Jwt.Fields != "" {
 		Cfg.Jwt.Fields = strings.ToLower(Cfg.Jwt.Fields)

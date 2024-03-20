@@ -54,8 +54,8 @@ func LoadConfig_FromEnv() (err error) {
 	}
 
 	// Load LogLevel
-	if settingEnv, ok := envMap["SETTING"]; ok && len(settingEnv) > 0 {
-		if err := json.Unmarshal([]byte(settingEnv), &Cfg.Setting); err != nil {
+	if settingEnv, ok := envMap["SETTINGS"]; ok && len(settingEnv) > 0 {
+		if err := json.Unmarshal([]byte(settingEnv), &Cfg.Settings); err != nil {
 			log.Fatal().Err(err).Str("settingEnv", settingEnv).Msg("Step1.1.2 Load Env/Http failed")
 		}
 	}
