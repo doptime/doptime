@@ -54,33 +54,17 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 	svcContext.ResponseContentType = "application/json"
 	svcContext.RedisDataSource = "default"
 	for i, l := 2, len(CmdKeyFields); i < l; i++ {
-		//export enum RspType { json = "&RspType=application/json", jpeg = "&RspType=image/jpeg", ogg = "&RspType=audio/ogg", mpeg = "&RspType=video/mpeg", mp4 = "&RspType=video/mp4", none = "", text = "&RspType=text/plain", stream = "&RspType=application/octet-stream" }
-		//export enum RspType { json = "-!JSON", jpeg = "-!JPG", ogg = "-!OGG", mpeg = "-!MPEG", mp4 = "-!MP4", none = "", text = "-!TEXT", stream = "-!STREAM" }
-
-		if param = CmdKeyFields[i]; param == "" {
+		if param = CmdKeyFields[i]; len(param) <= 3 {
 			continue
-		} else if ind := strings.Index(param, "="); ind > 0 {
-			param = param[:ind+1]
 		}
-		switch param {
-		case "rt~JSON":
-			svcContext.ResponseContentType = "application/json"
-		case "rt~JPG":
-			svcContext.ResponseContentType = "image/jpeg"
-		case "rt~OGG":
-			svcContext.ResponseContentType = "audio/ogg"
-		case "rt~MPEG":
-			svcContext.ResponseContentType = "video/mpeg"
-		case "rt~MP4":
-			svcContext.ResponseContentType = "video/mp4"
-		case "rt~TEXT":
-			svcContext.ResponseContentType = "text/plain"
-		case "rt~STREAM":
-			svcContext.ResponseContentType = "application/octet-stream"
+		switch param[:3] {
+		case "rt~": //response content type rt=application/json
+			svcContext.ResponseContentType, err = url.QueryUnescape(param[3:])
 		case "ds~": //redis db name RDB=redisDataSource
-			if svcContext.RedisDataSource, err = url.QueryUnescape(CmdKeyFields[i][3:]); err != nil {
-				return nil, err
-			}
+			svcContext.RedisDataSource, err = url.QueryUnescape(CmdKeyFields[i][3:])
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 	return svcContext, nil
