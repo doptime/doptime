@@ -31,15 +31,18 @@ var ErrIncompleteRequest = errors.New("incomplete request")
 
 func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter) (httpCtx *HttpContext, err error) {
 	var (
-		CmdKeyFields []string
-		param        string
+		CmdKeyFields           []string
+		param, CmdKeyFieldsStr string
 	)
 	svcContext := &HttpContext{Req: r, Rsb: w, Ctx: ctx}
 	//i.g. https://url.com/rSvc/HGET=UserAvatar=fa4Y3oyQk2swURaJ?Queries=*&RspType=image/jpeg
-	if CmdKeyFields = strings.Split(r.URL.Path, "/"); len(CmdKeyFields) < 1 {
+	if CmdKeyFields = strings.Split(r.URL.RawPath, "/"); len(CmdKeyFields) < 1 {
 		return nil, ErrIncompleteRequest
 	}
-	if CmdKeyFields = strings.Split(CmdKeyFields[len(CmdKeyFields)-1], "-!"); len(CmdKeyFields) < 2 {
+	if CmdKeyFieldsStr, err = url.QueryUnescape(CmdKeyFields[len(CmdKeyFields)-1]); err != nil {
+		return nil, err
+	}
+	if CmdKeyFields = strings.Split(CmdKeyFieldsStr, "-!"); len(CmdKeyFields) < 2 {
 		return nil, ErrIncompleteRequest
 	}
 	// cmd and key and field, i.g. /HGET/UserAvatar?F=fa4Y3oyQk2swURaJ
@@ -59,12 +62,9 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 		}
 		switch param[:3] {
 		case "rt~": //response content type rt=application/json
-			svcContext.ResponseContentType, err = url.QueryUnescape(param[3:])
+			svcContext.ResponseContentType = param[3:]
 		case "ds~": //redis db name RDB=redisDataSource
-			svcContext.RedisDataSource, err = url.QueryUnescape(CmdKeyFields[i][3:])
-		}
-		if err != nil {
-			return nil, err
+			svcContext.RedisDataSource = param[3:]
 		}
 	}
 	return svcContext, nil
