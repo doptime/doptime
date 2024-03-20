@@ -13,6 +13,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func Debug() {
+}
+
 // listten to a port and start http server
 func httpStart(path string, port int64) {
 	//get item
@@ -93,11 +96,6 @@ func httpStart(path string, port int64) {
 		return
 	}
 	log.Info().Any("port", port).Any("path", path).Msg("doptime http server started!")
-}
-
-// Start the http server
-// This function will be halt on listen and serve http server. call go Start() if you don't want this behavior
-func Start() {
 }
 
 func init() {
