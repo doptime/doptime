@@ -22,8 +22,8 @@ import (
 // ServiceName is automatically converted to lower case
 func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiOption) (retf func(InParam i) (ret o, err error)) {
 	var (
-		option                *ApiOption = &ApiOption{DataSource: "default"}
-		NonEmptyOrZeroToCheck []int
+		option   *ApiOption = &ApiOption{DataSource: "default"}
+		validate            = needValidate(reflect.TypeOf(new(i)).Elem())
 	)
 	if len(options) > 0 {
 		option = &options[0]
@@ -49,8 +49,6 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiO
 	}
 
 	log.Debug().Str("Api service create start. name", option.Name).Send()
-	NonEmptyOrZeroToCheck = fieldsToCheck(reflect.TypeOf(new(i)).Elem())
-
 	//create a goroutine to process one job
 	ProcessOneJob := func(s []byte) (ret interface{}, err error) {
 		var (
@@ -76,12 +74,10 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiO
 		if err = mapstructure.Decode(_map, pIn); err != nil {
 			return nil, err
 		}
-		if len(NonEmptyOrZeroToCheck) > 0 {
-			if err = checkNonEmpty(pIn, NonEmptyOrZeroToCheck); err != nil {
-				return nil, err
-			}
+		//validate the input if it is struct and has tag "validate"
+		if err = validate(pIn); err != nil {
+			return nil, err
 		}
-
 		return f(in)
 	}
 	//register Api
