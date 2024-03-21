@@ -8,24 +8,24 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (db *Ctx[k, v]) HGet(field k) (value v, err error) {
+func (ctx *Ctx[k, v]) HGet(field k) (value v, err error) {
 
 	var (
 		cmd      *redis.StringCmd
 		valBytes []byte
 		fieldStr string
 	)
-	if fieldStr, err = db.toKeyStr(field); err != nil {
+	if fieldStr, err = ctx.toKeyStr(field); err != nil {
 		return value, err
 	}
 
-	if cmd = db.Rds.HGet(db.Ctx, db.Key, fieldStr); cmd.Err() != nil {
+	if cmd = ctx.Rds.HGet(ctx.Ctx, ctx.Key, fieldStr); cmd.Err() != nil {
 		return value, cmd.Err()
 	}
 	if valBytes, err = cmd.Bytes(); err != nil {
 		return value, err
 	}
-	return db.toValue(valBytes)
+	return ctx.toValue(valBytes)
 }
 
 // HSet accepts values in following formats:
@@ -33,74 +33,74 @@ func (db *Ctx[k, v]) HGet(field k) (value v, err error) {
 //   - HSet("myhash", "key1", "value1", "key2", "value2")
 //
 //   - HSet("myhash", map[string]interface{}{"key1": "value1", "key2": "value2"})
-func (db *Ctx[k, v]) HSet(values ...interface{}) (err error) {
+func (ctx *Ctx[k, v]) HSet(values ...interface{}) (err error) {
 	var (
 		KeyValuesStrs []string
 	)
-	if KeyValuesStrs, err = db.toKeyValueStrs(values...); err != nil {
+	if KeyValuesStrs, err = ctx.toKeyValueStrs(values...); err != nil {
 		return err
 	}
-	status := db.Rds.HSet(db.Ctx, db.Key, KeyValuesStrs)
+	status := ctx.Rds.HSet(ctx.Ctx, ctx.Key, KeyValuesStrs)
 	return status.Err()
 }
 
-func (db *Ctx[k, v]) HExists(field k) (ok bool, err error) {
+func (ctx *Ctx[k, v]) HExists(field k) (ok bool, err error) {
 
 	var (
 		cmd      *redis.BoolCmd
 		fieldStr string
 	)
-	if fieldStr, err = db.toKeyStr(field); err != nil {
+	if fieldStr, err = ctx.toKeyStr(field); err != nil {
 		return false, err
 	}
-	cmd = db.Rds.HExists(db.Ctx, db.Key, fieldStr)
+	cmd = ctx.Rds.HExists(ctx.Ctx, ctx.Key, fieldStr)
 	return cmd.Result()
 
 }
-func (db *Ctx[k, v]) HGetAll() (mapOut map[k]v, err error) {
+func (ctx *Ctx[k, v]) HGetAll() (mapOut map[k]v, err error) {
 	var (
 		cmd *redis.MapStringStringCmd
 		key k
 		val v
 	)
 	mapOut = make(map[k]v)
-	if cmd = db.Rds.HGetAll(db.Ctx, db.Key); cmd.Err() != nil {
+	if cmd = ctx.Rds.HGetAll(ctx.Ctx, ctx.Key); cmd.Err() != nil {
 		return mapOut, cmd.Err()
 	}
 	//append all data to mapOut
 	for k, v := range cmd.Val() {
-		if key, err = db.toKey([]byte(k)); err != nil {
-			log.Info().AnErr("HGetAll: key unmarshal error:", err).Msgf("Key: %s", db.Key)
+		if key, err = ctx.toKey([]byte(k)); err != nil {
+			log.Info().AnErr("HGetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
-		if val, err = db.toValue([]byte(v)); err != nil {
-			log.Info().AnErr("HGetAll: value unmarshal error:", err).Msgf("Key: %s", db.Key)
+		if val, err = ctx.toValue([]byte(v)); err != nil {
+			log.Info().AnErr("HGetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
 		mapOut[key] = val
 	}
 	return mapOut, err
 }
-func (db *Ctx[k, v]) HRandField(count int) (fields []k, err error) {
+func (ctx *Ctx[k, v]) HRandField(count int) (fields []k, err error) {
 	var (
 		cmd *redis.StringSliceCmd
 	)
-	if cmd = db.Rds.HRandField(db.Ctx, db.Key, count); cmd.Err() != nil {
+	if cmd = ctx.Rds.HRandField(ctx.Ctx, ctx.Key, count); cmd.Err() != nil {
 		return nil, cmd.Err()
 	}
-	return db.toKeys(cmd.Val())
+	return ctx.toKeys(cmd.Val())
 }
 
-func (db *Ctx[k, v]) HMGET(fields ...k) (values []v, err error) {
+func (ctx *Ctx[k, v]) HMGET(fields ...k) (values []v, err error) {
 	var (
 		cmd          *redis.SliceCmd
 		fieldsString []string
 		rawValues    []string
 	)
-	if fieldsString, err = db.toKeyStrs(fields...); err != nil {
+	if fieldsString, err = ctx.toKeyStrs(fields...); err != nil {
 		return nil, err
 	}
-	if cmd = db.Rds.HMGet(db.Ctx, db.Key, fieldsString...); cmd.Err() != nil {
+	if cmd = ctx.Rds.HMGet(ctx.Ctx, ctx.Key, fieldsString...); cmd.Err() != nil {
 		return nil, cmd.Err()
 	}
 	rawValues = make([]string, len(cmd.Val()))
@@ -110,14 +110,14 @@ func (db *Ctx[k, v]) HMGET(fields ...k) (values []v, err error) {
 		}
 		rawValues[i] = val.(string)
 	}
-	return db.toValues(rawValues...)
+	return ctx.toValues(rawValues...)
 }
 
-func (db *Ctx[k, v]) HLen() (length int64, err error) {
-	cmd := db.Rds.HLen(db.Ctx, db.Key)
+func (ctx *Ctx[k, v]) HLen() (length int64, err error) {
+	cmd := ctx.Rds.HLen(ctx.Ctx, ctx.Key)
 	return cmd.Val(), cmd.Err()
 }
-func (db *Ctx[k, v]) HDel(fields ...k) (err error) {
+func (ctx *Ctx[k, v]) HDel(fields ...k) (err error) {
 	var (
 		cmd       *redis.IntCmd
 		fieldStrs []string
@@ -139,61 +139,61 @@ func (db *Ctx[k, v]) HDel(fields ...k) (err error) {
 			fieldStrs[i] = string(bytes)
 		}
 	}
-	cmd = db.Rds.HDel(db.Ctx, db.Key, fieldStrs...)
+	cmd = ctx.Rds.HDel(ctx.Ctx, ctx.Key, fieldStrs...)
 	return cmd.Err()
 }
-func (db *Ctx[k, v]) HKeys() (fields []k, err error) {
+func (ctx *Ctx[k, v]) HKeys() (fields []k, err error) {
 	var (
 		cmd *redis.StringSliceCmd
 	)
-	if cmd = db.Rds.HKeys(db.Ctx, db.Key); cmd.Err() != nil {
+	if cmd = ctx.Rds.HKeys(ctx.Ctx, ctx.Key); cmd.Err() != nil {
 		return nil, cmd.Err()
 	}
-	return db.toKeys(cmd.Val())
+	return ctx.toKeys(cmd.Val())
 }
-func (db *Ctx[k, v]) HVals() (values []v, err error) {
+func (ctx *Ctx[k, v]) HVals() (values []v, err error) {
 	var cmd *redis.StringSliceCmd
-	if cmd = db.Rds.HVals(db.Ctx, db.Key); cmd.Err() != nil {
+	if cmd = ctx.Rds.HVals(ctx.Ctx, ctx.Key); cmd.Err() != nil {
 		return nil, cmd.Err()
 	}
-	return db.toValues(cmd.Val()...)
+	return ctx.toValues(cmd.Val()...)
 }
-func (db *Ctx[k, v]) HIncrBy(field k, increment int64) (err error) {
+func (ctx *Ctx[k, v]) HIncrBy(field k, increment int64) (err error) {
 	var (
 		cmd      *redis.IntCmd
 		fieldStr string
 	)
-	if fieldStr, err = db.toKeyStr(field); err != nil {
+	if fieldStr, err = ctx.toKeyStr(field); err != nil {
 		return err
 	}
-	cmd = db.Rds.HIncrBy(db.Ctx, db.Key, fieldStr, increment)
+	cmd = ctx.Rds.HIncrBy(ctx.Ctx, ctx.Key, fieldStr, increment)
 	return cmd.Err()
 }
 
-func (db *Ctx[k, v]) HIncrByFloat(field k, increment float64) (err error) {
+func (ctx *Ctx[k, v]) HIncrByFloat(field k, increment float64) (err error) {
 	var (
 		cmd      *redis.FloatCmd
 		fieldStr string
 	)
-	if fieldStr, err = db.toKeyStr(field); err != nil {
+	if fieldStr, err = ctx.toKeyStr(field); err != nil {
 		return err
 	}
-	cmd = db.Rds.HIncrByFloat(db.Ctx, db.Key, fieldStr, increment)
+	cmd = ctx.Rds.HIncrByFloat(ctx.Ctx, ctx.Key, fieldStr, increment)
 	return cmd.Err()
 
 }
-func (db *Ctx[k, v]) HSetNX(field k, value v) (err error) {
+func (ctx *Ctx[k, v]) HSetNX(field k, value v) (err error) {
 	var (
 		cmd      *redis.BoolCmd
 		fieldStr string
 		valStr   string
 	)
-	if fieldStr, err = db.toKeyStr(field); err != nil {
+	if fieldStr, err = ctx.toKeyStr(field); err != nil {
 		return err
 	}
-	if valStr, err = db.toValueStr(value); err != nil {
+	if valStr, err = ctx.toValueStr(value); err != nil {
 		return err
 	}
-	cmd = db.Rds.HSetNX(db.Ctx, db.Key, fieldStr, valStr)
+	cmd = ctx.Rds.HSetNX(ctx.Ctx, ctx.Key, fieldStr, valStr)
 	return cmd.Err()
 }

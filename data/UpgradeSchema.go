@@ -8,7 +8,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func (db *Ctx[k, v]) upgradeSchemaFromRawString(raw string, upgrade func(in v) (out v)) (out v, err error) {
+func (ctx *Ctx[k, v]) upgradeSchemaFromRawString(raw string, upgrade func(in v) (out v)) (out v, err error) {
 	var (
 		vType       = reflect.TypeOf((*v)(nil)).Elem()
 		vIsPtr bool = vType.Kind() == reflect.Ptr
@@ -35,28 +35,28 @@ func (db *Ctx[k, v]) upgradeSchemaFromRawString(raw string, upgrade func(in v) (
 	}
 }
 
-func (db *Ctx[k, v]) UpgradeSchema(upgrader func(in v) (out v)) (err error) {
+func (ctx *Ctx[k, v]) UpgradeSchema(upgrader func(in v) (out v)) (err error) {
 	var (
 		keyType string
 	)
 	//get redis key type. if is hash, then upgrade all hash fields. if is list, then upgrade all list items. if is set, then upgrade all set members. if is zset, then upgrade all zset members.  if is string, then upgrade this string.
 	//get redis key type
-	if keyType, err = db.Rds.Type(db.Ctx, db.Key).Result(); err != nil {
+	if keyType, err = ctx.Rds.Type(ctx.Ctx, ctx.Key).Result(); err != nil {
 		return err
 	}
 	switch keyType {
 	case "hash":
 		var mapIn map[string]string
-		if mapIn, err = db.Rds.HGetAll(db.Ctx, db.Key).Result(); err != nil {
+		if mapIn, err = ctx.Rds.HGetAll(ctx.Ctx, ctx.Key).Result(); err != nil {
 			return err
 		}
 		var mapOut map[string]interface{} = make(map[string]interface{})
 		for k, v := range mapIn {
-			if mapOut[k], err = db.upgradeSchemaFromRawString(v, upgrader); err != nil {
+			if mapOut[k], err = ctx.upgradeSchemaFromRawString(v, upgrader); err != nil {
 				return err
 			}
 		}
-		return db.HSet(mapOut)
+		return ctx.HSet(mapOut)
 	case "list":
 		//return not implemented error
 		return fmt.Errorf("not implemented")

@@ -3,34 +3,34 @@ package data
 import "github.com/redis/go-redis/v9"
 
 // append to Set
-func (db *Ctx[k, v]) SAdd(param v) (err error) {
-	valStr, err := db.toValueStr(param)
+func (ctx *Ctx[k, v]) SAdd(param v) (err error) {
+	valStr, err := ctx.toValueStr(param)
 	if err != nil {
 		return err
 	}
-	status := db.Rds.SAdd(db.Ctx, db.Key, valStr)
+	status := ctx.Rds.SAdd(ctx.Ctx, ctx.Key, valStr)
 	return status.Err()
 }
-func (db *Ctx[k, v]) SRem(param v) (err error) {
-	valStr, err := db.toValueStr(param)
+func (ctx *Ctx[k, v]) SRem(param v) (err error) {
+	valStr, err := ctx.toValueStr(param)
 	if err != nil {
 		return err
 	}
-	status := db.Rds.SRem(db.Ctx, db.Key, valStr)
+	status := ctx.Rds.SRem(ctx.Ctx, ctx.Key, valStr)
 	return status.Err()
 }
-func (db *Ctx[k, v]) SIsMember(param v) (isMember bool, err error) {
-	valStr, err := db.toValueStr(param)
+func (ctx *Ctx[k, v]) SIsMember(param v) (isMember bool, err error) {
+	valStr, err := ctx.toValueStr(param)
 	if err != nil {
 		return false, err
 	}
-	status := db.Rds.SIsMember(db.Ctx, db.Key, valStr)
+	status := ctx.Rds.SIsMember(ctx.Ctx, ctx.Key, valStr)
 	return status.Result()
 }
-func (db *Ctx[k, v]) SMembers() (members []v, err error) {
+func (ctx *Ctx[k, v]) SMembers() (members []v, err error) {
 	var cmd *redis.StringSliceCmd
-	if cmd = db.Rds.SMembers(db.Ctx, db.Key); cmd.Err() != nil {
+	if cmd = ctx.Rds.SMembers(ctx.Ctx, ctx.Key); cmd.Err() != nil {
 		return nil, cmd.Err()
 	}
-	return db.toValues(cmd.Val()...)
+	return ctx.toValues(cmd.Val()...)
 }

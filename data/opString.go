@@ -7,35 +7,35 @@ import (
 )
 
 // get all keys that match the pattern, and return a map of key->value
-func (db *Ctx[k, v]) GetAll(match string) (mapOut map[k]v, err error) {
+func (ctx *Ctx[k, v]) GetAll(match string) (mapOut map[k]v, err error) {
 	var (
 		keys []string = []string{match}
 		val  []byte
 	)
-	if keys, err = db.Scan(match, 0, 1024*1024*1024); err != nil {
+	if keys, err = ctx.Scan(match, 0, 1024*1024*1024); err != nil {
 		return nil, err
 	}
 	mapOut = make(map[k]v, len(keys))
 	var result error
 	for _, key := range keys {
-		if val, result = db.Rds.Get(db.Ctx, key).Bytes(); result != nil {
+		if val, result = ctx.Rds.Get(ctx.Ctx, key).Bytes(); result != nil {
 			err = result
 			continue
 		}
 		//use default prefix to avoid confict of hash key
-		//k is start with db.Key, remove it
-		if len(db.Key) > 0 && (len(key) >= len(db.Key)) && key[:len(db.Key)] == db.Key {
-			key = key[len(db.Key)+1:]
+		//k is start with ctx.Key, remove it
+		if len(ctx.Key) > 0 && (len(key) >= len(ctx.Key)) && key[:len(ctx.Key)] == ctx.Key {
+			key = key[len(ctx.Key)+1:]
 		}
 
-		k, err := db.toKey([]byte(key))
+		k, err := ctx.toKey([]byte(key))
 		if err != nil {
-			log.Info().AnErr("GetAll: key unmarshal error:", err).Msgf("Key: %s", db.Key)
+			log.Info().AnErr("GetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
-		v, err := db.toValue(val)
+		v, err := ctx.toValue(val)
 		if err != nil {
-			log.Info().AnErr("GetAll: value unmarshal error:", err).Msgf("Key: %s", db.Key)
+			log.Info().AnErr("GetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
 		mapOut[k] = v
@@ -44,24 +44,24 @@ func (db *Ctx[k, v]) GetAll(match string) (mapOut map[k]v, err error) {
 }
 
 // set each key value of _map to redis string type key value
-func (db *Ctx[k, v]) SetAll(_map map[k]v) (err error) {
+func (ctx *Ctx[k, v]) SetAll(_map map[k]v) (err error) {
 	//HSet each element of _map to redis
 	var (
 		result error
 		bytes  []byte
 		keyStr string
 	)
-	pipe := db.Rds.Pipeline()
+	pipe := ctx.Rds.Pipeline()
 	for k, v := range _map {
 		if bytes, err = msgpack.Marshal(v); err != nil {
 			return err
 		}
-		if keyStr, err = db.toKeyStr(k); err != nil {
+		if keyStr, err = ctx.toKeyStr(k); err != nil {
 			return err
 		}
 
-		pipe.Set(db.Ctx, db.Key+":"+keyStr, bytes, -1)
+		pipe.Set(ctx.Ctx, ctx.Key+":"+keyStr, bytes, -1)
 	}
-	pipe.Exec(db.Ctx)
+	pipe.Exec(ctx.Ctx)
 	return result
 }

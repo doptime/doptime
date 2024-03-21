@@ -5,7 +5,7 @@ import (
 )
 
 // sacn key by pattern
-func (db *Ctx[k, v]) Scan(match string, cursor uint64, count int64) (keys []string, err error) {
+func (ctx *Ctx[k, v]) Scan(match string, cursor uint64, count int64) (keys []string, err error) {
 	var (
 		cmd   *redis.ScanCmd
 		_keys []string
@@ -13,7 +13,7 @@ func (db *Ctx[k, v]) Scan(match string, cursor uint64, count int64) (keys []stri
 	//scan all keys
 	for {
 
-		if cmd = db.Rds.Scan(db.Ctx, cursor, match, count); cmd.Err() != nil {
+		if cmd = ctx.Rds.Scan(ctx.Ctx, cursor, match, count); cmd.Err() != nil {
 			return nil, cmd.Err()
 		}
 		if _keys, cursor, err = cmd.Result(); err != nil {

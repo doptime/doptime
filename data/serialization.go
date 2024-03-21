@@ -10,8 +10,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func (db *Ctx[k, v]) toKeyStr(key k) (keyStr string, err error) {
-	//if k == nil {
+func (ctx *Ctx[k, v]) toKeyStr(key k) (keyStr string, err error) {
 	vv := reflect.ValueOf(key)
 	if !vv.IsValid() || (vv.Kind() == reflect.Ptr && vv.IsNil()) {
 		return keyStr, vars.ErrInvalidField
@@ -26,7 +25,7 @@ func (db *Ctx[k, v]) toKeyStr(key k) (keyStr string, err error) {
 		return string(keyBytes), nil
 	}
 }
-func (db *Ctx[k, v]) toValueStr(value v) (valueStr string, err error) {
+func (ctx *Ctx[k, v]) toValueStr(value v) (valueStr string, err error) {
 	//marshal with msgpack
 	//nil value is allowed
 	if bytes, err := msgpack.Marshal(value); err != nil {
@@ -36,7 +35,7 @@ func (db *Ctx[k, v]) toValueStr(value v) (valueStr string, err error) {
 	}
 }
 
-func (db *Ctx[k, v]) toValueStrs(values []v) (valueStrs []string, err error) {
+func (ctx *Ctx[k, v]) toValueStrs(values []v) (valueStrs []string, err error) {
 	var bytes []byte
 	for _, value := range values {
 		if bytes, err = msgpack.Marshal(value); err != nil {
@@ -46,10 +45,10 @@ func (db *Ctx[k, v]) toValueStrs(values []v) (valueStrs []string, err error) {
 	}
 	return valueStrs, nil
 }
-func (db *Ctx[k, v]) toKeyStrs(keys ...k) (KeyStrs []string, err error) {
+func (ctx *Ctx[k, v]) toKeyStrs(keys ...k) (KeyStrs []string, err error) {
 	var keyStr string
 	for _, key := range keys {
-		if keyStr, err = db.toKeyStr(key); err != nil {
+		if keyStr, err = ctx.toKeyStr(key); err != nil {
 			return nil, err
 		}
 		KeyStrs = append(KeyStrs, keyStr)
@@ -57,7 +56,7 @@ func (db *Ctx[k, v]) toKeyStrs(keys ...k) (KeyStrs []string, err error) {
 	return KeyStrs, nil
 }
 
-func (db *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []string, err error) {
+func (ctx *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []string, err error) {
 	var (
 		key              k
 		value            v
@@ -69,10 +68,10 @@ func (db *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []strin
 	// if key value is a map, convert it to key value slice
 	if kvMap, ok := keyValue[0].(map[k]v); ok {
 		for key, value := range kvMap {
-			if strkey, err = db.toKeyStr(key); err != nil {
+			if strkey, err = ctx.toKeyStr(key); err != nil {
 				return nil, err
 			}
-			if strvalue, err = db.toValueStr(value); err != nil {
+			if strvalue, err = ctx.toValueStr(value); err != nil {
 				return nil, err
 			}
 			keyValStrs = append(keyValStrs, strkey, strvalue)
@@ -88,10 +87,10 @@ func (db *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []strin
 				log.Error().Any(" value must be of type v", value).Any("raw", keyValue[i+1]).Send()
 				return nil, vars.ErrInvalidField
 			}
-			if strkey, err = db.toKeyStr(key); err != nil {
+			if strkey, err = ctx.toKeyStr(key); err != nil {
 				return nil, err
 			}
-			if strvalue, err = db.toValueStr(value); err != nil {
+			if strvalue, err = ctx.toValueStr(value); err != nil {
 				return nil, err
 			}
 

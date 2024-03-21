@@ -8,7 +8,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func (db *Ctx[k, v]) toKeys(valStr []string) (keys []k, err error) {
+func (ctx *Ctx[k, v]) toKeys(valStr []string) (keys []k, err error) {
 	if _, ok := interface{}(valStr).([]k); ok {
 		return interface{}(valStr).([]k), nil
 	}
@@ -32,7 +32,7 @@ func (db *Ctx[k, v]) toKeys(valStr []string) (keys []k, err error) {
 			}
 		}
 		if err != nil {
-			log.Info().AnErr("HKeys: field unmarshal error:", err).Msgf("Key: %s", db.Key)
+			log.Info().AnErr("HKeys: field unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
 	}
@@ -40,7 +40,7 @@ func (db *Ctx[k, v]) toKeys(valStr []string) (keys []k, err error) {
 }
 
 // unmarhsal using msgpack
-func (db *Ctx[k, v]) toValues(valStr ...string) (values []v, err error) {
+func (ctx *Ctx[k, v]) toValues(valStr ...string) (values []v, err error) {
 	if values = make([]v, len(valStr)); len(valStr) == 0 {
 		return values, nil
 	}
@@ -56,13 +56,13 @@ func (db *Ctx[k, v]) toValues(valStr ...string) (values []v, err error) {
 			err = msgpack.Unmarshal([]byte(val), &values[i])
 		}
 		if err != nil {
-			log.Info().AnErr("HVals: value unmarshal error:", err).Msgf("Key: %s", db.Key)
+			log.Info().AnErr("HVals: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
 	}
 	return values, nil
 }
-func (db *Ctx[k, v]) toValue(valbytes []byte) (value v, err error) {
+func (ctx *Ctx[k, v]) toValue(valbytes []byte) (value v, err error) {
 	valueStruct := reflect.TypeOf((*v)(nil)).Elem()
 	isElemPtr := valueStruct.Kind() == reflect.Ptr
 	if isElemPtr {
@@ -74,7 +74,7 @@ func (db *Ctx[k, v]) toValue(valbytes []byte) (value v, err error) {
 	}
 }
 
-func (db *Ctx[k, v]) toKey(valBytes []byte) (key k, err error) {
+func (ctx *Ctx[k, v]) toKey(valBytes []byte) (key k, err error) {
 	keyStruct := reflect.TypeOf((*k)(nil)).Elem()
 	isElemPtr := keyStruct.Kind() == reflect.Ptr
 	if isElemPtr {

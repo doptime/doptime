@@ -39,7 +39,7 @@ func New[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
 	log.Debug().Str("data New create end!", option.Key).Send()
 	return ctx
 }
-func (db *Ctx[k, v]) Time() (tm time.Time, err error) {
-	cmd := db.Rds.Time(db.Ctx)
+func (ctx *Ctx[k, v]) Time() (tm time.Time, err error) {
+	cmd := ctx.Rds.Time(ctx.Ctx)
 	return cmd.Result()
 }
