@@ -59,6 +59,8 @@ func (svc *HttpContext) MergeJwtField(paramIn map[string]interface{}) {
 		return
 	}
 	for k, v := range mpclaims {
+		//convert first letter of k to upper case
+		k = strings.ToUpper(k[:1]) + k[1:]
 		if config.Cfg.Jwt.Fields == "*" || strings.Contains(config.Cfg.Jwt.Fields, strings.ToLower(k)) {
 			paramIn["Jwt"+k] = v
 		}

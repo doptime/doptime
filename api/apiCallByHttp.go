@@ -38,7 +38,7 @@ func CallByHTTP(ServiceName string, paramIn map[string]interface{}, req *http.Re
 		paramIn["Header"+"Host"] = req.Host
 		paramIn["Header"+"Method"] = req.Method
 		paramIn["Header"+"Path"] = req.URL.Path
-		paramIn["Header"+"Query"] = req.URL.RawQuery
+		paramIn["Header"+"RawQuery"] = req.URL.RawQuery
 
 	}
 	//if function is stored locally, call it directly. This is alias monolithic mode
