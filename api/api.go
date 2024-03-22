@@ -84,7 +84,8 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiO
 	apiInfo := &ApiInfo{
 		Name:                      option.Name,
 		DataSource:                option.DataSource,
-		WithHeader:                HeaderFieldsUsed(new(i)),
+		WithHeader:                HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
+		WithJwt:                   WithJwtFields(reflect.TypeOf(new(i)).Elem()),
 		ApiFuncWithMsgpackedParam: ProcessOneJob,
 		Ctx:                       context.Background(),
 	}

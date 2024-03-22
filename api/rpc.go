@@ -41,18 +41,13 @@ func Rpc[i any, o any](options ...*ApiOption) (retf func(InParam i) (ret o, err 
 		log.Info().Str("DataSource not defined in enviroment", option.DataSource).Send()
 		return nil
 	}
-
-	retf = func(InParam i) (out o, err error) {
+	ProcessOneJob := func(s []byte) (ret interface{}, err error) {
 		var (
-			b       []byte
+			Values  = []string{"data", string(s)}
 			results []string
 			cmd     *redis.StringCmd
-			Values  []string
+			b       []byte
 		)
-		if b, err = specification.MarshalApiInput(InParam); err != nil {
-			return out, err
-		}
-		Values = []string{"data", string(b)}
 		// if hashCallAt {
 		// 	Values = []string{"timeAt", strconv.FormatInt(ops.CallAt.UnixMilli(), 10), "data", string(b)}
 		// } else {
@@ -61,7 +56,7 @@ func Rpc[i any, o any](options ...*ApiOption) (retf func(InParam i) (ret o, err 
 		args := &redis.XAddArgs{Stream: option.Name, Values: Values, MaxLen: 4096}
 		if cmd = db.XAdd(ctx, args); cmd.Err() != nil {
 			log.Info().AnErr("Do XAdd", cmd.Err()).Send()
-			return out, cmd.Err()
+			return "", cmd.Err()
 		}
 		// if hashCallAt {
 		// 	return out, nil
@@ -70,27 +65,39 @@ func Rpc[i any, o any](options ...*ApiOption) (retf func(InParam i) (ret o, err 
 		//BLPop 返回结果 [key1,value1,key2,value2]
 		//cmd.Val() is the stream id, the result will be poped from the list with this id
 		if results, err = db.BLPop(ctx, time.Second*6, cmd.Val()).Result(); err != nil {
-			return out, err
+			return "", err
 		}
 
 		if len(results) != 2 {
-			return out, errors.New("BLPop result length error")
+			return "", errors.New("BLPop result length error")
 		}
 		b = []byte(results[1])
-
 		oType := reflect.TypeOf((*o)(nil)).Elem()
 		//if o type is a pointer, use reflect.New to create a new pointer
 		if oType.Kind() == reflect.Ptr {
-			out = reflect.New(oType.Elem()).Interface().(o)
-			return out, msgpack.Unmarshal(b, out)
+			ret = reflect.New(oType.Elem()).Interface().(o)
+			return ret, msgpack.Unmarshal(b, ret)
 		}
 		oValueWithPointer := reflect.New(oType).Interface().(*o)
 		return *oValueWithPointer, msgpack.Unmarshal(b, oValueWithPointer)
 	}
+
+	retf = func(InParam i) (out o, err error) {
+		var (
+			b []byte
+		)
+		if b, err = specification.MarshalApiInput(InParam); err != nil {
+			return out, err
+		}
+		ret, er := ProcessOneJob(b)
+		return ret.(o), er
+	}
 	rpcInfo := &ApiInfo{
-		DataSource: option.DataSource,
-		Name:       option.Name,
-		WithHeader: HeaderFieldsUsed(new(i)),
+		DataSource:                option.DataSource,
+		Name:                      option.Name,
+		WithHeader:                HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
+		WithJwt:                   WithJwtFields(reflect.TypeOf(new(i)).Elem()),
+		ApiFuncWithMsgpackedParam: ProcessOneJob,
 	}
 	funcPtr := reflect.ValueOf(retf).Pointer()
 	fun2ApiInfoMap.Store(funcPtr, rpcInfo)

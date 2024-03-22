@@ -11,14 +11,12 @@ import (
 
 func (svcCtx *HttpContext) DelHandler() (result interface{}, err error) {
 	var (
-		jwts      map[string]interface{} = map[string]interface{}{}
 		operation string
 		rds       *redis.Client
 	)
 	if rds, err = config.GetRdsClientByName(svcCtx.RedisDataSource); err != nil {
 		return nil, err
 	}
-	svcCtx.MergeJwtField(jwts)
 
 	if operation, err = svcCtx.KeyFieldAtJwt(); err != nil {
 		return "", err

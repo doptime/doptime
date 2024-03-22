@@ -38,14 +38,6 @@ func LoadConfig_FromEnv() (err error) {
 		rdsCfg.Name = key[6:]
 		Cfg.Redis = append(Cfg.Redis, rdsCfg)
 	}
-
-	// Load and parse JWT config
-	if jwtEnv, ok := envMap["JWT"]; ok && jwtEnv != "" {
-		if err := json.Unmarshal([]byte(jwtEnv), &Cfg.Jwt); err != nil {
-			log.Fatal().Err(err).Str("jwtEnv", jwtEnv).Msg("Step1.1.2 Load Env/Jwt failed")
-		}
-	}
-
 	// Load and parse HTTP config
 	if httpEnv, ok := envMap["HTTP"]; ok && len(httpEnv) > 0 {
 		if err := json.Unmarshal([]byte(httpEnv), &Cfg.Http); err != nil {

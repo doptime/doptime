@@ -22,7 +22,8 @@ type ConfigHttp struct {
 	Port  int64  `env:"Port,default=80"`
 	Path  string `env:"Path,default=/"`
 	//MaxBufferSize is the max size of a task in bytes, default 10M
-	MaxBufferSize int64 `env:"MaxBufferSize,default=10485760"`
+	MaxBufferSize int64  `env:"MaxBufferSize,default=10485760"`
+	JwtSecret     string `env:"Secret"`
 	//AutoAuth should never be true in production
 	AutoAuth bool `env:"AutoAuth,default=false"`
 }
@@ -34,10 +35,6 @@ type ConfigRedis struct {
 	Port     int64  `env:"Port,required=true"`
 	DB       int64  `env:"DB,required=true"`
 }
-type ConfigJWT struct {
-	Secret string `env:"Secret"`
-	Fields string `env:"Fields"`
-}
 type ConfigSettings struct {
 	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
 	LogLevel int8
@@ -47,7 +44,6 @@ type Configuration struct {
 	ConfigUrl string
 	//redis server, format: username:password@address:port/db
 	Redis    []ConfigRedis
-	Jwt      ConfigJWT
 	Http     ConfigHttp
 	Settings ConfigSettings
 }
@@ -72,7 +68,7 @@ func (c Configuration) String() string {
 	}
 	gob.NewDecoder(&buf).Decode(&c1)
 	//hide the secret , but leaving last 4 chars
-	c1.Jwt.Secret = HideCharsButLat4(c1.Jwt.Secret)
+	c1.Http.JwtSecret = HideCharsButLat4(c1.Http.JwtSecret)
 	//hide the password, but leaving last 4 chars
 	for _, rds := range c1.Redis {
 		rds.Password = HideCharsButLat4(rds.Password)
@@ -86,7 +82,6 @@ func (c Configuration) String() string {
 var Cfg Configuration = Configuration{
 	ConfigUrl: "",
 	Redis:     []ConfigRedis{},
-	Jwt:       ConfigJWT{Secret: "", Fields: "*"},
 	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", MaxBufferSize: 10485760},
 	Settings:  ConfigSettings{LogLevel: 1},
 }
@@ -123,9 +118,6 @@ func init() {
 
 	zerolog.SetGlobalLevel(zerolog.Level(Cfg.Settings.LogLevel))
 
-	if Cfg.Jwt.Fields != "" {
-		Cfg.Jwt.Fields = strings.ToLower(Cfg.Jwt.Fields)
-	}
 	log.Info().Str("Step1.2 Checking Redis", "Start").Send()
 
 	for _, rdsCfg := range Cfg.Redis {

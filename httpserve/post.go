@@ -39,8 +39,9 @@ func (svcCtx *HttpContext) PostHandler() (ret interface{}, err error) {
 		var (
 			paramIn     map[string]interface{} = map[string]interface{}{}
 			ServiceName string                 = svcCtx.Key
+			apiInfo     *api.ApiInfo
+			ok          bool
 		)
-		svcCtx.MergeJwtField(paramIn)
 		//convert query fields to JsonPack. but ignore K field(api name )
 		if svcCtx.Req.ParseForm(); len(svcCtx.Req.Form) > 0 {
 			for key, value := range svcCtx.Req.Form {
@@ -60,7 +61,17 @@ func (svcCtx *HttpContext) PostHandler() (ret interface{}, err error) {
 				return nil, fmt.Errorf("msgpack.Unmarshal JsonBody error %s", err)
 			}
 		}
-		return api.CallByHTTP(ServiceName, paramIn, svcCtx.Req)
+
+		if apiInfo, ok = api.GetApiInfoByName(ServiceName); !ok {
+			return nil, fmt.Errorf("err no such api")
+		}
+		if apiInfo.WithHeader {
+			apiInfo.MergeHeader(svcCtx.Req, paramIn)
+		}
+		if apiInfo.WithJwt {
+			svcCtx.MergeJwtField(paramIn)
+		}
+		return apiInfo.CallByHTTP(paramIn)
 	case "ZADD":
 		var Score float64
 		var obj interface{}
