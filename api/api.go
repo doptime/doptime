@@ -3,11 +3,9 @@ package api
 import (
 	"context"
 	"reflect"
-	"strconv"
 
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/specification"
-	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -25,7 +23,6 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiO
 	var (
 		option   *ApiOption = &ApiOption{DataSource: "default"}
 		validate            = needValidate(reflect.TypeOf(new(i)).Elem())
-		decoder  *mapstructure.Decoder
 	)
 	if len(options) > 0 {
 		option = &options[0]
@@ -72,54 +69,10 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiO
 		if err = msgpack.Unmarshal(s, &_map); err != nil {
 			return nil, err
 		}
-		hook := func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-			switch {
-			case f.Kind() == reflect.String && t.Kind() == reflect.Int64:
-				return strconv.ParseInt(data.(string), 10, 64)
-			case f.Kind() == reflect.String && t.Kind() == reflect.Int:
-				return strconv.Atoi(data.(string))
-			case f.Kind() == reflect.String && t.Kind() == reflect.Int32:
-				i, err := strconv.ParseInt(data.(string), 10, 32)
-				return int32(i), err
 
-			case f.Kind() == reflect.String && t.Kind() == reflect.Float64:
-				return strconv.ParseFloat(data.(string), 64)
-			case f.Kind() == reflect.String && t.Kind() == reflect.Float32:
-				f, err := strconv.ParseFloat(data.(string), 32)
-				if err != nil {
-					return nil, err
-				}
-				return float32(f), nil
-
-			case f.Kind() == reflect.Int64 && t.Kind() == reflect.String:
-				return strconv.FormatInt(data.(int64), 10), nil
-			case f.Kind() == reflect.Int && t.Kind() == reflect.String:
-				return strconv.Itoa(data.(int)), nil
-			case f.Kind() == reflect.Int32 && t.Kind() == reflect.String:
-				return strconv.FormatInt(int64(data.(int32)), 10), nil
-
-			case f.Kind() == reflect.Float64 && t.Kind() == reflect.String:
-				return strconv.FormatFloat(data.(float64), 'f', -1, 64), nil
-			case f.Kind() == reflect.Float32 && t.Kind() == reflect.String:
-				return strconv.FormatFloat(float64(data.(float32)), 'f', -1, 32), nil
-			case f.Kind() == reflect.Bool && t.Kind() == reflect.String:
-				return strconv.FormatBool(data.(bool)), nil
-			default:
-				return data, nil
-			}
-		}
-
-		//mapstructure support type conversion
-		config := &mapstructure.DecoderConfig{
-			Metadata:   nil,
-			Result:     pIn,
-			DecodeHook: mapstructure.ComposeDecodeHookFunc(hook),
-		}
-
-		if decoder, err = mapstructure.NewDecoder(config); err != nil {
-			return nil, err
-		}
-		if err = decoder.Decode(_map); err != nil {
+		if decoder, errMapTostruct := mapToStructDecoder(pIn); errMapTostruct != nil {
+			return nil, errMapTostruct
+		} else if err = decoder.Decode(_map); err != nil {
 			return nil, err
 		}
 		//validate the input if it is struct and has tag "validate"
