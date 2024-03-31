@@ -2,101 +2,41 @@ package api
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
-	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/specification"
 	"github.com/rs/zerolog/log"
-	"github.com/vmihailenco/msgpack/v5"
 )
 
-// crate ApiFun. the created New can be used as normal function:
-//
-//	f := func(InParam *InDemo) (ret string, err error) , this is logic function
-//	options. there are 2 poosible options:
-//		1. api.Name("ServiceName")  //set the ServiceName of the New. which is string. default is the name of the InParameter type but with "In" removed
-//		2. api.DB("RedisDatabaseName")  //set the DB name of the job. default is the name of the function
-//
-// ServiceName is defined as "In" + ServiceName in the InParameter
-// ServiceName is automatically converted to lower case
-func New[i any, o any](f func(InParameter i) (ret o, err error), options ...ApiOption) (retf func(InParam i) (ret o, err error)) {
-	var (
-		option   *ApiOption = &ApiOption{DataSource: "default"}
-		validate            = needValidate(reflect.TypeOf(new(i)).Elem())
-	)
-	if len(options) > 0 {
-		option = &options[0]
+func New[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out *Api[i, o]) {
+	var option *ApiOption = mergeNewOptions(&ApiOption{DataSource: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
+
+	out = &Api[i, o]{Name: option.Name, DataSource: option.DataSource, IsRpc: false, Ctx: context.Background(),
+		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
+		WithJwt:    WithJwtFields(reflect.TypeOf(new(i)).Elem()),
+		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
+		F:          f,
 	}
 
-	if len(option.Name) > 0 {
-		option.Name = specification.ApiName(option.Name)
-	}
 	if len(option.Name) == 0 {
-		option.Name = specification.ApiNameByType((*i)(nil))
-	}
-	if len(option.Name) == 0 {
-		log.Error().Str("service misnamed", option.Name).Send()
+		log.Debug().Msg("ApiNamed service created failed!")
+		out.F = func(InParameter i) (ret o, err error) {
+			err = errors.New("Api name is empty")
+			log.Warn().Str("service misnamed", out.Name).Send()
+			return ret, err
+		}
 	}
 
-	if _, ok := specification.DisAllowedServiceNames[option.Name]; ok {
-		log.Error().Str("service misnamed", option.Name).Send()
-	}
-	//warn if DataSource not defined in the environment
-	//however, the DataSource may be specified later in the environment, by dynamic loading from remove config file
-	if _, err := config.GetRdsClientByName(option.DataSource); err != nil {
-		log.Warn().Str("this data source specified in the api is not defined in the environment. Please check the configuration", option.DataSource).Send()
-	}
+	ApiServices.Set(out.Name, out)
 
-	log.Debug().Str("Api service create start. name", option.Name).Send()
-	//create a goroutine to process one job
-	ProcessOneJob := func(s []byte) (ret interface{}, err error) {
-		var (
-			in   i
-			pIn  interface{}
-			_map map[string]interface{} = map[string]interface{}{}
-			//datapack DataPacked
-		)
-		// case double pointer decoding
-		if vType := reflect.TypeOf((*i)(nil)).Elem(); vType.Kind() == reflect.Ptr {
-			pIn = reflect.New(vType.Elem()).Interface()
-			in = pIn.(i)
-		} else {
-			pIn = reflect.New(vType).Interface()
-			in = *pIn.(*i)
-		}
-
-		//type conversion of form data (from url parameter or post form)
-		if err = msgpack.Unmarshal(s, &_map); err != nil {
-			return nil, err
-		}
-
-		if decoder, errMapTostruct := mapToStructDecoder(pIn); errMapTostruct != nil {
-			return nil, errMapTostruct
-		} else if err = decoder.Decode(_map); err != nil {
-			return nil, err
-		}
-		//validate the input if it is struct and has tag "validate"
-		if err = validate(pIn); err != nil {
-			return nil, err
-		}
-		return f(in)
-	}
-	//register Api
-	apiInfo := &ApiInfo{
-		Name:                      option.Name,
-		DataSource:                option.DataSource,
-		WithHeader:                HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		WithJwt:                   WithJwtFields(reflect.TypeOf(new(i)).Elem()),
-		ApiFuncWithMsgpackedParam: ProcessOneJob,
-		Ctx:                       context.Background(),
-	}
-	ApiServices.Set(option.Name, apiInfo)
 	funcPtr := reflect.ValueOf(f).Pointer()
-	fun2ApiInfoMap.Store(funcPtr, apiInfo)
-	APIGroupByDataSource.Upsert(option.DataSource, []string{}, func(exist bool, valueInMap, newValue []string) []string {
-		return append(valueInMap, option.Name)
-	})
-	log.Debug().Str("ApiNamed service created completed!", option.Name).Send()
-	//return Api context
-	return f
+	fun2Api.Set(funcPtr, out)
+
+	apis, _ := APIGroupByDataSource.Get(out.DataSource)
+	apis = append(apis, out.Name)
+	APIGroupByDataSource.Set(out.DataSource, apis)
+
+	log.Debug().Str("ApiNamed service created completed!", out.Name).Send()
+	return out
 }

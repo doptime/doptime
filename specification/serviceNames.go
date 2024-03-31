@@ -22,6 +22,7 @@ var DisAllowedServiceNames = map[string]bool{
 	"rune":       true,
 	"complex64":  true,
 	"complex128": true,
+	"map":        true,
 }
 
 // return the api name of the service

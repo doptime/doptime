@@ -45,7 +45,7 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		var (
 			paramIn     map[string]interface{} = map[string]interface{}{}
 			ServiceName string                 = svcCtx.Key
-			apiInfo     *api.ApiInfo
+			_api        api.ApiInterface
 			ok          bool
 		)
 		//convert query fields to JsonPack. but ignore K field(api name )
@@ -68,16 +68,14 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 			}
 		}
 
-		if apiInfo, ok = api.GetApiInfoByName(ServiceName); !ok {
+		if _api, ok = api.GetApiByName(ServiceName); !ok {
 			return nil, fmt.Errorf("err no such api")
 		}
-		if apiInfo.WithHeader {
-			apiInfo.MergeHeader(svcCtx.Req, paramIn)
-		}
-		if apiInfo.WithJwt {
+		_api.MergeHeader(svcCtx.Req, paramIn)
+		if _api.GetWithJwt() {
 			svcCtx.MergeJwtField(paramIn)
 		}
-		return apiInfo.CallByHTTP(paramIn)
+		return _api.ProcessOneMap(paramIn)
 
 	case "GET":
 		return db.Get(svcCtx.Field)

@@ -19,21 +19,19 @@ import (
 // timeAt is ID of the task. if you want's to cancel the task, you should provide the same timeAt
 func CallAt[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time) (retf func(InParam i) (err error)) {
 	var (
-		db     *redis.Client
-		err    error
-		ctx    = context.Background()
-		option *ApiOption
+		db      *redis.Client
+		err     error
+		ctx     = context.Background()
+		apiInfo ApiInterface
+		ok      bool
 	)
 	funcPtr := reflect.ValueOf(f).Pointer()
-	if apiInfo, ok := fun2ApiInfoMap.Load(funcPtr); !ok {
+	if apiInfo, ok = fun2Api.Get(funcPtr); !ok {
 		log.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
-	} else {
-		_apiInfo := apiInfo.(*ApiInfo)
-		option = &ApiOption{DataSource: _apiInfo.DataSource, Name: _apiInfo.Name}
 	}
-
-	if db, err = config.GetRdsClientByName(option.DataSource); err != nil {
-		log.Info().Str("DataSource not defined in enviroment", option.DataSource).Send()
+	dataSource, apiName := apiInfo.GetDataSource(), apiInfo.GetName()
+	if db, err = config.GetRdsClientByName(dataSource); err != nil {
+		log.Info().Str("DataSource not defined in enviroment", dataSource).Send()
 		return nil
 	}
 
@@ -46,9 +44,9 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time
 		if b, err = specification.MarshalApiInput(InParam); err != nil {
 			return err
 		}
-		fmt.Println("CallAt", option.Name, timeAt.UnixNano())
+		fmt.Println("CallAt", apiName, timeAt.UnixNano())
 		Values = []string{"timeAt", strconv.FormatInt(timeAt.UnixNano(), 10), "data", string(b)}
-		args := &redis.XAddArgs{Stream: option.Name, Values: Values, MaxLen: 4096}
+		args := &redis.XAddArgs{Stream: apiName, Values: Values, MaxLen: 4096}
 		if cmd = db.XAdd(ctx, args); cmd.Err() != nil {
 			log.Info().AnErr("Do XAdd", cmd.Err()).Send()
 			return cmd.Err()

@@ -106,23 +106,28 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 	var (
 		msgPackResult []byte
 		ret           interface{}
-		service       *ApiInfo
+		service       ApiInterface
 		rds           *redis.Client
 		ok            bool
 	)
 	if service, ok = ApiServices.Get(apiName); !ok {
 		return fmt.Errorf("service %s not found", apiName)
 	}
-	if ret, err = service.ApiFuncWithMsgpackedParam(s); err != nil {
+	var _map = map[string]interface{}{}
+	if err = msgpack.Unmarshal(s, &_map); err != nil {
+		return
+	}
+	if ret, err = service.ProcessOneMap(_map); err != nil {
 		return err
 	}
 	if msgPackResult, err = msgpack.Marshal(ret); err != nil {
 		return
 	}
 	ctx := context.Background()
-	if rds, err = config.GetRdsClientByName(service.DataSource); err != nil {
-		log.Error().Str("DataSource not defined in enviroment while CallApiLocallyAndSendBackResult", service.DataSource).Send()
-		return fmt.Errorf("DataSource not defined in enviroment %s", service.DataSource)
+	DataSource := service.GetDataSource()
+	if rds, err = config.GetRdsClientByName(DataSource); err != nil {
+		log.Error().Str("DataSource not defined in enviroment while CallApiLocallyAndSendBackResult", DataSource).Send()
+		return fmt.Errorf("DataSource not defined in enviroment %s", DataSource)
 	}
 	pipline := rds.Pipeline()
 	pipline.RPush(ctx, BackToID, msgPackResult)
