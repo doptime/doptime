@@ -14,7 +14,6 @@ type Api[i any, o any] struct {
 	Name            string
 	DataSource      string
 	WithHeader      bool
-	WithJwt         bool
 	IsRpc           bool
 	Ctx             context.Context
 	F               func(InParameter i) (ret o, err error)
@@ -27,7 +26,6 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...*Api
 
 	out = &Api[i, o]{Name: option.Name, DataSource: option.DataSource, IsRpc: false, Ctx: context.Background(),
 		WithHeader:      HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		WithJwt:         WithJwtFields(reflect.TypeOf(new(i)).Elem()),
 		Validate:        needValidate(reflect.TypeOf(new(i)).Elem()),
 		F:               f,
 		LoadParamFromDB: option.LoadParamFromDB,

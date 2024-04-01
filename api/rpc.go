@@ -21,7 +21,6 @@ func Rpc[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err err
 
 	rpc := &Api[i, o]{Name: option.Name, DataSource: option.DataSource, IsRpc: true, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		WithJwt:    WithJwtFields(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}
 

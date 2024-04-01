@@ -8,7 +8,6 @@ import (
 type ApiInterface interface {
 	GetName() string
 	GetDataSource() string
-	GetWithJwt() bool
 	CallByMap(_map map[string]interface{}) (ret interface{}, err error)
 	MergeHeader(req *http.Request, paramIn map[string]interface{})
 }
@@ -38,9 +37,6 @@ func (a *Api[i, o]) MergeHeader(req *http.Request, paramIn map[string]interface{
 }
 func (a *Api[i, o]) GetDataSource() string {
 	return a.DataSource
-}
-func (a *Api[i, o]) GetWithJwt() bool {
-	return a.WithJwt
 }
 
 func (a *Api[i, o]) CallByMap(_map map[string]interface{}) (ret interface{}, err error) {

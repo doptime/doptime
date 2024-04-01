@@ -52,19 +52,3 @@ func HeaderFieldsUsed(vType reflect.Type) bool {
 	}
 	return false
 }
-
-func WithJwtFields(vt reflect.Type) bool {
-	for ; vt.Kind() == reflect.Ptr; vt = vt.Elem() {
-	}
-	if vt.Kind() != reflect.Struct {
-		return false
-	}
-	// check if contains tag "validate"
-	for i := 0; i < vt.NumField(); i++ {
-		fieldName, tagLowercase := vt.Field(i).Name, strings.ToLower(vt.Field(i).Tag.Get("mapstructure"))
-		if strings.HasPrefix(fieldName, "Jwt") || strings.Contains(tagLowercase, "jwt") {
-			return true
-		}
-	}
-	return false
-}

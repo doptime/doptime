@@ -66,9 +66,7 @@ func (svcCtx *HttpContext) PostHandler() (ret interface{}, err error) {
 			return nil, fmt.Errorf("err no such api")
 		}
 		_api.MergeHeader(svcCtx.Req, paramIn)
-		if _api.GetWithJwt() {
-			svcCtx.MergeJwtField(paramIn)
-		}
+		svcCtx.MergeJwtField(paramIn)
 		return _api.CallByMap(paramIn)
 	case "ZADD":
 		var Score float64
