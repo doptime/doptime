@@ -117,7 +117,7 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 	if err = msgpack.Unmarshal(s, &_map); err != nil {
 		return
 	}
-	if ret, err = service.ProcessOneMap(_map); err != nil {
+	if ret, err = service.CallByMap(_map); err != nil {
 		return err
 	}
 	if msgPackResult, err = msgpack.Marshal(ret); err != nil {

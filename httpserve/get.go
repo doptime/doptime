@@ -75,7 +75,7 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		if _api.GetWithJwt() {
 			svcCtx.MergeJwtField(paramIn)
 		}
-		return _api.ProcessOneMap(paramIn)
+		return _api.CallByMap(paramIn)
 
 	case "GET":
 		return db.Get(svcCtx.Field)

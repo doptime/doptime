@@ -8,17 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// type ApiInfo struct {
-// 	// Name is the name of the service
-// 	Name       string
-// 	DataSource string
-// 	WithHeader bool
-// 	WithJwt    bool
-// 	Ctx        context.Context
-// 	// ApiFuncWithMsgpackedParam is the function of the service
-// 	ApiFuncWithMsgpackedParam func(s []byte) (ret interface{}, err error)
-// }
-
 var ApiServices cmap.ConcurrentMap[string, ApiInterface] = cmap.New[ApiInterface]()
 
 func GetApiByName(serviceName string) (apiInfo ApiInterface, ok bool) {

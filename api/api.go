@@ -9,14 +9,28 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// ApiOption is parameter to create an API, RPC, or CallAt
+type Api[i any, o any] struct {
+	Name            string
+	DataSource      string
+	WithHeader      bool
+	WithJwt         bool
+	IsRpc           bool
+	Ctx             context.Context
+	F               func(InParameter i) (ret o, err error)
+	Validate        func(pIn interface{}) error
+	LoadParamFromDB []func(_mp map[string]interface{}) error
+}
+
 func New[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out *Api[i, o]) {
 	var option *ApiOption = mergeNewOptions(&ApiOption{DataSource: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
 	out = &Api[i, o]{Name: option.Name, DataSource: option.DataSource, IsRpc: false, Ctx: context.Background(),
-		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		WithJwt:    WithJwtFields(reflect.TypeOf(new(i)).Elem()),
-		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
-		F:          f,
+		WithHeader:      HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
+		WithJwt:         WithJwtFields(reflect.TypeOf(new(i)).Elem()),
+		Validate:        needValidate(reflect.TypeOf(new(i)).Elem()),
+		F:               f,
+		LoadParamFromDB: option.LoadParamFromDB,
 	}
 
 	if len(option.Name) == 0 {

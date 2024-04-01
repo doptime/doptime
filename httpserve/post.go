@@ -69,7 +69,7 @@ func (svcCtx *HttpContext) PostHandler() (ret interface{}, err error) {
 		if _api.GetWithJwt() {
 			svcCtx.MergeJwtField(paramIn)
 		}
-		return _api.ProcessOneMap(paramIn)
+		return _api.CallByMap(paramIn)
 	case "ZADD":
 		var Score float64
 		var obj interface{}
