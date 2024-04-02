@@ -11,24 +11,27 @@ import (
 
 // ApiOption is parameter to create an API, RPC, or CallAt
 type Api[i any, o any] struct {
-	Name            string
-	DataSource      string
-	WithHeader      bool
-	IsRpc           bool
-	Ctx             context.Context
-	F               func(InParameter i) (ret o, err error)
-	Validate        func(pIn interface{}) error
-	LoadParamFromDB []func(_mp map[string]interface{}) error
+	Name       string
+	DataSource string
+	WithHeader bool
+	IsRpc      bool
+	Ctx        context.Context
+	F          func(InParameter i) (ret o, err error)
+	Validate   func(pIn interface{}) error
+	// you can rewrite input parameter before excecute the service
+	ParamEnhancer func(_mp map[string]interface{}, param i) (out i, err error)
+
+	// you can rewrite input parameter before excecute the service
+	ResultFinalizer func(param i, ret o, paramMap map[string]interface{}) (valueToWebclient interface{}, err error)
 }
 
 func New[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out *Api[i, o]) {
 	var option *ApiOption = mergeNewOptions(&ApiOption{DataSource: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
 	out = &Api[i, o]{Name: option.Name, DataSource: option.DataSource, IsRpc: false, Ctx: context.Background(),
-		WithHeader:      HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		Validate:        needValidate(reflect.TypeOf(new(i)).Elem()),
-		F:               f,
-		LoadParamFromDB: option.LoadParamFromDB,
+		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
+		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
+		F:          f,
 	}
 
 	if len(option.Name) == 0 {

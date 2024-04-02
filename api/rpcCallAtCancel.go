@@ -20,7 +20,7 @@ func CallAtCancel[i any, o any](f func(InParam i) (ret o, err error), timeAt tim
 		ok     bool
 	)
 	funcPtr := reflect.ValueOf(f).Pointer()
-	if api, ok = fun2Api.Get(funcPtr); !ok {
+	if api, ok = GetApiByFunc(funcPtr); !ok {
 		log.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
 	}
 	if Rds, err = config.GetRdsClientByName(api.GetDataSource()); err != nil {

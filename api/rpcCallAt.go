@@ -26,7 +26,7 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time
 		ok      bool
 	)
 	funcPtr := reflect.ValueOf(f).Pointer()
-	if apiInfo, ok = fun2Api.Get(funcPtr); !ok {
+	if apiInfo, ok = GetApiByFunc(funcPtr); !ok {
 		log.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
 	}
 	dataSource, apiName := apiInfo.GetDataSource(), apiInfo.GetName()

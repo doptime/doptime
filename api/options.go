@@ -1,12 +1,9 @@
 package api
 
-import "github.com/doptime/doptime/data"
-
 // ApiOption is parameter to create an API, RPC, or CallAt
 type ApiOption struct {
-	Name            string
-	DataSource      string
-	LoadParamFromDB []func(_mp map[string]interface{}) error
+	Name       string
+	DataSource string
 }
 
 var Option *ApiOption
@@ -38,44 +35,5 @@ func mergeNewOptions(o *ApiOption, options ...*ApiOption) (out *ApiOption) {
 	if len(newOption.DataSource) > 0 {
 		o.DataSource = newOption.DataSource
 	}
-	if len(newOption.LoadParamFromDB) > 0 {
-		o.LoadParamFromDB = newOption.LoadParamFromDB
-	}
 	return o
-}
-
-func (o *ApiOption) WithParamHGet(key string, field string) (out *ApiOption) {
-	if out = o; o == Option {
-		out = &ApiOption{}
-	}
-	funLoader := func(_mp map[string]interface{}) (err error) {
-		var k, f string = replaceKeyValueWithJwt(key, field, _mp)
-		do := data.New[string, map[string]interface{}](data.Option.WithKey(k).WithDataSource(o.DataSource))
-		out, err := do.HGet(f)
-		if out == nil || err != nil {
-			return err
-		}
-		DataMerger(_mp, out)
-		return nil
-	}
-	out.LoadParamFromDB = append(o.LoadParamFromDB, funLoader)
-	return out
-}
-
-func (o *ApiOption) WithParamGet(key string, field string) (out *ApiOption) {
-	if out = o; o == Option {
-		out = &ApiOption{}
-	}
-	funLoader := func(_mp map[string]interface{}) (err error) {
-		var k, f string = replaceKeyValueWithJwt(key, field, _mp)
-		do := data.New[string, map[string]interface{}](data.Option.WithKey(k).WithDataSource(o.DataSource))
-		out, err := do.Get(f)
-		if out == nil || err != nil {
-			return err
-		}
-		DataMerger(_mp, out)
-		return nil
-	}
-	out.LoadParamFromDB = append(o.LoadParamFromDB, funLoader)
-	return out
 }

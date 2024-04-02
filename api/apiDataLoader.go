@@ -14,7 +14,7 @@ func DataMerger(des map[string]interface{}, src map[string]interface{}) {
 		des[key] = value
 	}
 }
-func replaceKeyValueWithJwt(k string, f string, _mp map[string]interface{}) (string, string) {
+func KeyFieldReplacedWithJwt(k string, f string, _mp map[string]interface{}) (string, string) {
 	var key, field string = k, f
 	for key, value := range _mp {
 		if vstr, ok := value.(string); ok {

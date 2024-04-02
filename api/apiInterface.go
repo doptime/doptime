@@ -41,19 +41,16 @@ func (a *Api[i, o]) GetDataSource() string {
 
 func (a *Api[i, o]) CallByMap(_map map[string]interface{}) (ret interface{}, err error) {
 	var (
-		in  i
-		pIn interface{}
+		in          i
+		pIn         interface{}
+		isTypeInPtr bool = false
 		//datapack DataPacked
 	)
-	//load data from db
-	for _, fun := range a.LoadParamFromDB {
-		fun(_map)
-	}
-
 	// case double pointer decoding
 	if vType := reflect.TypeOf((*i)(nil)).Elem(); vType.Kind() == reflect.Ptr {
 		pIn = reflect.New(vType.Elem()).Interface()
 		in = pIn.(i)
+		isTypeInPtr = true
 	} else {
 		pIn = reflect.New(vType).Interface()
 		in = *pIn.(*i)
@@ -64,9 +61,24 @@ func (a *Api[i, o]) CallByMap(_map map[string]interface{}) (ret interface{}, err
 	} else if err = decoder.Decode(_map); err != nil {
 		return nil, err
 	}
+	//load fill the left fields from db
+	if a.ParamEnhancer != nil {
+		if out, err := a.ParamEnhancer(_map, in); err != nil {
+		} else if isTypeInPtr {
+			pIn = out
+		} else {
+			*pIn.(*i) = out
+		}
+	}
+
 	//validate the input if it is struct and has tag "validate"
 	if err = a.Validate(pIn); err != nil {
 		return nil, err
 	}
-	return a.F(in)
+	//post process the result
+	ret, err = a.F(in)
+	if a.ResultFinalizer != nil && err == nil {
+		ret, err = a.ResultFinalizer(in, ret.(o), _map)
+	}
+	return ret, err
 }

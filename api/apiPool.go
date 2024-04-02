@@ -18,6 +18,7 @@ func GetApiByName(serviceName string) (apiInfo ApiInterface, ok bool) {
 	}
 	return ApiServices.Get(stdServiceName)
 }
+
 func GetServiceDB(serviceName string) (db *redis.Client) {
 	var (
 		err error
@@ -41,4 +42,9 @@ var fun2Api cmap.ConcurrentMap[uintptr, ApiInterface] = cmap.NewWithCustomShardi
 	const prime32 = uint32(16777619)
 	return ((hash*prime32)^uint32(key))*prime32 ^ uint32(key>>32)
 })
+
+func GetApiByFunc(f uintptr) (apiInfo ApiInterface, ok bool) {
+	return fun2Api.Get(f)
+}
+
 var APIGroupByDataSource = cmap.New[[]string]()
