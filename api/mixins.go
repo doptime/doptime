@@ -7,13 +7,13 @@ import (
 
 func ReplaceTagsInKeyField(k string, f string, _mp map[string]interface{}) (string, string) {
 	var key, field string = k, f
-	for key, value := range _mp {
+	for tag, value := range _mp {
 		if vstr, ok := value.(string); ok {
-			if strings.Contains(key, "@"+key) {
-				key = strings.Replace(key, "@"+key, vstr, 1)
+			if strings.Contains(tag, "@"+tag) {
+				tag = strings.Replace(tag, "@"+tag, vstr, 1)
 			}
-			if strings.Contains(field, "@"+key) {
-				field = strings.Replace(field, "@"+key, vstr, 1)
+			if strings.Contains(field, "@"+tag) {
+				field = strings.Replace(field, "@"+tag, vstr, 1)
 			}
 		}
 	}
