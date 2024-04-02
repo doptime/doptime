@@ -5,12 +5,11 @@ import (
 	"strings"
 )
 
-func ReplaceTagsInKeyField(k string, f string, _mp map[string]interface{}) (string, string) {
-	var key, field string = k, f
-	for tag, value := range _mp {
+func ReplaceTagsInKeyField(key string, field string, paramTable map[string]interface{}) (string, string) {
+	for tag, value := range paramTable {
 		if vstr, ok := value.(string); ok {
-			if strings.Contains(tag, "@"+tag) {
-				tag = strings.Replace(tag, "@"+tag, vstr, 1)
+			if strings.Contains(key, "@"+tag) {
+				key = strings.Replace(key, "@"+tag, vstr, 1)
 			}
 			if strings.Contains(field, "@"+tag) {
 				field = strings.Replace(field, "@"+tag, vstr, 1)
