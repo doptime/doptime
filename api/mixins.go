@@ -2,7 +2,23 @@ package api
 
 import (
 	"reflect"
+	"strings"
 )
+
+func ReplaceTagsInKeyField(k string, f string, _mp map[string]interface{}) (string, string) {
+	var key, field string = k, f
+	for key, value := range _mp {
+		if vstr, ok := value.(string); ok {
+			if strings.Contains(key, "@"+key) {
+				key = strings.Replace(key, "@"+key, vstr, 1)
+			}
+			if strings.Contains(field, "@"+key) {
+				field = strings.Replace(field, "@"+key, vstr, 1)
+			}
+		}
+	}
+	return key, field
+}
 
 func MixinParamByFun[i any, o any](f func(InParameter i) (ret o, err error), fixParam func(paramMap map[string]interface{}, param i) (out i, err error)) {
 	var (
