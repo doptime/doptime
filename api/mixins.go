@@ -34,10 +34,10 @@ func MixinParamEnhancer[i any, o any](f func(InParameter i) (ret o, err error), 
 	_apiIO.ParamEnhancer = paramEnhancer
 }
 
-// MixinResultSaver is a mixin function to save result to db , and response the value to the web client.
-// The resultFinalizer is a function used to save the result excuted by the service. & response the value to the web client. (hide the fields if you need)
+// MixinResultSaver is a mixin function to save result to db
+// The resultSaver is a function used to save the result excuted by the service. & response the value to the web client. (hide the fields if you need)
 
-func MixinResultFinalizer[i any, o any](f func(InParameter i) (ret o, err error), resultFinalizer func(param i, ret o, paramMap map[string]interface{}) (valueToWebclient interface{}, err error)) {
+func MixinResultSaver[i any, o any](f func(InParameter i) (ret o, err error), resultSaver func(param i, ret o, paramMap map[string]interface{}) (err error)) {
 	var (
 		_api   ApiInterface
 		_apiIO *Api[i, o]
@@ -49,5 +49,22 @@ func MixinResultFinalizer[i any, o any](f func(InParameter i) (ret o, err error)
 	if _apiIO, ok = _api.(*Api[i, o]); !ok {
 		return
 	}
-	_apiIO.ResultFinalizer = resultFinalizer
+	_apiIO.ResultSaver = resultSaver
+}
+
+// MixinResponseModifier is a mixin function to modify the response  value to the web client.
+
+func MixinResponseModifier[i any, o any](f func(InParameter i) (ret o, err error), ResponseModifier func(param i, ret o, paramMap map[string]interface{}) (valueToWebclient interface{}, err error)) {
+	var (
+		_api   ApiInterface
+		_apiIO *Api[i, o]
+		ok     bool
+	)
+	if _api, ok = GetApiByFunc(reflect.ValueOf(f).Pointer()); !ok {
+		return
+	}
+	if _apiIO, ok = _api.(*Api[i, o]); !ok {
+		return
+	}
+	_apiIO.ResponseModifier = ResponseModifier
 }

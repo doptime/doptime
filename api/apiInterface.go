@@ -75,10 +75,14 @@ func (a *Api[i, o]) CallByMap(_map map[string]interface{}) (ret interface{}, err
 	if err = a.Validate(pIn); err != nil {
 		return nil, err
 	}
-	//post process the result
+	//post save the result to db
 	ret, err = a.F(in)
-	if a.ResultFinalizer != nil && err == nil {
-		ret, err = a.ResultFinalizer(in, ret.(o), _map)
+	if a.ResultSaver != nil && err == nil {
+		_ = a.ResultSaver(in, ret.(o), _map)
+	}
+	//modify the result value to the web client.
+	if a.ResponseModifier != nil {
+		ret, err = a.ResponseModifier(in, ret.(o), _map)
 	}
 	return ret, err
 }
