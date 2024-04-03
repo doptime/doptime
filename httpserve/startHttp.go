@@ -56,7 +56,7 @@ func httpStart(path string, port int64) {
 		} else if r.Method == "PUT" {
 			result, err = svcCtx.PutHandler(rds)
 		} else if r.Method == "DELETE" {
-			result, err = svcCtx.DelHandler()
+			result, err = svcCtx.DelHandler(rds)
 		}
 
 		if len(config.Cfg.Http.CORES) > 0 {
