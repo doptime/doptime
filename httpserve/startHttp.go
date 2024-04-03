@@ -10,6 +10,7 @@ import (
 
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/permission"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,6 +30,8 @@ func httpStart(path string, port int64) {
 			err        error
 			httpStatus int = http.StatusOK
 			svcCtx     *HttpContext
+			rds        *redis.Client
+			operation  string
 		)
 		if CorsChecked(r, w) {
 			return
@@ -37,12 +40,21 @@ func httpStart(path string, port int64) {
 		defer cancel()
 		if svcCtx, err = NewHttpContext(ctx, r, w); err != nil || svcCtx == nil {
 			httpStatus = http.StatusBadRequest
+		} else if rds, err = config.GetRdsClientByName(svcCtx.RedisDataSource); err != nil {
+			httpStatus = http.StatusInternalServerError
+		} else if operation, err = svcCtx.KeyFieldAtJwt(); err != nil {
+			httpStatus = http.StatusInternalServerError
+		} else if !permission.IsPermitted(svcCtx.Key, operation) {
+			httpStatus = http.StatusForbidden
+			err = ErrOperationNotPermited
+		} else if svcCtx.Cmd == "API" {
+			result, err = svcCtx.APiHandler()
 		} else if r.Method == "GET" {
 			result, err = svcCtx.GetHandler()
 		} else if r.Method == "POST" {
 			result, err = svcCtx.PostHandler()
 		} else if r.Method == "PUT" {
-			result, err = svcCtx.PutHandler()
+			result, err = svcCtx.PutHandler(rds)
 		} else if r.Method == "DELETE" {
 			result, err = svcCtx.DelHandler()
 		}

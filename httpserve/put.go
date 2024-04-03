@@ -3,31 +3,17 @@ package httpserve
 import (
 	"errors"
 
-	"github.com/doptime/doptime/config"
-	"github.com/doptime/doptime/permission"
 	"github.com/redis/go-redis/v9"
 )
 
 var ErrEmptyKeyOrField = errors.New("empty key or field")
 var ErrOperationNotPermited = errors.New("operation permission denied")
 
-func (svcCtx *HttpContext) PutHandler() (data interface{}, err error) {
+func (svcCtx *HttpContext) PutHandler(rds *redis.Client) (data interface{}, err error) {
 	//use remote service map to handle request
 	var (
-		bytes     []byte
-		operation string
-		rds       *redis.Client
+		bytes []byte
 	)
-	if rds, err = config.GetRdsClientByName(svcCtx.RedisDataSource); err != nil {
-		return nil, err
-	}
-
-	if operation, err = svcCtx.KeyFieldAtJwt(); err != nil {
-		return "", err
-	}
-	if !permission.IsPermitted(svcCtx.Key, operation) {
-		return "false", ErrOperationNotPermited
-	}
 
 	switch svcCtx.Cmd {
 	case "SET":

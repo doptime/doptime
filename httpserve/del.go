@@ -1,31 +1,12 @@
 package httpserve
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/doptime/doptime/config"
-	"github.com/doptime/doptime/permission"
 	"github.com/redis/go-redis/v9"
 )
 
-func (svcCtx *HttpContext) DelHandler() (result interface{}, err error) {
-	var (
-		operation string
-		rds       *redis.Client
-	)
-	if rds, err = config.GetRdsClientByName(svcCtx.RedisDataSource); err != nil {
-		return nil, err
-	}
-
-	if operation, err = svcCtx.KeyFieldAtJwt(); err != nil {
-		return "", err
-	}
-	if !permission.IsPermitted(svcCtx.Key, operation) {
-		// check operation permission
-		return nil, fmt.Errorf(" operation %v not permitted", operation)
-	}
-
+func (svcCtx *HttpContext) DelHandler(rds *redis.Client) (result interface{}, err error) {
 	switch svcCtx.Cmd {
 	case "HDEL":
 		//error if empty Key or Field

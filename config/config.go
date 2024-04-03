@@ -91,13 +91,15 @@ var rds map[string]*redis.Client = map[string]*redis.Client{}
 func GetRdsCount() int {
 	return len(rds)
 }
+
+var ErrNoSuchRedisDB = fmt.Errorf("no such redis db")
+
 func GetRdsClientByName(name string) (rc *redis.Client, err error) {
 	var (
 		ok bool
 	)
 	if rc, ok = rds[name]; !ok {
-		err = fmt.Errorf("redis client with name %s not defined in environment", name)
-		return nil, err
+		return nil, ErrNoSuchRedisDB
 	}
 
 	return rc, nil
