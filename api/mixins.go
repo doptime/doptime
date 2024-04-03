@@ -19,7 +19,7 @@ func ReplaceTagsInKeyField(key string, field string, paramTable map[string]inter
 	return key, field
 }
 
-func MixinParamByFun[i any, o any](f func(InParameter i) (ret o, err error), fixParam func(paramMap map[string]interface{}, param i) (out i, err error)) {
+func MixinParamEnhancer[i any, o any](f func(InParameter i) (ret o, err error), fixParam func(paramMap map[string]interface{}, param i) (out i, err error)) {
 	var (
 		_api   ApiInterface
 		_apiIO *Api[i, o]
