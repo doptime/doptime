@@ -19,7 +19,7 @@ func ReplaceTagsInKeyField(key string, field string, paramTable map[string]inter
 	return key, field
 }
 
-func MixinParamEnhancer[i any, o any](f func(InParameter i) (ret o, err error), fixParam func(paramMap map[string]interface{}, param i) (out i, err error)) {
+func MixinParamEnhancer[i any, o any](f func(InParameter i) (ret o, err error), paramEnhancer func(paramMap map[string]interface{}, param i) (out i, err error)) {
 	var (
 		_api   ApiInterface
 		_apiIO *Api[i, o]
@@ -31,13 +31,13 @@ func MixinParamEnhancer[i any, o any](f func(InParameter i) (ret o, err error), 
 	if _apiIO, ok = _api.(*Api[i, o]); !ok {
 		return
 	}
-	_apiIO.ParamEnhancer = fixParam
+	_apiIO.ParamEnhancer = paramEnhancer
 }
 
 // MixinResultSaver is a mixin function to save result to db , and response the value to the web client.
 // The resultFinalizer is a function used to save the result excuted by the service. & response the value to the web client. (hide the fields if you need)
 
-func MixinResultSaver[i any, o any](f func(InParameter i) (ret o, err error), resultFinalizer func(param i, ret o, paramMap map[string]interface{}) (valueToWebclient interface{}, err error)) {
+func MixinResultFinalizer[i any, o any](f func(InParameter i) (ret o, err error), resultFinalizer func(param i, ret o, paramMap map[string]interface{}) (valueToWebclient interface{}, err error)) {
 	var (
 		_api   ApiInterface
 		_apiIO *Api[i, o]
