@@ -44,7 +44,9 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 	}
 	return msgpack.Unmarshal(revBytes, retValueWithPointer)
 }
-func RpcHttp[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
+
+// this is designed to be used for point to point RPC. without dispatching using redis
+func RpcRirectHttp[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
 	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceHttp: "doptime", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
 	httpServer, err := config.GetHttpServerByName(option.ApiSourceHttp)
