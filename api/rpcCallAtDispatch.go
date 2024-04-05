@@ -120,8 +120,8 @@ func rpcCallAtTasksLoad() {
 	)
 	log.Info().Msg("rpcCallAtTasksLoading started")
 	var _TasksAtFutureList = []*TaskAtFuture{}
-	for _, dataSource := range APIGroupByDataSource.Keys() {
-		services, ok := APIGroupByDataSource.Get(dataSource)
+	for _, dataSource := range APIGroupByRdsToReceiveJob.Keys() {
+		services, ok := APIGroupByRdsToReceiveJob.Get(dataSource)
 		if !ok {
 			continue
 		}

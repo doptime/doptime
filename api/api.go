@@ -5,19 +5,20 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/specification"
 	"github.com/rs/zerolog/log"
 )
 
 // ApiOption is parameter to create an API, RPC, or CallAt
 type Api[i any, o any] struct {
-	Name       string
-	DataSource string
-	WithHeader bool
-	IsRpc      bool
-	Ctx        context.Context
-	F          func(InParameter i) (ret o, err error)
-	Validate   func(pIn interface{}) error
+	Name          string
+	ApiSourceRds  string
+	ApiSourceHttp *config.ApiSourceHttp
+	WithHeader    bool
+	Ctx           context.Context
+	F             func(InParameter i) (ret o, err error)
+	Validate      func(pIn interface{}) error
 	// you can rewrite input parameter before excecute the service
 	ParamEnhancer func(_mp map[string]interface{}, param i) (out i, err error)
 
@@ -29,9 +30,9 @@ type Api[i any, o any] struct {
 }
 
 func New[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out *Api[i, o]) {
-	var option *ApiOption = mergeNewOptions(&ApiOption{DataSource: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
+	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
-	out = &Api[i, o]{Name: option.Name, DataSource: option.DataSource, IsRpc: false, Ctx: context.Background(),
+	out = &Api[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 		F:          f,
@@ -51,9 +52,9 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...*Api
 	funcPtr := reflect.ValueOf(f).Pointer()
 	fun2Api.Set(funcPtr, out)
 
-	apis, _ := APIGroupByDataSource.Get(out.DataSource)
+	apis, _ := APIGroupByRdsToReceiveJob.Get(out.ApiSourceRds)
 	apis = append(apis, out.Name)
-	APIGroupByDataSource.Set(out.DataSource, apis)
+	APIGroupByRdsToReceiveJob.Set(out.ApiSourceRds, apis)
 
 	log.Debug().Str("ApiNamed service created completed!", out.Name).Send()
 	return out

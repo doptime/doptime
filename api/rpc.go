@@ -17,9 +17,9 @@ import (
 // This New function is for the case the API is defined outside of this package.
 // If the API is defined in this package, use Api() instead.
 func Rpc[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
-	var option *ApiOption = mergeNewOptions(&ApiOption{DataSource: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
+	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
-	rpc := &Api[i, o]{Name: option.Name, DataSource: option.DataSource, IsRpc: true, Ctx: context.Background(),
+	rpc := &Api[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}
@@ -42,8 +42,8 @@ func Rpc[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err err
 		// } else {
 		// 	Values = []string{"data", string(b)}
 		// }
-		if db, err = config.GetRdsClientByName(rpc.DataSource); err != nil {
-			log.Info().Str("DataSource not defined in enviroment", rpc.DataSource).Send()
+		if db, err = config.GetRdsClientByName(rpc.ApiSourceRds); err != nil {
+			log.Info().Str("DataSource not defined in enviroment", rpc.ApiSourceRds).Send()
 			return ret, err
 		}
 		args := &redis.XAddArgs{Stream: rpc.Name, Values: Values, MaxLen: 4096}
@@ -79,10 +79,6 @@ func Rpc[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err err
 
 	funcPtr := reflect.ValueOf(rpc.F).Pointer()
 	fun2Api.Set(funcPtr, rpc)
-
-	apis, _ := APIGroupByDataSource.Get(rpc.DataSource)
-	apis = append(apis, rpc.Name)
-	APIGroupByDataSource.Set(rpc.DataSource, apis)
 
 	return rpc.F
 }

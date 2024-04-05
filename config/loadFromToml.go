@@ -52,11 +52,11 @@ func LoadConfig_FromFile() {
 	}
 
 	defer func() {
-		Cfg.Redis = []ConfigRedis{}
+		Cfg.Redis = []*ConfigRedis{}
 	}()
 
 	// create default config file as demo
-	Cfg.Redis = append(Cfg.Redis, ConfigRedis{Name: "redis_server_demo", Username: "doptime", Password: "yourpasswordhere", Host: "drangonflydb.local", Port: 6379, DB: 0})
+	Cfg.Redis = append(Cfg.Redis, &ConfigRedis{Name: "redis_server_demo", Username: "doptime", Password: "yourpasswordhere", Host: "drangonflydb.local", Port: 6379, DB: 0})
 
 	//open file to write
 	if writer, err = os.OpenFile(demoConfigFile, os.O_CREATE|os.O_WRONLY, 0644); err != nil {

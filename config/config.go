@@ -35,6 +35,13 @@ type ConfigRedis struct {
 	Port     int64  `env:"Port,required=true"`
 	DB       int64  `env:"DB,required=true"`
 }
+
+// the http rpc server
+type ApiSourceHttp struct {
+	Name    string
+	UrlBase string
+	Jwt     string
+}
 type ConfigSettings struct {
 	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
 	LogLevel int8
@@ -42,9 +49,10 @@ type ConfigSettings struct {
 
 type Configuration struct {
 	ConfigUrl string
+	Http      ConfigHttp
 	//redis server, format: username:password@address:port/db
-	Redis    []ConfigRedis
-	Http     ConfigHttp
+	Redis    []*ConfigRedis
+	HttpRPC  []*ApiSourceHttp
 	Settings ConfigSettings
 }
 
@@ -73,6 +81,9 @@ func (c Configuration) String() string {
 	for _, rds := range c1.Redis {
 		rds.Password = HideCharsButLat4(rds.Password)
 	}
+	for _, rpc := range c1.HttpRPC {
+		rpc.Jwt = HideCharsButLat4(rpc.Jwt)
+	}
 	//convert c1 to json string
 	jsonstr, _ := json.Marshal(c1)
 	return string(jsonstr)
@@ -81,18 +92,14 @@ func (c Configuration) String() string {
 // set default values
 var Cfg Configuration = Configuration{
 	ConfigUrl: "",
-	Redis:     []ConfigRedis{},
+	Redis:     []*ConfigRedis{},
 	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", MaxBufferSize: 10485760},
+	HttpRPC:   []*ApiSourceHttp{},
 	Settings:  ConfigSettings{LogLevel: 1},
 }
 
-var rds map[string]*redis.Client = map[string]*redis.Client{}
-
-func GetRdsCount() int {
-	return len(rds)
-}
-
 var ErrNoSuchRedisDB = fmt.Errorf("no such redis db")
+var rds map[string]*redis.Client = map[string]*redis.Client{}
 
 func GetRdsClientByName(name string) (rc *redis.Client, err error) {
 	var (
@@ -103,6 +110,20 @@ func GetRdsClientByName(name string) (rc *redis.Client, err error) {
 	}
 
 	return rc, nil
+}
+
+var ErrNoSuchRpcServer = fmt.Errorf("no such http Rpc Server")
+var httpRpc map[string]*ApiSourceHttp = map[string]*ApiSourceHttp{}
+
+func GetHttpServerByName(name string) (server *ApiSourceHttp, err error) {
+	var (
+		ok bool
+	)
+	if server, ok = httpRpc[name]; !ok {
+		return nil, ErrNoSuchRpcServer
+	}
+
+	return server, nil
 }
 
 func init() {
@@ -153,6 +174,9 @@ func init() {
 	if _, ok := rds["default"]; !ok {
 		log.Warn().Msg("Step1.0 \"default\" redis server missing in Configuration. RPC will can not be received. Please ensure this is what your want")
 		return
+	}
+	for _, rpc := range Cfg.HttpRPC {
+		httpRpc[rpc.Name] = rpc
 	}
 	log.Info().Msg("Step1.E: App loaded done")
 

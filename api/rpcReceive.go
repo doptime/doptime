@@ -34,9 +34,9 @@ func rpcReceive() {
 		err      error
 		ok       bool
 	)
-	for _, dataSource := range APIGroupByDataSource.Keys() {
-		if services, ok = APIGroupByDataSource.Get(dataSource); !ok {
-			log.Error().Str("dataSource missing in APIGroupByDataSource", dataSource).Send()
+	for _, dataSource := range APIGroupByRdsToReceiveJob.Keys() {
+		if services, ok = APIGroupByRdsToReceiveJob.Get(dataSource); !ok {
+			log.Error().Str("dataSource missing in APIGroupByRdsToReceiveJob", dataSource).Send()
 			continue
 		}
 

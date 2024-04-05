@@ -2,8 +2,9 @@ package api
 
 // ApiOption is parameter to create an API, RPC, or CallAt
 type ApiOption struct {
-	Name       string
-	DataSource string
+	Name          string
+	ApiSourceRds  string
+	ApiSourceHttp string
 }
 
 var Option *ApiOption
@@ -17,11 +18,18 @@ func (o *ApiOption) WithName(apiName string) (out *ApiOption) {
 	return out
 }
 
-func (o *ApiOption) WithDataSource(DataSource string) (out *ApiOption) {
+func (o *ApiOption) WithApiRds(ApiDataSourceRds string) (out *ApiOption) {
 	if out = o; o == Option {
 		out = &ApiOption{}
 	}
-	out.DataSource = DataSource
+	out.ApiSourceRds = ApiDataSourceRds
+	return out
+}
+func (o *ApiOption) WithApiHttp(ApiSourceHttp string) (out *ApiOption) {
+	if out = o; o == Option {
+		out = &ApiOption{}
+	}
+	out.ApiSourceHttp = ApiSourceHttp
 	return out
 }
 func mergeNewOptions(o *ApiOption, options ...*ApiOption) (out *ApiOption) {
@@ -32,8 +40,11 @@ func mergeNewOptions(o *ApiOption, options ...*ApiOption) (out *ApiOption) {
 	if len(newOption.Name) > 0 {
 		o.Name = newOption.Name
 	}
-	if len(newOption.DataSource) > 0 {
-		o.DataSource = newOption.DataSource
+	if len(newOption.ApiSourceRds) > 0 {
+		o.ApiSourceRds = newOption.ApiSourceRds
+	}
+	if len(newOption.ApiSourceHttp) > 0 {
+		o.ApiSourceHttp = newOption.ApiSourceHttp
 	}
 	return o
 }

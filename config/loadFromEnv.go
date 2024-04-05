@@ -36,7 +36,7 @@ func LoadConfig_FromEnv() (err error) {
 		}
 		//read redis name from env key
 		rdsCfg.Name = key[6:]
-		Cfg.Redis = append(Cfg.Redis, rdsCfg)
+		Cfg.Redis = append(Cfg.Redis, &rdsCfg)
 	}
 	// Load and parse HTTP config
 	if httpEnv, ok := envMap["HTTP"]; ok && len(httpEnv) > 0 {

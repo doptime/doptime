@@ -47,4 +47,4 @@ func GetApiByFunc(f uintptr) (apiInfo ApiInterface, ok bool) {
 	return fun2Api.Get(f)
 }
 
-var APIGroupByDataSource = cmap.New[[]string]()
+var APIGroupByRdsToReceiveJob = cmap.New[[]string]()
