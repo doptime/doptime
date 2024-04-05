@@ -12,6 +12,7 @@ import (
 	"github.com/doptime/doptime/permission"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 func Debug() {
@@ -64,10 +65,15 @@ func httpStart(path string, port int64) {
 		}
 
 		if err == nil {
-			if b, ok = result.([]byte); ok {
+			if svcCtx.ResponseContentType == "application/msgpack" {
+				if b, err = msgpack.Marshal(result); err != nil {
+					httpStatus = http.StatusInternalServerError
+				}
+			} else if b, ok = result.([]byte); ok {
 			} else if s, ok = result.(string); ok {
 				b = []byte(s)
 			} else {
+
 				if b, err = json.Marshal(result); err == nil {
 					//json Compact b
 					var dst *bytes.Buffer = bytes.NewBuffer([]byte{})
