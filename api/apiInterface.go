@@ -76,7 +76,7 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 		return nil, err
 	}
 	//post save the result to db
-	ret, err = a.Fun(in)
+	ret, err = a.Func(in)
 	if a.ResultSaver != nil && err == nil {
 		_ = a.ResultSaver(in, ret.(o), _map)
 	}

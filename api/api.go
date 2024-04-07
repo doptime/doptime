@@ -15,12 +15,12 @@ func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...*Api
 	out = &Context[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
-		Fun:        f,
+		Func:       f,
 	}
 
 	if len(option.Name) == 0 {
 		log.Debug().Msg("ApiNamed service created failed!")
-		out.Fun = func(InParameter i) (ret o, err error) {
+		out.Func = func(InParameter i) (ret o, err error) {
 			log.Warn().Str("service misnamed", out.Name).Send()
 			return ret, vars.ErrApiNameEmpty
 		}

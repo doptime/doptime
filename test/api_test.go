@@ -22,7 +22,7 @@ var ApiDemo = api.Api(func(InParam *Demo1) (ret string, err error) {
 	now := time.Now()
 	fmt.Println("Demo api is called with InParam:" + InParam.Text + " run at " + now.String() + " Attach:" + InParam.Attach.Text + " UserIP:" + InParam.RemoteAddr)
 	return "hello world", nil
-}).Fun
+}).Func
 
 func TestApiDemo(t *testing.T) {
 
@@ -39,7 +39,7 @@ func TestApiDemo(t *testing.T) {
 	}
 }
 
-var DemoRpc = api.Rpc[*Demo1, string]().Fun
+var DemoRpc = api.Rpc[*Demo1, string]().Func
 
 func TestRPC(t *testing.T) {
 

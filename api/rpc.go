@@ -25,7 +25,7 @@ func Rpc[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}
 
-	rpc.Fun = func(InParam i) (ret o, err error) {
+	rpc.Func = func(InParam i) (ret o, err error) {
 
 		var (
 			results []string
@@ -78,7 +78,7 @@ func Rpc[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 
 	ApiServices.Set(rpc.Name, rpc)
 
-	funcPtr := reflect.ValueOf(rpc.Fun).Pointer()
+	funcPtr := reflect.ValueOf(rpc.Func).Pointer()
 	fun2Api.Set(funcPtr, rpc)
 	return rpc
 }
