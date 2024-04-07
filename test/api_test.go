@@ -18,7 +18,7 @@ type Demo1 struct {
 	RemoteAddr string `mapstructure:"HeaderRemoteAddr,nonempty"`
 }
 
-var ApiDemo = api.New(func(InParam *Demo1) (ret string, err error) {
+var ApiDemo = api.ApiContext(func(InParam *Demo1) (ret string, err error) {
 	now := time.Now()
 	fmt.Println("Demo api is called with InParam:" + InParam.Text + " run at " + now.String() + " Attach:" + InParam.Attach.Text + " UserIP:" + InParam.RemoteAddr)
 	return "hello world", nil

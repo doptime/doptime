@@ -12,10 +12,10 @@ type ApiInterface interface {
 	MergeHeader(req *http.Request, paramIn map[string]interface{})
 }
 
-func (a *Api[i, o]) GetName() string {
+func (a *Context[i, o]) GetName() string {
 	return a.Name
 }
-func (a *Api[i, o]) MergeHeader(req *http.Request, paramIn map[string]interface{}) {
+func (a *Context[i, o]) MergeHeader(req *http.Request, paramIn map[string]interface{}) {
 	if !a.WithHeader {
 		return
 	}
@@ -35,11 +35,11 @@ func (a *Api[i, o]) MergeHeader(req *http.Request, paramIn map[string]interface{
 	paramIn["Header"+"RawQuery"] = req.URL.RawQuery
 
 }
-func (a *Api[i, o]) GetDataSource() string {
+func (a *Context[i, o]) GetDataSource() string {
 	return a.ApiSourceRds
 }
 
-func (a *Api[i, o]) CallByMap(_map map[string]interface{}) (ret interface{}, err error) {
+func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{}, err error) {
 	var (
 		in          i
 		pIn         interface{}

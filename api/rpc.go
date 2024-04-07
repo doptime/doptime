@@ -17,9 +17,14 @@ import (
 // This New function is for the case the API is defined outside of this package.
 // If the API is defined in this package, use Api() instead.
 func Rpc[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
+	return RpcContext[i, o](options...).F
+}
+
+func RpcContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
+
 	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
-	rpc := &Api[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
+	rpc = &Context[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}
@@ -79,6 +84,5 @@ func Rpc[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err err
 
 	funcPtr := reflect.ValueOf(rpc.F).Pointer()
 	fun2Api.Set(funcPtr, rpc)
-
-	return rpc.F
+	return rpc
 }

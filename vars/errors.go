@@ -17,3 +17,5 @@ var ErrInvalidType error = errors.New("invalid type")
 var ErrInvalidMethod error = errors.New("invalid method")
 var ErrInvalidAuth error = errors.New("invalid auth")
 var ErrInvalidUserOrPassword error = errors.New("invalid user or password")
+
+var ErrApiNameEmpty = errors.New("api name is empty")

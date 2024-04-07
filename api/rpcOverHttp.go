@@ -46,7 +46,7 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 }
 
 // this is designed to be used for point to point RPC. without dispatching parameter using redis
-func RpcOverHttp[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
+func RpcOverHttpContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceHttp: "doptime", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
 	httpServer, err := config.GetHttpServerByName(option.ApiSourceHttp)
@@ -54,11 +54,10 @@ func RpcOverHttp[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o,
 		log.Info().AnErr("DataSource not defined in enviroment", err).Send()
 		return nil
 	}
-	rpc := &Api[i, o]{Name: option.Name, ApiSourceHttp: httpServer, Ctx: context.Background(),
+	rpc = &Context[i, o]{Name: option.Name, ApiSourceHttp: httpServer, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}
-
 	rpc.F = func(InParam i) (ret o, err error) {
 		oType := reflect.TypeOf((*o)(nil)).Elem()
 		//if o type is a pointer, use reflect.New to create a new pointer
@@ -72,9 +71,10 @@ func RpcOverHttp[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o,
 	}
 
 	ApiServices.Set(rpc.Name, rpc)
-
 	funcPtr := reflect.ValueOf(rpc.F).Pointer()
 	fun2Api.Set(funcPtr, rpc)
-
-	return rpc.F
+	return rpc
+}
+func RpcOverHttp[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
+	return RpcOverHttpContext[i, o](options...).F
 }

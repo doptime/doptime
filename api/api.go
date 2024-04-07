@@ -2,37 +2,21 @@ package api
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
-	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/specification"
+	"github.com/doptime/doptime/vars"
 	"github.com/rs/zerolog/log"
 )
 
-// ApiOption is parameter to create an API, RPC, or CallAt
-type Api[i any, o any] struct {
-	Name          string
-	ApiSourceRds  string
-	ApiSourceHttp *config.ApiSourceHttp
-	WithHeader    bool
-	Ctx           context.Context
-	F             func(InParameter i) (ret o, err error)
-	Validate      func(pIn interface{}) error
-	// you can rewrite input parameter before excecute the service
-	ParamEnhancer func(_mp map[string]interface{}, param i) (out i, err error)
-
-	// you can save the result to db using paramMap
-	ResultSaver func(param i, ret o, paramMap map[string]interface{}) (err error)
-
-	// you can modify the result value to the web client.
-	ResponseModifier func(param i, ret o, paramMap map[string]interface{}) (valueToWebclient interface{}, err error)
+func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out func(InParameter i) (ret o, err error)) {
+	return ApiContext[i, o](f, options...).F
 }
 
-func New[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out *Api[i, o]) {
+func ApiContext[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out *Context[i, o]) {
 	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
-	out = &Api[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
+	out = &Context[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 		F:          f,
@@ -41,9 +25,8 @@ func New[i any, o any](f func(InParameter i) (ret o, err error), options ...*Api
 	if len(option.Name) == 0 {
 		log.Debug().Msg("ApiNamed service created failed!")
 		out.F = func(InParameter i) (ret o, err error) {
-			err = errors.New("Api name is empty")
 			log.Warn().Str("service misnamed", out.Name).Send()
-			return ret, err
+			return ret, vars.ErrApiNameEmpty
 		}
 	}
 
