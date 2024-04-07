@@ -17,7 +17,7 @@ import (
 // This New function is for the case the API is defined outside of this package.
 // If the API is defined in this package, use Api() instead.
 func Rpc[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
-	return RpcContext[i, o](options...).F
+	return RpcContext[i, o](options...).Fun
 }
 
 func RpcContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
@@ -29,7 +29,7 @@ func RpcContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}
 
-	rpc.F = func(InParam i) (ret o, err error) {
+	rpc.Fun = func(InParam i) (ret o, err error) {
 
 		var (
 			results []string
@@ -82,7 +82,7 @@ func RpcContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 
 	ApiServices.Set(rpc.Name, rpc)
 
-	funcPtr := reflect.ValueOf(rpc.F).Pointer()
+	funcPtr := reflect.ValueOf(rpc.Fun).Pointer()
 	fun2Api.Set(funcPtr, rpc)
 	return rpc
 }

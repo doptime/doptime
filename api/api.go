@@ -10,7 +10,7 @@ import (
 )
 
 func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out func(InParameter i) (ret o, err error)) {
-	return ApiContext[i, o](f, options...).F
+	return ApiContext[i, o](f, options...).Fun
 }
 
 func ApiContext[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out *Context[i, o]) {
@@ -19,12 +19,12 @@ func ApiContext[i any, o any](f func(InParameter i) (ret o, err error), options 
 	out = &Context[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
-		F:          f,
+		Fun:        f,
 	}
 
 	if len(option.Name) == 0 {
 		log.Debug().Msg("ApiNamed service created failed!")
-		out.F = func(InParameter i) (ret o, err error) {
+		out.Fun = func(InParameter i) (ret o, err error) {
 			log.Warn().Str("service misnamed", out.Name).Send()
 			return ret, vars.ErrApiNameEmpty
 		}

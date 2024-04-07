@@ -58,7 +58,7 @@ func RpcOverHttpContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}
-	rpc.F = func(InParam i) (ret o, err error) {
+	rpc.Fun = func(InParam i) (ret o, err error) {
 		oType := reflect.TypeOf((*o)(nil)).Elem()
 		//if o type is a pointer, use reflect.New to create a new pointer
 		if oType.Kind() == reflect.Ptr {
@@ -71,10 +71,10 @@ func RpcOverHttpContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]
 	}
 
 	ApiServices.Set(rpc.Name, rpc)
-	funcPtr := reflect.ValueOf(rpc.F).Pointer()
+	funcPtr := reflect.ValueOf(rpc.Fun).Pointer()
 	fun2Api.Set(funcPtr, rpc)
 	return rpc
 }
 func RpcOverHttp[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
-	return RpcOverHttpContext[i, o](options...).F
+	return RpcOverHttpContext[i, o](options...).Fun
 }

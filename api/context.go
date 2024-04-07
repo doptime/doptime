@@ -13,7 +13,7 @@ type Context[i any, o any] struct {
 	ApiSourceHttp *config.ApiSourceHttp
 	WithHeader    bool
 	Ctx           context.Context
-	F             func(InParameter i) (ret o, err error)
+	Fun           func(InParameter i) (ret o, err error)
 	Validate      func(pIn interface{}) error
 	// you can rewrite input parameter before excecute the service
 	ParamEnhancer func(_mp map[string]interface{}, param i) (out i, err error)

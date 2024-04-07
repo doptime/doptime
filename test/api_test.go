@@ -22,7 +22,7 @@ var ApiDemo = api.ApiContext(func(InParam *Demo1) (ret string, err error) {
 	now := time.Now()
 	fmt.Println("Demo api is called with InParam:" + InParam.Text + " run at " + now.String() + " Attach:" + InParam.Attach.Text + " UserIP:" + InParam.RemoteAddr)
 	return "hello world", nil
-}).F
+}).Fun
 
 func TestApiDemo(t *testing.T) {
 
