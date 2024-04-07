@@ -47,14 +47,14 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 
 // this is designed to be used for point to point RPC. without dispatching parameter using redis
 func RpcOverHttp[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
-	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceHttp: "doptime", Name: specification.ApiNameByType((*i)(nil))}, options...)
+	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceHttp: "doptime"}, options...)
 
 	httpServer, err := config.GetHttpServerByName(option.ApiSourceHttp)
 	if err != nil {
 		log.Info().AnErr("DataSource not defined in enviroment", err).Send()
 		return nil
 	}
-	rpc = &Context[i, o]{Name: option.Name, ApiSourceHttp: httpServer, Ctx: context.Background(),
+	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceHttp: httpServer, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}

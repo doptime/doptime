@@ -1,10 +1,11 @@
-package api
+package lib
 
 import (
 	"context"
 	"strconv"
 	"time"
 
+	"github.com/doptime/doptime/api"
 	"github.com/doptime/doptime/config"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
@@ -17,7 +18,7 @@ type InLockKey struct {
 
 var removeCounter int64 = 90
 
-var ApiLockKey = Api(func(req *InLockKey) (ok bool, err error) {
+var ApiLockKey = api.Api(func(req *InLockKey) (ok bool, err error) {
 	var (
 		now    int64 = time.Now().UnixMilli()
 		timeAt int64 = now + req.DurationMs

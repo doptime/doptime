@@ -18,9 +18,9 @@ import (
 // If the API is defined in this package, use Api() instead.
 func Rpc[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 
-	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
+	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default"}, options...)
 
-	rpc = &Context[i, o]{Name: option.Name, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
+	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
 		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
 	}
