@@ -46,7 +46,7 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 }
 
 // this is designed to be used for point to point RPC. without dispatching parameter using redis
-func RpcOverHttpContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
+func RpcOverHttp[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceHttp: "doptime", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
 	httpServer, err := config.GetHttpServerByName(option.ApiSourceHttp)
@@ -74,7 +74,4 @@ func RpcOverHttpContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]
 	funcPtr := reflect.ValueOf(rpc.Fun).Pointer()
 	fun2Api.Set(funcPtr, rpc)
 	return rpc
-}
-func RpcOverHttp[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
-	return RpcOverHttpContext[i, o](options...).Fun
 }

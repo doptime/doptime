@@ -16,11 +16,7 @@ import (
 // create Api context.
 // This New function is for the case the API is defined outside of this package.
 // If the API is defined in this package, use Api() instead.
-func Rpc[i any, o any](options ...*ApiOption) (f func(InParam i) (ret o, err error)) {
-	return RpcContext[i, o](options...).Fun
-}
-
-func RpcContext[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
+func Rpc[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 
 	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default", Name: specification.ApiNameByType((*i)(nil))}, options...)
 
