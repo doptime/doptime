@@ -18,7 +18,7 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		members  []interface{} = []interface{}{}
 	)
 
-	db := data.New[string, interface{}](data.Option.WithKey(svcCtx.Key).WithDataSource(svcCtx.RedisDataSource))
+	db := data.New[string, interface{}](data.Option.WithKey(svcCtx.Key).WithRds(svcCtx.RedisDataSource))
 	//case Is a member of a set
 	switch svcCtx.Cmd {
 	// all data that appears in the form or body is json format, will be stored in paramIn["JsonPack"]

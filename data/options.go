@@ -17,7 +17,7 @@ func (o *DataOption) WithKey(key string) (out *DataOption) {
 	out.Key = key
 	return out
 }
-func (o *DataOption) WithDataSource(dataSource string) (out *DataOption) {
+func (o *DataOption) WithRds(dataSource string) (out *DataOption) {
 	if out = o; o == Option {
 		out = &DataOption{DataSource: "default"}
 	}
