@@ -35,7 +35,7 @@ func ApiName(ServiceName string) string {
 	var ServiceNameLowercase string
 	//remove  prefix. "api:" is the case of encoded service name. other wise for the case of parameter type name
 	if ServiceNameLowercase = strings.ToLower(ServiceName); len(ServiceNameLowercase) == 0 {
-		log.Warn().Msg("ApiNamed service created failed! service name is empty")
+		log.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
 		return ""
 	}
 	var prefixes = []string{"api:", "input", "in", "req", "arg", "param", "src", "data", "result", "out", "output", "ret", "response", "resp", "reply", "ack", "reply"}
@@ -47,7 +47,7 @@ func ApiName(ServiceName string) string {
 	}
 	//remove postfix
 	if ServiceNameLowercase = strings.ToLower(ServiceName); len(ServiceNameLowercase) == 0 {
-		log.Warn().Msg("ApiNamed service created failed! service name is empty")
+		log.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
 		return ""
 	}
 	var Postfixes = []string{"input", "in", "req", "arg", "param", "src", "data", "result", "out", "output", "ret", "response", "resp", "reply", "ack", "reply"}
@@ -59,7 +59,7 @@ func ApiName(ServiceName string) string {
 	}
 
 	if _, ok := DisAllowedServiceNames[ServiceName]; ok {
-		log.Error().Str("service misnamed", ServiceName).Send()
+		log.Error().Str("Service created failed when calling ApiNamed, service name disallowed", ServiceName).Send()
 		return ""
 	}
 	//first byte of ServiceName should be lower case
