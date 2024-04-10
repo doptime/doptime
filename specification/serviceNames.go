@@ -32,19 +32,32 @@ var DisAllowedServiceNames = map[string]bool{
 // 2. the name give by the user
 // do not panic, because it may be called by web client. otherwise the server can be maliciously closed by the client
 func ApiName(ServiceName string) string {
-	var prefixes = []string{"api:", "input", "in", "req", "arg", "param", "src", "data", "result", "out", "output", "ret", "response", "resp", "reply", "ack", "reply"}
-	var Postfixes = []string{"input", "in", "req", "arg", "param", "src", "data", "result", "out", "output", "ret", "response", "resp", "reply", "ack", "reply"}
+	var ServiceNameLowercase string
 	//remove  prefix. "api:" is the case of encoded service name. other wise for the case of parameter type name
-	if ServiceNameLowercase := strings.ToLower(ServiceName); len(ServiceNameLowercase) > 0 {
-		for _, prefix := range prefixes {
-			for ; strings.HasPrefix(ServiceNameLowercase, prefix); ServiceName = ServiceName[len(prefix):] {
-			}
-		}
-		for _, postfix := range Postfixes {
-			for ; strings.HasSuffix(ServiceName, postfix); ServiceName = ServiceName[:len(ServiceName)-len(postfix)] {
-			}
+	if ServiceNameLowercase = strings.ToLower(ServiceName); len(ServiceNameLowercase) == 0 {
+		log.Warn().Msg("ApiNamed service created failed! service name is empty")
+		return ""
+	}
+	var prefixes = []string{"api:", "input", "in", "req", "arg", "param", "src", "data", "result", "out", "output", "ret", "response", "resp", "reply", "ack", "reply"}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(ServiceNameLowercase, prefix) {
+			ServiceName = ServiceName[len(prefix):]
+			break
 		}
 	}
+	//remove postfix
+	if ServiceNameLowercase = strings.ToLower(ServiceName); len(ServiceNameLowercase) == 0 {
+		log.Warn().Msg("ApiNamed service created failed! service name is empty")
+		return ""
+	}
+	var Postfixes = []string{"input", "in", "req", "arg", "param", "src", "data", "result", "out", "output", "ret", "response", "resp", "reply", "ack", "reply"}
+	for _, postfix := range Postfixes {
+		if strings.HasSuffix(ServiceName, postfix) {
+			ServiceName = ServiceName[:len(ServiceName)-len(postfix)]
+			break
+		}
+	}
+
 	if _, ok := DisAllowedServiceNames[ServiceName]; ok {
 		log.Error().Str("service misnamed", ServiceName).Send()
 		return ""
