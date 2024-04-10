@@ -94,7 +94,7 @@ var Cfg Configuration = Configuration{
 	ConfigUrl: "",
 	Redis:     []*ConfigRedis{},
 	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", MaxBufferSize: 10485760},
-	HttpRPC:   []*ApiSourceHttp{},
+	HttpRPC:   []*ApiSourceHttp{{Name: "doptime", UrlBase: "https://api.doptime.com", Jwt: ""}},
 	Settings:  ConfigSettings{LogLevel: 1},
 }
 
