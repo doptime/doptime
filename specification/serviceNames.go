@@ -38,8 +38,7 @@ func ApiName(ServiceName string) string {
 		log.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
 		return ""
 	}
-	var prefixes = []string{"api:", "input", "in", "req", "arg", "param", "src", "data", "result", "out", "output", "ret", "response", "resp", "reply", "ack", "reply"}
-	for _, prefix := range prefixes {
+	for _, prefix := range []string{"api:", "input", "in", "req", "arg", "param", "src", "data"} {
 		if strings.HasPrefix(ServiceNameLowercase, prefix) {
 			ServiceName = ServiceName[len(prefix):]
 			break
@@ -50,8 +49,7 @@ func ApiName(ServiceName string) string {
 		log.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
 		return ""
 	}
-	var Postfixes = []string{"input", "in", "req", "arg", "param", "src", "data", "result", "out", "output", "ret", "response", "resp", "reply", "ack", "reply"}
-	for _, postfix := range Postfixes {
+	for _, postfix := range []string{"input", "in", "req", "arg", "param", "src", "data"} {
 		if strings.HasSuffix(ServiceName, postfix) {
 			ServiceName = ServiceName[:len(ServiceName)-len(postfix)]
 			break
