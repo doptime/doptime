@@ -16,7 +16,7 @@ type Context[i any, o any] struct {
 	Func          func(InParameter i) (ret o, err error)
 	Validate      func(pIn interface{}) error
 	// you can rewrite input parameter before excecute the service
-	ParamEnhancer func(_mp map[string]interface{}, param i) (out i, err error)
+	ParamEnhancer func(param i, paramMap map[string]interface{}) (out i, err error)
 
 	// you can save the result to db using paramMap
 	ResultSaver func(param i, ret o, paramMap map[string]interface{}) (err error)

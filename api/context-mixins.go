@@ -18,7 +18,8 @@ func ReplaceTagsInKeyField(key string, field string, paramTable map[string]inter
 	}
 	return key, field
 }
-func (ctx *Context[i, o]) MixinParamEnhancer(paramEnhancer func(paramMap map[string]interface{}, param i) (out i, err error)) *Context[i, o] {
+
+func (ctx *Context[i, o]) MixinParamEnhancer(paramEnhancer func(param i, paramMap map[string]interface{}) (out i, err error)) *Context[i, o] {
 	ctx.ParamEnhancer = paramEnhancer
 	return ctx
 }

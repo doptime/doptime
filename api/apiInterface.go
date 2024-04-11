@@ -63,7 +63,7 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 	}
 	//load fill the left fields from db
 	if a.ParamEnhancer != nil {
-		if out, err := a.ParamEnhancer(_map, in); err != nil {
+		if out, err := a.ParamEnhancer(in, _map); err != nil {
 		} else if isTypeInPtr {
 			pIn = out
 		} else {
