@@ -33,7 +33,8 @@ type JwtEncodingIn struct {
 	Params     map[string]interface{}
 	JwtSecret  string
 	SignMethod SigningMethod
-	Duration   int64 // seconds of expire time, format is unix time
+	Duration   int64                  // seconds of expire time, format is unix time
+	Other      map[string]interface{} `mapstructure:",remain" msgpack:"-" `
 }
 
 type JwtEncodingOut struct {

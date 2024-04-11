@@ -16,11 +16,11 @@ type Context[i any, o any] struct {
 	Func          func(InParameter i) (ret o, err error)
 	Validate      func(pIn interface{}) error
 	// you can rewrite input parameter before excecute the service
-	ParamEnhancer func(param i, paramMap map[string]interface{}) (out i, err error)
+	ParamEnhancer func(param i) (out i, err error)
 
 	// you can save the result to db using paramMap
-	ResultSaver func(param i, ret o, paramMap map[string]interface{}) (err error)
+	ResultSaver func(param i, ret o) (err error)
 
 	// you can modify the result value to the web client.
-	ResponseModifier func(param i, ret o, paramMap map[string]interface{}) (valueToWebclient interface{}, err error)
+	ResponseModifier func(param i, ret o) (valueToWebclient interface{}, err error)
 }
