@@ -63,7 +63,7 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 	}
 	//load fill the left fields from db
 	if a.ParamEnhancer != nil {
-		if out, err := a.ParamEnhancer(in, _map); err != nil {
+		if out, err := a.ParamEnhancer(in); err != nil {
 		} else if isTypeInPtr {
 			pIn = out
 		} else {
@@ -78,11 +78,11 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 	//post save the result to db
 	ret, err = a.Func(in)
 	if a.ResultSaver != nil && err == nil {
-		_ = a.ResultSaver(in, ret.(o), _map)
+		_ = a.ResultSaver(in, ret.(o))
 	}
 	//modify the result value to the web client.
 	if a.ResponseModifier != nil {
-		ret, err = a.ResponseModifier(in, ret.(o), _map)
+		ret, err = a.ResponseModifier(in, ret.(o))
 	}
 	return ret, err
 }

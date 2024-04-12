@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// this is to be used in MixinParamEnhancer, to quickly fix key & value
+// this is to be used in HookParamEnhancer, to quickly fix key & value
 func ReplaceTagsInKeyField(key string, field string, paramTable map[string]interface{}) (string, string) {
 	for tag, value := range paramTable {
 		if vstr, ok := value.(string); ok {
@@ -19,20 +19,20 @@ func ReplaceTagsInKeyField(key string, field string, paramTable map[string]inter
 	return key, field
 }
 
-func (ctx *Context[i, o]) MixinParamEnhancer(paramEnhancer func(param i) (out i, err error)) *Context[i, o] {
+func (ctx *Context[i, o]) HookParamEnhancer(paramEnhancer func(param i) (out i, err error)) *Context[i, o] {
 	ctx.ParamEnhancer = paramEnhancer
 	return ctx
 }
 
-// MixinResultSaver is a mixin function to save result to db
+// HookResultSaver is a hook function to save result to db
 // The resultSaver is a function used to save the result excuted by the service. & response the value to the web client. (hide the fields if you need)
-func (ctx *Context[i, o]) MixinResultSaver(resultSaver func(param i, ret o) (err error)) *Context[i, o] {
+func (ctx *Context[i, o]) HookResultSaver(resultSaver func(param i, ret o) (err error)) *Context[i, o] {
 	ctx.ResultSaver = resultSaver
 	return ctx
 }
 
-// MixinResponseModifier is a mixin function to modify the response  value to the web client.
-func (ctx *Context[i, o]) MixinResponseModifier(ResponseModifier func(param i, ret o) (valueToWebclient interface{}, err error)) *Context[i, o] {
+// HookResponseModifier is a hook function to modify the response  value to the web client.
+func (ctx *Context[i, o]) HookResponseModifier(ResponseModifier func(param i, ret o) (valueToWebclient interface{}, err error)) *Context[i, o] {
 	ctx.ResponseModifier = ResponseModifier
 	return ctx
 }
