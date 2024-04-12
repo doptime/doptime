@@ -8,14 +8,14 @@ type ApiOption struct {
 
 var Option *ApiOption
 
-func (o *ApiOption) WithApiRds(ApiDataSourceRds string) (out *ApiOption) {
+func (o *ApiOption) WithSourceRds(ApiSourceRds string) (out *ApiOption) {
 	if out = o; o == Option {
 		out = &ApiOption{}
 	}
-	out.ApiSourceRds = ApiDataSourceRds
+	out.ApiSourceRds = ApiSourceRds
 	return out
 }
-func (o *ApiOption) WithApiHttp(ApiSourceHttp string) (out *ApiOption) {
+func (o *ApiOption) WithSourceHttp(ApiSourceHttp string) (out *ApiOption) {
 	if out = o; o == Option {
 		out = &ApiOption{}
 	}
