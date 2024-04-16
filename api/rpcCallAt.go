@@ -9,6 +9,7 @@ import (
 
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/specification"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
@@ -17,7 +18,7 @@ import (
 // This New function is for the case the API is defined outside of this package.
 // If the API is defined in this package, use Api() instead.
 // timeAt is ID of the task. if you want's to cancel the task, you should provide the same timeAt
-func CallAt[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time) (retf func(InParam i) (err error)) {
+func CallAt[i any, o any](f func(InParam i) (ret o, err error)) (callAtFun func(timeAt time.Time, InParam i) (err error)) {
 	var (
 		db      *redis.Client
 		err     error
@@ -35,7 +36,7 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time
 		return nil
 	}
 
-	retf = func(InParam i) (err error) {
+	callAtFun = func(timeAt time.Time, InParam i) (err error) {
 		var (
 			b      []byte
 			cmd    *redis.StringCmd
@@ -54,5 +55,12 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error), timeAt time.Time
 		return nil
 
 	}
-	return retf
+	callAtfun2Api.Set(reflect.ValueOf(callAtFun).Pointer(), apiInfo)
+	return callAtFun
 }
+
+var callAtfun2Api cmap.ConcurrentMap[uintptr, ApiInterface] = cmap.NewWithCustomShardingFunction[uintptr, ApiInterface](func(key uintptr) uint32 {
+	hash := uint32(2166136261)
+	const prime32 = uint32(16777619)
+	return ((hash*prime32)^uint32(key))*prime32 ^ uint32(key>>32)
+})
