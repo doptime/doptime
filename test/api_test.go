@@ -56,6 +56,8 @@ func TestRPC(t *testing.T) {
 
 }
 
+var callDemoAt = api.CallAt(DemoRpc)
+
 func TestCallAt(t *testing.T) {
 	var (
 		err   error
@@ -65,9 +67,7 @@ func TestCallAt(t *testing.T) {
 
 	fmt.Println("Demo api is calling with InParam:" + param.Text + " run at " + now.String())
 
-	callAt := api.CallAt(DemoRpc, now.Add(time.Second*10))
-
-	if err = callAt(param); err != nil {
+	if err = callDemoAt(now.Add(time.Second*10), param); err != nil {
 		t.Error(err)
 	}
 	time.Sleep(15 * time.Second)
@@ -78,14 +78,12 @@ func TestCallAtCancel(t *testing.T) {
 		now   time.Time = time.Now()
 		param           = &Demo1{Text: "TestCallAt 10s later"}
 	)
-	timeToRun := time.Now().Add(time.Second * 10)
-	callAt := api.CallAt(DemoRpc, timeToRun)
 	fmt.Println("Demo api is calling with InParam:" + param.Text + " run at " + now.String())
-
-	if err = callAt(param); err != nil {
+	timeToRun := now.Add(time.Second * 10)
+	if err = callDemoAt(timeToRun, param); err != nil {
 		t.Error(err)
 	}
-	if err = api.CallAtCancel(DemoRpc, timeToRun); err != nil {
+	if err = api.CallAtCancel(callDemoAt, timeToRun); err != nil {
 		t.Error("cancel failed")
 	}
 	time.Sleep(30 * time.Second)

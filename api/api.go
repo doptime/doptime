@@ -9,7 +9,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...*ApiOption) (out *Context[i, o]) {
+func Api[i any, o any](
+	f func(InParameter i) (ret o, err error),
+	options ...*ApiOption,
+) (out *Context[i, o]) {
 	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default"}, options...)
 
 	out = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
