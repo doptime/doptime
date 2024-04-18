@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -45,8 +44,10 @@ func LoadConfig_FromWeb() {
 		log.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb failed")
 	}
 	defer writer.Close()
-	if _, err = io.Copy(writer, resp.Body); err != nil {
-		log.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb failed")
+
+	//write the configuration to the file
+	if toml.NewEncoder(writer).Encode(_Cfg); err != nil {
+		log.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb unable to save to toml file")
 	}
 
 	//restore the configUrl, to prevent url drift, which is hard to trace
