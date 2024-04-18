@@ -45,7 +45,10 @@ func httpStart(path string, port int64) {
 			httpStatus = http.StatusInternalServerError
 		} else if operation, err = svcCtx.KeyFieldAtJwt(); err != nil {
 			httpStatus = http.StatusInternalServerError
-		} else if !permission.IsPermitted(svcCtx.Key, operation) {
+		} else if svcCtx.SUToken != "" && config.Cfg.Settings.SUToken != svcCtx.SUToken {
+			httpStatus = http.StatusForbidden
+			err = ErrSUNotMatch
+		} else if svcCtx.SUToken == "" && !permission.IsPermitted(svcCtx.Key, operation) {
 			httpStatus = http.StatusForbidden
 			err = ErrOperationNotPermited
 		} else if svcCtx.Cmd == "API" {

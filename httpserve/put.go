@@ -1,13 +1,8 @@
 package httpserve
 
 import (
-	"errors"
-
 	"github.com/redis/go-redis/v9"
 )
-
-var ErrEmptyKeyOrField = errors.New("empty key or field")
-var ErrOperationNotPermited = errors.New("operation permission denied")
 
 func (svcCtx *HttpContext) PutHandler(rds *redis.Client) (data interface{}, err error) {
 	//use remote service map to handle request

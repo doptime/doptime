@@ -27,3 +27,4 @@ ConfigUrl = ""
 
 [Setting]
   LogLevel = 1
+  SUToken = ""

@@ -20,9 +20,10 @@ type HttpContext struct {
 	Ctx             context.Context
 	RedisDataSource string
 	// case get
-	Cmd   string
-	Key   string
-	Field string
+	Cmd     string
+	Key     string
+	Field   string
+	SUToken string
 
 	ResponseContentType string
 }
@@ -65,6 +66,8 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 			svcContext.ResponseContentType = param[3:]
 		case "ds~": //redis db name RDB=redisDataSource
 			svcContext.RedisDataSource = param[3:]
+		case "su~": //super user token
+			svcContext.SUToken = param[3:]
 		}
 	}
 	return svcContext, nil

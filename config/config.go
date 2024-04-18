@@ -45,6 +45,8 @@ type ApiSourceHttp struct {
 type ConfigSettings struct {
 	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
 	LogLevel int8
+	//super user token, this is used to bypass the security check
+	SUToken string
 }
 
 type Configuration struct {
@@ -84,6 +86,7 @@ func (c Configuration) String() string {
 	for _, rpc := range c1.HttpRPC {
 		rpc.Jwt = HideCharsButLat4(rpc.Jwt)
 	}
+	c1.Settings.SUToken = HideCharsButLat4(c1.Settings.SUToken)
 	//convert c1 to json string
 	jsonstr, _ := json.Marshal(c1)
 	return string(jsonstr)
