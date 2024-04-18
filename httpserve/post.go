@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/doptime/doptime/data"
-	"github.com/doptime/doptime/permission"
 	"github.com/redis/go-redis/v9"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -13,17 +12,6 @@ import (
 var ErrBadCommand = errors.New("error bad command")
 
 func (svcCtx *HttpContext) PostHandler() (ret interface{}, err error) {
-	//use remote service map to handle request
-	var (
-		operation string
-	)
-
-	if operation, err = svcCtx.KeyFieldAtJwt(); err != nil {
-		return "", err
-	}
-	if !permission.IsPermitted(svcCtx.Key, operation) {
-		return "false", ErrOperationNotPermited
-	}
 
 	//db := &data.Ctx{Ctx: svcCtx.Ctx, Rds: config.Rds, Key: svcCtx.Key}
 	db := data.New[interface{}, interface{}](data.Option.WithKey(svcCtx.Key).WithRds(svcCtx.RedisDataSource))
