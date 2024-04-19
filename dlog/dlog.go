@@ -16,22 +16,7 @@ var RdsClientToLog *redis.Client = nil
 
 func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 
-	key := "doptimelog:" + getMachineName() + ":"
-	if level == zerolog.DebugLevel {
-		key += "debug"
-	} else if level == zerolog.InfoLevel {
-		key += "info"
-	} else if level == zerolog.WarnLevel {
-		key += "warn"
-	} else if level == zerolog.ErrorLevel {
-		key += "error"
-	} else if level == zerolog.FatalLevel {
-		key += "fatal"
-	} else if level == zerolog.PanicLevel {
-		key += "panic"
-	} else {
-		key += "nolevel"
-	}
+	key := "doptimelog:" + getMachineName()
 	if RdsClientToLog != nil {
 		RdsClientToLog.ZAdd(context.Background(), key, redis.Z{Score: float64(time.Now().UnixNano()), Member: string(p)})
 	}
