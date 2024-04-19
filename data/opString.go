@@ -11,7 +11,7 @@ func (ctx *Ctx[k, v]) GetAll(match string) (mapOut map[k]v, err error) {
 		keys []string = []string{match}
 		val  []byte
 	)
-	if keys, err = ctx.Scan(match, 0, 1024*1024*1024); err != nil {
+	if keys, _, err = ctx.Scan(0, match, 1024*1024*1024); err != nil {
 		return nil, err
 	}
 	mapOut = make(map[k]v, len(keys))

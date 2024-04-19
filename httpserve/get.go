@@ -152,6 +152,27 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		return db.ZCount(svcCtx.Req.FormValue("Min"), svcCtx.Req.FormValue("Max"))
 	case "ZSCORE":
 		return db.ZScore(svcCtx.Req.FormValue("Member"))
+	case "SCAN":
+		var (
+			cursor uint64
+			Count  int64
+			keys   []string
+			Match  string
+		)
+		if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
+			return "", errors.New("parse cursor error:" + err.Error())
+		}
+		if Count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+			return "", errors.New("parse count error:" + err.Error())
+		}
+		if Match = svcCtx.Req.FormValue("Match"); Match == "" {
+			return "", errors.New("no Match")
+		}
+		if keys, cursor, err = db.Scan(cursor, Match, Count); err != nil {
+			return "", err
+		}
+		return json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+
 	//case default
 	default:
 		return nil, ErrBadCommand
