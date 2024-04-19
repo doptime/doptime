@@ -3,7 +3,7 @@ package specification
 import (
 	"reflect"
 
-	"github.com/rs/zerolog/log"
+	"github.com/doptime/doptime/dlog"
 )
 
 var DisAllowedDataKeyNames = map[string]bool{
@@ -33,7 +33,7 @@ func GetValidDataKeyName(value interface{}, Key *string) (isValidName bool) {
 		*Key = _type.Name()
 	}
 	if _, ok := DisAllowedDataKeyNames[*Key]; ok {
-		log.Error().Str("service misnamed", *Key).Send()
+		dlog.Error().Str("service misnamed", *Key).Send()
 		return false
 	}
 	return true

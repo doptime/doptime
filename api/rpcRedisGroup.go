@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/dlog"
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 )
 
 func defaultXReadGroupArgs(serviceNames []string) *redis.XReadGroupArgs {
@@ -35,14 +35,14 @@ func XGroupEnsureCreatedOneGroup(c context.Context, serviceName string, rds *red
 	//if stream key does not exist, create a placeholder stream
 	//other wise, NOGROUP No such key will be returned
 	if cmdStream = rds.XInfoStream(c, serviceName); cmdStream.Err() != nil {
-		log.Info().AnErr("XInfoStream not exist", cmdStream.Err()).Str("try recreating stream", serviceName).Send()
+		dlog.Info().AnErr("XInfoStream not exist", cmdStream.Err()).Str("try recreating stream", serviceName).Send()
 		//create a placeholder stream
 		if cmd := rds.XAdd(c, &redis.XAddArgs{Stream: serviceName, MaxLen: 4096, Values: []string{"data", ""}}); cmd.Err() != nil {
-			log.Info().AnErr("XAdd err in recreating stream while XGroupEnsureCreatedOneGroup", cmd.Err()).Send()
+			dlog.Info().AnErr("XAdd err in recreating stream while XGroupEnsureCreatedOneGroup", cmd.Err()).Send()
 			return cmd.Err()
 		}
 	} else {
-		log.Info().Str("XInfoStream success, key already exists", serviceName).Send()
+		dlog.Info().Str("XInfoStream success, key already exists", serviceName).Send()
 	}
 	//continue if the group already exists
 	if cmdXInfoGroups = rds.XInfoGroups(c, serviceName); cmdXInfoGroups.Err() == nil && len(cmdXInfoGroups.Val()) > 0 {
@@ -52,17 +52,17 @@ func XGroupEnsureCreatedOneGroup(c context.Context, serviceName string, rds *red
 			}
 			groups = append(groups, group.Name)
 		}
-		log.Info().Str("existing groups :", strings.Join(groups, ",")).Any("group0 exists", group0Exists).Send()
+		dlog.Info().Str("existing groups :", strings.Join(groups, ",")).Any("group0 exists", group0Exists).Send()
 		if group0Exists {
 			return nil
 		}
 	}
 	//create a group if none exists
 	if cmd := rds.XGroupCreateMkStream(c, serviceName, "group0", "$"); cmd.Err() != nil {
-		log.Info().AnErr("XGroupCreateOne", cmd.Err()).Send()
+		dlog.Info().AnErr("XGroupCreateOne", cmd.Err()).Send()
 		return cmd.Err()
 	}
-	log.Info().Str("XGroupCreateOne success", serviceName).Send()
+	dlog.Info().Str("XGroupCreateOne success", serviceName).Send()
 	return nil
 
 }

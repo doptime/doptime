@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/dlog"
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 )
 
 type TaskAtFuture struct {
@@ -29,7 +29,7 @@ func rpcCallAtTaskRemoveOne(serviceName string, timeAtStr string) {
 		err          error
 	)
 	if TimeAtUnixNs, err = strconv.ParseInt(timeAtStr, 10, 64); err != nil {
-		log.Info().Err(err).Send()
+		dlog.Info().Err(err).Send()
 		return
 	}
 
@@ -52,11 +52,11 @@ func rpcCallAtTaskAddOne(serviceName string, timeAtStr string, bytesValue string
 	)
 	task := &TaskAtFuture{ServiceName: serviceName}
 	if task.TimeAtUnixNs, err = strconv.ParseInt(timeAtStr, 10, 64); err != nil {
-		log.Info().Err(err).Send()
+		dlog.Info().Err(err).Send()
 		return
 	}
 	if cmd := rds.HSet(context.Background(), serviceName+":delay", timeAtStr, bytesValue); cmd.Err() != nil {
-		log.Info().Err(cmd.Err()).Send()
+		dlog.Info().Err(cmd.Err()).Send()
 		return
 	}
 	index := sort.Search(len(TasksAtFutureList), func(i int) bool { return TasksAtFutureList[i].TimeAtUnixNs < task.TimeAtUnixNs })
@@ -98,7 +98,7 @@ func rpcCallAtDispatcher() {
 		pipeline.HGet(context.Background(), task.ServiceName+":delay", strTime)
 		pipeline.HDel(context.Background(), task.ServiceName+":delay", strTime)
 		if cmd, err = pipeline.Exec(context.Background()); err != nil {
-			log.Info().Err(err).Send()
+			dlog.Info().Err(err).Send()
 			continue
 		} else if len(cmd) != 2 || cmd[1].Err() != nil {
 			continue
@@ -118,7 +118,7 @@ func rpcCallAtTasksLoad() {
 		err        error
 		rds        *redis.Client
 	)
-	log.Info().Msg("rpcCallAtTasksLoading started")
+	dlog.Info().Msg("rpcCallAtTasksLoading started")
 	var _TasksAtFutureList = []*TaskAtFuture{}
 	for _, dataSource := range APIGroupByRdsToReceiveJob.Keys() {
 		services, ok := APIGroupByRdsToReceiveJob.Get(dataSource)
@@ -126,7 +126,7 @@ func rpcCallAtTasksLoad() {
 			continue
 		}
 		if rds, err = config.GetRdsClientByName(dataSource); err != nil {
-			log.Info().AnErr("err LoadDelayApiTask, ", err).Send()
+			dlog.Info().AnErr("err LoadDelayApiTask, ", err).Send()
 			continue
 		}
 		pipeline := rds.Pipeline()
@@ -134,7 +134,7 @@ func rpcCallAtTasksLoad() {
 			pipeline.HKeys(context.Background(), service+":delay")
 		}
 		if cmd, err = pipeline.Exec(context.Background()); err != nil {
-			log.Info().AnErr("err LoadDelayApiTask, ", err).Send()
+			dlog.Info().AnErr("err LoadDelayApiTask, ", err).Send()
 			continue
 		}
 
@@ -157,7 +157,7 @@ func rpcCallAtTasksLoad() {
 	mut.Lock()
 	TasksAtFutureList = _TasksAtFutureList
 	mut.Unlock()
-	log.Info().Msg("rpcCallAtTasksLoading completed")
+	dlog.Info().Msg("rpcCallAtTasksLoading completed")
 }
 func init() {
 	go func() {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/doptime/doptime/api"
 	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/dlog"
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 )
 
 type InLockKey struct {
@@ -26,7 +26,7 @@ var ApiLockKey = api.Api(func(req *InLockKey) (ok bool, err error) {
 		rds    *redis.Client
 	)
 	if rds, err = config.GetRdsClientByName("default"); err != nil {
-		log.Error().Err(err).Str("DataSource name not defined in enviroment while calling ApiLockKey", "default").Send()
+		dlog.Error().Err(err).Str("DataSource name not defined in enviroment while calling ApiLockKey", "default").Send()
 		return false, err
 	}
 	if score, err = rds.ZScore(context.Background(), "KeyLocker", req.Key).Result(); err != nil {

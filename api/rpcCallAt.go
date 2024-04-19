@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 )
 
 // create Api context.
@@ -28,11 +28,11 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error)) (callAtFun func(
 	)
 	funcPtr := reflect.ValueOf(f).Pointer()
 	if apiInfo, ok = GetApiByFunc(funcPtr); !ok {
-		log.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
+		dlog.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
 	}
 	dataSource, apiName := apiInfo.GetDataSource(), apiInfo.GetName()
 	if db, err = config.GetRdsClientByName(dataSource); err != nil {
-		log.Info().Str("DataSource not defined in enviroment", dataSource).Send()
+		dlog.Info().Str("DataSource not defined in enviroment", dataSource).Send()
 		return nil
 	}
 
@@ -49,7 +49,7 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error)) (callAtFun func(
 		Values = []string{"timeAt", strconv.FormatInt(timeAt.UnixNano(), 10), "data", string(b)}
 		args := &redis.XAddArgs{Stream: apiName, Values: Values, MaxLen: 4096}
 		if cmd = db.XAdd(ctx, args); cmd.Err() != nil {
-			log.Info().AnErr("Do XAdd", cmd.Err()).Send()
+			dlog.Info().AnErr("Do XAdd", cmd.Err()).Send()
 			return cmd.Err()
 		}
 		return nil

@@ -2,10 +2,10 @@ package api
 
 import (
 	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 )
 
 var ApiServices cmap.ConcurrentMap[string, ApiInterface] = cmap.New[ApiInterface]()
@@ -13,7 +13,7 @@ var ApiServices cmap.ConcurrentMap[string, ApiInterface] = cmap.New[ApiInterface
 func GetApiByName(serviceName string) (apiInfo ApiInterface, ok bool) {
 	var stdServiceName string
 	if stdServiceName = specification.ApiName(serviceName); len(stdServiceName) == 0 {
-		log.Error().Str("service misnamed", stdServiceName).Send()
+		dlog.Error().Str("service misnamed", stdServiceName).Send()
 		return nil, false
 	}
 	return ApiServices.Get(stdServiceName)
@@ -26,7 +26,7 @@ func GetServiceDB(serviceName string) (db *redis.Client) {
 	serviceInfo, _ := ApiServices.Get(serviceName)
 	DataSource := serviceInfo.GetDataSource()
 	if db, err = config.GetRdsClientByName(DataSource); err != nil {
-		log.Panic().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
+		dlog.Panic().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
 	}
 	return db
 }

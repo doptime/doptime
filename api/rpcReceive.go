@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/dlog"
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -36,12 +36,12 @@ func rpcReceive() {
 	)
 	for _, dataSource := range APIGroupByRdsToReceiveJob.Keys() {
 		if services, ok = APIGroupByRdsToReceiveJob.Get(dataSource); !ok {
-			log.Error().Str("dataSource missing in APIGroupByRdsToReceiveJob", dataSource).Send()
+			dlog.Error().Str("dataSource missing in APIGroupByRdsToReceiveJob", dataSource).Send()
 			continue
 		}
 
 		if rds, err = config.GetRdsClientByName(dataSource); err != nil {
-			log.Error().Str("dataSource missing in rpcReceive", dataSource).Send()
+			dlog.Error().Str("dataSource missing in rpcReceive", dataSource).Send()
 			continue
 		}
 		go rpcReceiveOneDatasource(services, rds)
@@ -64,15 +64,15 @@ func rpcReceiveOneDatasource(serviceNames []string, rds *redis.Client) {
 		if cmd = rds.XReadGroup(c, args); cmd.Err() == redis.Nil {
 			continue
 		} else if cmd.Err() != nil {
-			log.Error().AnErr("rpcReceiveError", cmd.Err()).Send()
+			dlog.Error().AnErr("rpcReceiveError", cmd.Err()).Send()
 			//ensure the stream is created
 			if items := strings.Split(cmd.Err().Error(), "api:"); len(items) > 1 {
 				if items2 := strings.Split("api:"+items[1], "'"); len(items2) > 1 {
-					log.Info().Str("starting XGroupEnsureCreatedOneGroup", items2[0]).Send()
+					dlog.Info().Str("starting XGroupEnsureCreatedOneGroup", items2[0]).Send()
 					go XGroupEnsureCreatedOneGroup(c, items2[0], rds)
 				}
 			} else {
-				log.Error().AnErr("No API name Captured between No such key 'xxx'", cmd.Err()).Send()
+				dlog.Error().AnErr("No API name Captured between No such key 'xxx'", cmd.Err()).Send()
 			}
 
 			time.Sleep(time.Second)
@@ -126,7 +126,7 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 	ctx := context.Background()
 	DataSource := service.GetDataSource()
 	if rds, err = config.GetRdsClientByName(DataSource); err != nil {
-		log.Error().Str("DataSource not defined in enviroment while CallApiLocallyAndSendBackResult", DataSource).Send()
+		dlog.Error().Str("DataSource not defined in enviroment while CallApiLocallyAndSendBackResult", DataSource).Send()
 		return fmt.Errorf("DataSource not defined in enviroment %s", DataSource)
 	}
 	pipline := rds.Pipeline()

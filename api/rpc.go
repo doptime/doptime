@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -44,12 +44,12 @@ func Rpc[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 		// 	Values = []string{"data", string(b)}
 		// }
 		if db, err = config.GetRdsClientByName(rpc.ApiSourceRds); err != nil {
-			log.Info().Str("DataSource not defined in enviroment", rpc.ApiSourceRds).Send()
+			dlog.Info().Str("DataSource not defined in enviroment", rpc.ApiSourceRds).Send()
 			return ret, err
 		}
 		args := &redis.XAddArgs{Stream: rpc.Name, Values: Values, MaxLen: 4096}
 		if cmd = db.XAdd(rpc.Ctx, args); cmd.Err() != nil {
-			log.Info().AnErr("Do XAdd", cmd.Err()).Send()
+			dlog.Info().AnErr("Do XAdd", cmd.Err()).Send()
 			return ret, cmd.Err()
 		}
 		// if hashCallAt {

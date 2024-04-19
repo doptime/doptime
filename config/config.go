@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/doptime/doptime/dlog"
 	"github.com/go-ping/ping"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 type ConfigHttp struct {
@@ -131,19 +131,19 @@ func GetHttpServerByName(name string) (server *ApiSourceHttp, err error) {
 }
 
 func init() {
-	log.Info().Msg("Step1.0: App Start! load config from OS env")
+	dlog.Info().Msg("Step1.0: App Start! load config from OS env")
 	//step1: load config from file
 	LoadConfig_FromFile()
-	log.Info().Str("Step1.1.1 Current config after apply config.toml", Cfg.String()).Send()
+	dlog.Info().Str("Step1.1.1 Current config after apply config.toml", Cfg.String()).Send()
 	//step2: load config from env. this will overwrite the config from file
 	//step3: load config from web. this will overwrite the config from env.
 	//warning local config will be overwritten by the config from web, to prevent falldown of config from web.
 	LoadConfig_FromWeb()
-	log.Info().Str("Step1.1.2 Current config after apply web config toml", Cfg.String()).Send()
+	dlog.Info().Str("Step1.1.2 Current config after apply web config toml", Cfg.String()).Send()
 
 	zerolog.SetGlobalLevel(zerolog.Level(Cfg.Settings.LogLevel))
 
-	log.Info().Str("Step1.2 Checking Redis", "Start").Send()
+	dlog.Info().Str("Step1.2 Checking Redis", "Start").Send()
 
 	for _, rdsCfg := range Cfg.Redis {
 		//apply configuration
@@ -160,27 +160,29 @@ func init() {
 		rdsClient := redis.NewClient(redisOption)
 		//test connection
 		if _, err := rdsClient.Ping(context.Background()).Result(); err != nil {
-			log.Fatal().Err(err).Any("Step1.3 Redis server ping error", rdsCfg.Host).Send()
+			dlog.Fatal().Err(err).Any("Step1.3 Redis server ping error", rdsCfg.Host).Send()
 			return //if redis server is not valid, exit
 		}
 		//save to the list
-		log.Info().Str("Step1.3 Redis Load ", "Success").Any("RedisUsername", rdsCfg.Username).Any("RedisHost", rdsCfg.Host).Any("RedisPort", rdsCfg.Port).Send()
+		dlog.Info().Str("Step1.3 Redis Load ", "Success").Any("RedisUsername", rdsCfg.Username).Any("RedisHost", rdsCfg.Host).Any("RedisPort", rdsCfg.Port).Send()
 		rds[rdsCfg.Name] = rdsClient
 		timeCmd := rdsClient.Time(context.Background())
-		log.Info().Any("Step1.4 Redis server time: ", timeCmd.Val().String()).Send()
+		dlog.Info().Any("Step1.4 Redis server time: ", timeCmd.Val().String()).Send()
 		//ping the address of redisAddress, if failed, print to log
 		pingServer(rdsCfg.Host)
 
 	}
 	//check if default redis is set
-	if _, ok := rds["default"]; !ok {
-		log.Warn().Msg("Step1.0 \"default\" redis server missing in Configuration. RPC will can not be received. Please ensure this is what your want")
+	if rds, ok := rds["default"]; !ok {
+		dlog.Warn().Msg("Step1.0 \"default\" redis server missing in Configuration. RPC will can not be received. Please ensure this is what your want")
 		return
+	} else {
+		dlog.RdsClientToLog = rds
 	}
 	for _, rpc := range Cfg.HttpRPC {
 		httpRpc[rpc.Name] = rpc
 	}
-	log.Info().Msg("Step1.E: App loaded done")
+	dlog.Info().Msg("Step1.E: App loaded done")
 
 }
 
@@ -197,7 +199,7 @@ func pingServer(domain string) {
 	pingTaskServers = append(pingTaskServers, domain)
 
 	if pinger, err = ping.NewPinger(domain); err != nil {
-		log.Info().AnErr("Step1.5 ERROR NewPinger", err).Send()
+		dlog.Info().AnErr("Step1.5 ERROR NewPinger", err).Send()
 	}
 	pinger.Count = 4
 	pinger.Timeout = time.Second * 10
@@ -205,18 +207,18 @@ func pingServer(domain string) {
 
 	pinger.OnFinish = func(stats *ping.Statistics) {
 		// fmt.Printf("\n--- %s ping statistics ---\n", stats.Addr)
-		log.Info().Str("Step1.5 Ping ", fmt.Sprintf("--- %s ping statistics ---", stats.Addr)).Send()
+		dlog.Info().Str("Step1.5 Ping ", fmt.Sprintf("--- %s ping statistics ---", stats.Addr)).Send()
 		// fmt.Printf("%d Ping packets transmitted, %d packets received, %v%% packet loss\n",
 		// 	stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)
-		log.Info().Str("Step1.5 Ping", fmt.Sprintf("%d/%d/%v%%", stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)).Send()
+		dlog.Info().Str("Step1.5 Ping", fmt.Sprintf("%d/%d/%v%%", stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)).Send()
 
 		// fmt.Printf("Ping round-trip min/avg/max/stddev = %v/%v/%v/%v\n",
 		// 	stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)
-		log.Info().Str("Step1.5 Ping", fmt.Sprintf("%v/%v/%v/%v", stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)).Send()
+		dlog.Info().Str("Step1.5 Ping", fmt.Sprintf("%v/%v/%v/%v", stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)).Send()
 	}
 	go func() {
 		if err := pinger.Run(); err != nil {
-			log.Info().AnErr("Step1.5 ERROR Ping", err).Send()
+			dlog.Info().AnErr("Step1.5 ERROR Ping", err).Send()
 		}
 	}()
 }

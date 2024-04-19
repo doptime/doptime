@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
+	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
-	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -51,7 +51,7 @@ func RpcOverHttp[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 
 	httpServer, err := config.GetHttpServerByName(option.ApiSourceHttp)
 	if err != nil {
-		log.Info().AnErr("DataSource not defined in enviroment", err).Send()
+		dlog.Info().AnErr("DataSource not defined in enviroment", err).Send()
 		return nil
 	}
 	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceHttp: httpServer, Ctx: context.Background(),

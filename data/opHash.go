@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/doptime/doptime/dlog"
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
 )
 
 func (ctx *Ctx[k, v]) HGet(field k) (value v, err error) {
@@ -70,11 +70,11 @@ func (ctx *Ctx[k, v]) HGetAll() (mapOut map[k]v, err error) {
 	//append all data to mapOut
 	for k, v := range cmd.Val() {
 		if key, err = ctx.toKey([]byte(k)); err != nil {
-			log.Info().AnErr("HGetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+			dlog.Info().AnErr("HGetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
 		if val, err = ctx.toValue([]byte(v)); err != nil {
-			log.Info().AnErr("HGetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+			dlog.Info().AnErr("HGetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
 		mapOut[key] = val

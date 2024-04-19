@@ -1,8 +1,7 @@
 package data
 
 import (
-	"github.com/rs/zerolog/log"
-
+	"github.com/doptime/doptime/dlog"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -30,12 +29,12 @@ func (ctx *Ctx[k, v]) GetAll(match string) (mapOut map[k]v, err error) {
 
 		k, err := ctx.toKey([]byte(key))
 		if err != nil {
-			log.Info().AnErr("GetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+			dlog.Info().AnErr("GetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
 		v, err := ctx.toValue(val)
 		if err != nil {
-			log.Info().AnErr("GetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+			dlog.Info().AnErr("GetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
 		mapOut[k] = v

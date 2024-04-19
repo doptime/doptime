@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/rs/zerolog/log"
+	"github.com/doptime/doptime/dlog"
 )
 
 var DisAllowedServiceNames = map[string]bool{
@@ -35,7 +35,7 @@ func ApiName(ServiceName string) string {
 	var ServiceNameLowercase string
 	//remove  prefix. "api:" is the case of encoded service name. other wise for the case of parameter type name
 	if ServiceNameLowercase = strings.ToLower(ServiceName); len(ServiceNameLowercase) == 0 {
-		log.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
+		dlog.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
 		return ""
 	}
 	for _, prefix := range []string{"api:", "input", "in", "req", "arg", "param", "src", "data"} {
@@ -46,7 +46,7 @@ func ApiName(ServiceName string) string {
 	}
 	//remove postfix
 	if ServiceNameLowercase = strings.ToLower(ServiceName); len(ServiceNameLowercase) == 0 {
-		log.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
+		dlog.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
 		return ""
 	}
 	for _, postfix := range []string{"input", "in", "req", "arg", "param", "src", "data"} {
@@ -57,7 +57,7 @@ func ApiName(ServiceName string) string {
 	}
 
 	if _, ok := DisAllowedServiceNames[ServiceName]; ok {
-		log.Error().Str("Service created failed when calling ApiNamed, service name disallowed", ServiceName).Send()
+		dlog.Error().Str("Service created failed when calling ApiNamed, service name disallowed", ServiceName).Send()
 		return ""
 	}
 	//first byte of ServiceName should be lower case

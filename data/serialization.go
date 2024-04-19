@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/vars"
-	"github.com/rs/zerolog/log"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -80,11 +80,11 @@ func (ctx *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []stri
 		for i := 0; i < l; i += 2 {
 			//type check, should be of type k and v
 			if key, ok = interface{}(keyValue[i]).(k); !ok {
-				log.Error().Any(" key must be of type k", key).Any("raw", keyValue[i+1]).Send()
+				dlog.Error().Any(" key must be of type k", key).Any("raw", keyValue[i+1]).Send()
 				return nil, vars.ErrInvalidField
 			}
 			if value, ok = interface{}(keyValue[i+1]).(v); !ok {
-				log.Error().Any(" value must be of type v", value).Any("raw", keyValue[i+1]).Send()
+				dlog.Error().Any(" value must be of type v", value).Any("raw", keyValue[i+1]).Send()
 				return nil, vars.ErrInvalidField
 			}
 			if strkey, err = ctx.toKeyStr(key); err != nil {

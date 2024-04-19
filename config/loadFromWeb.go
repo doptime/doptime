@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/rs/zerolog/log"
+	"github.com/doptime/doptime/dlog"
 )
 
 func LoadConfig_FromWeb() {
@@ -31,23 +31,23 @@ func LoadConfig_FromWeb() {
 	//download from the url and save to the file
 	httpClient := &http.Client{Timeout: time.Second * 6}
 	if resp, err = httpClient.Get(configUrl); err != nil {
-		log.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb failed")
+		dlog.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb failed")
 	}
 	defer resp.Body.Close()
 	if _, err = toml.NewDecoder(resp.Body).Decode(&_Cfg); err != nil {
-		log.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb failed")
+		dlog.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb failed")
 	}
 
 	//save to the file
 	localConfigFile := GetConfigFilePath()("/config.toml")
 	if writer, err = os.OpenFile(localConfigFile, os.O_CREATE|os.O_WRONLY, 0644); err != nil {
-		log.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb failed")
+		dlog.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb failed")
 	}
 	defer writer.Close()
 
 	//write the configuration to the file
 	if toml.NewEncoder(writer).Encode(_Cfg); err != nil {
-		log.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb unable to save to toml file")
+		dlog.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb unable to save to toml file")
 	}
 
 	//restore the configUrl, to prevent url drift, which is hard to trace

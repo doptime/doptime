@@ -4,9 +4,9 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	"github.com/doptime/doptime/vars"
-	"github.com/rs/zerolog/log"
 )
 
 func Api[i any, o any](
@@ -22,9 +22,9 @@ func Api[i any, o any](
 	}
 
 	if len(out.Name) == 0 {
-		log.Debug().Msg("ApiNamed service created failed!")
+		dlog.Debug().Msg("ApiNamed service created failed!")
 		out.Func = func(InParameter i) (ret o, err error) {
-			log.Warn().Str("service misnamed", out.Name).Send()
+			dlog.Warn().Str("service misnamed", out.Name).Send()
 			return ret, vars.ErrApiNameEmpty
 		}
 	}
@@ -38,6 +38,6 @@ func Api[i any, o any](
 	apis = append(apis, out.Name)
 	APIGroupByRdsToReceiveJob.Set(out.ApiSourceRds, apis)
 
-	log.Debug().Str("ApiNamed service created completed!", out.Name).Send()
+	dlog.Debug().Str("ApiNamed service created completed!", out.Name).Send()
 	return out
 }
