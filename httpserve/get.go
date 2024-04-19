@@ -131,6 +131,12 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		if Min, Max = svcCtx.Req.FormValue("Min"), svcCtx.Req.FormValue("Max"); Min == "" || Max == "" {
 			return "", errors.New("no Min or Max")
 		}
+		if offset, err = strconv.ParseInt(svcCtx.Req.FormValue("Offset"), 10, 64); err != nil {
+			return "", errors.New("parse offset error:" + err.Error())
+		}
+		if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+			return "", errors.New("parse count error:" + err.Error())
+		}
 		//ZREVRANGEBYSCORE key max min [WITHSCORES==true]
 		if svcCtx.Req.FormValue("WITHSCORES") == "true" {
 			if members, scores, err = db.ZRevRangeByScoreWithScores(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count}); err != nil {
