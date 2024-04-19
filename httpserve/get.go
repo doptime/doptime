@@ -1,6 +1,7 @@
 package httpserve
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -102,7 +103,8 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		return json.Marshal(members)
 	case "ZREVRANGE":
 		var (
-			start, stop int64 = 0, -1
+			start, stop      int64 = 0, -1
+			memberScoreSlice []interface{}
 		)
 		if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
 			return "", errors.New("parse start error:" + err.Error())
@@ -112,21 +114,23 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		}
 		// ZREVRANGE key start stop [WITHSCORES==true]
 		if svcCtx.Req.FormValue("WITHSCORES") == "true" {
-			var scores []float64
-			if members, scores, err = db.ZRevRangeWithScores(start, stop); err != nil {
-				return "", err
+			cmd := db.Rds.ZRevRangeWithScores(context.Background(), db.Key, start, stop)
+			if rlts, err := cmd.Result(); err != nil {
+				return "", cmd.Err()
+			} else {
+				for _, rlt := range rlts {
+					memberScoreSlice = append(memberScoreSlice, rlt.Member)
+					memberScoreSlice = append(memberScoreSlice, rlt.Score)
+				}
 			}
-			return json.Marshal(map[string]interface{}{"members": members, "scores": scores})
+			return memberScoreSlice, nil
 		}
 		// ZREVRANGE key start stop [WITHSCORES==false]
-		if members, err = db.ZRevRange(start, stop); err != nil {
-			return "", err
-		}
-		return json.Marshal(members)
+		return db.ZRevRange(start, stop)
 	case "ZREVRANGEBYSCORE":
 		var (
-			offset, count int64 = 0, -1
-			scores        []float64
+			offset, count    int64 = 0, -1
+			memberScoreSlice []interface{}
 		)
 		if Min, Max = svcCtx.Req.FormValue("Min"), svcCtx.Req.FormValue("Max"); Min == "" || Max == "" {
 			return "", errors.New("no Min or Max")
@@ -139,17 +143,20 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		}
 		//ZREVRANGEBYSCORE key max min [WITHSCORES==true]
 		if svcCtx.Req.FormValue("WITHSCORES") == "true" {
-			if members, scores, err = db.ZRevRangeByScoreWithScores(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count}); err != nil {
-				return "", err
+
+			cmd := db.Rds.ZRevRangeByScoreWithScores(context.Background(), db.Key, &redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
+			if rlts, err := cmd.Result(); err != nil {
+				return "", cmd.Err()
+			} else {
+				for _, rlt := range rlts {
+					memberScoreSlice = append(memberScoreSlice, rlt.Member)
+					memberScoreSlice = append(memberScoreSlice, rlt.Score)
+				}
 			}
-			//marshal result to json
-			return json.Marshal(map[string]interface{}{"members": members, "scores": scores})
+			return memberScoreSlice, nil
 		}
 		//ZREVRANGEBYSCORE key max min [WITHSCORES==false]
-		if members, err = db.ZRevRangeByScore(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count}); err != nil {
-			return "", err
-		}
-		return json.Marshal(members)
+		return db.ZRevRangeByScore(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
 	case "ZCARD":
 		return db.ZCard()
 	case "ZRANK":
