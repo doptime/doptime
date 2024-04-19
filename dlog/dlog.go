@@ -22,6 +22,7 @@ func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 	}
 	return dr.Write(p)
 }
+
 func (dr dWriter) Write(p []byte) (n int, err error) {
 	_, err = os.Stdout.Write(p)
 	if err != nil {

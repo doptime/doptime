@@ -8,11 +8,12 @@ import (
 
 func getMachineName() string {
 	host, _ := os.Hostname()
-	mem := runtime.MemStats{}
-	runtime.ReadMemStats(&mem)
 
-	totalMemMB := mem.TotalAlloc / 1024 / 1024 // convert bytes to MB
-	totalMemGB := totalMemMB / 1024            // convert MB to GB
+	//read system memory size
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+	totalMemMB := mem.Sys / 1024 / 1024 // convert bytes to MB
+	totalMemGB := totalMemMB / 1024     // convert MB to GB
 
 	var memStr string
 	if totalMemGB >= 1 {
