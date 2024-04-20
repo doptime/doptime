@@ -27,6 +27,13 @@ func LoadConfig_FromWeb() {
 	if !strings.HasPrefix(strings.ToLower(configUrl), "http") {
 		return
 	}
+	//reload the configuration every minute
+	defer func() {
+		go func() {
+			time.Sleep(time.Minute)
+			LoadConfig_FromWeb()
+		}()
+	}()
 
 	//download from the url and save to the file
 	httpClient := &http.Client{Timeout: time.Second * 6}
@@ -58,9 +65,4 @@ func LoadConfig_FromWeb() {
 	//apply the configuration
 	Cfg = _Cfg
 
-	//reload the configuration every minute
-	go func() {
-		time.Sleep(time.Minute)
-		LoadConfig_FromWeb()
-	}()
 }

@@ -3,8 +3,11 @@ package dlog
 import (
 	"context"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
@@ -14,16 +17,41 @@ type dWriter struct {
 
 var RdsClientToLog *redis.Client = nil
 
-func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
+var SavedText = map[string]bool{}
+var saveLogTextMutex = &sync.Mutex{} // 使用 sync.Mutex 替代通道
+var keyLogName = "doptimelog:" + getMachineName()
+var keyLogTextName = "doptimelog:" + getMachineName() + ":text"
 
-	key := "doptimelog:" + getMachineName()
+func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
+	var (
+		ok bool
+	)
+
 	if RdsClientToLog != nil {
-		RdsClientToLog.ZAdd(context.Background(), key, redis.Z{Score: float64(time.Now().UnixNano()), Member: string(p)})
+		redisPipeline := RdsClientToLog.Pipeline()
+		now := time.Now()
+		timeStr := strconv.FormatInt(now.UnixMicro(), 10)
+
+		xxhash64 := strconv.FormatUint(xxhash.Sum64(p), 10)
+
+		redisPipeline.LPush(context.Background(), keyLogName, timeStr+":"+xxhash64)
+		//keep 3000 log items only
+		redisPipeline.LTrim(context.Background(), keyLogName, -32768, -1)
+		//lock saveLogTextMutextLock to read and write SavedText
+		saveLogTextMutex.Lock()
+		if _, ok = SavedText[xxhash64]; !ok {
+			redisPipeline.HSet(context.Background(), keyLogTextName, xxhash64, p)
+			SavedText[xxhash64] = true
+		}
+		saveLogTextMutex.Unlock()
+
+		redisPipeline.Do(context.Background())
 	}
 	return dr.Write(p)
 }
 
 func (dr dWriter) Write(p []byte) (n int, err error) {
+	os.Stdout.Write([]byte(time.Now().Format("2006-01-02 15:04:05") + " "))
 	_, err = os.Stdout.Write(p)
 	if err != nil {
 		return 0, err
