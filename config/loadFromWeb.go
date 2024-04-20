@@ -56,7 +56,7 @@ func LoadConfig_FromWeb() {
 	defer writer.Close()
 
 	//write the configuration to the file
-	if toml.NewEncoder(writer).Encode(_Cfg); err != nil {
+	if err = toml.NewEncoder(writer).Encode(_Cfg); err != nil {
 		dlog.Error().Err(err).Str("Url", configUrl).Msg("LoadConfig_FromWeb unable to save to toml file")
 	}
 

@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/bits-and-blooms/bloom/v3 v3.6.0
+	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/go-ping/ping v1.1.0
 	github.com/go-playground/validator/v10 v10.19.0
 	github.com/golang-jwt/jwt/v5 v5.0.0-rc.1
@@ -18,7 +19,6 @@ require (
 
 require (
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
