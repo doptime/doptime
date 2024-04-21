@@ -35,7 +35,7 @@ func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 		xxhash64 := strconv.FormatUint(xxhash.Sum64(p), 10)
 
 		redisPipeline.LPush(context.Background(), keyLogName, timeStr+":"+xxhash64)
-		//keep 3000 log items only
+		//keep 32768 log items only
 		redisPipeline.LTrim(context.Background(), keyLogName, -32768, -1)
 		//lock saveLogTextMutextLock to read and write SavedText
 		saveLogTextMutex.Lock()
@@ -45,7 +45,7 @@ func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 		}
 		saveLogTextMutex.Unlock()
 
-		redisPipeline.Do(context.Background())
+		redisPipeline.Exec(context.Background())
 	}
 	return dr.Write(p)
 }
