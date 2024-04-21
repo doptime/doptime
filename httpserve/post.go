@@ -14,7 +14,7 @@ var ErrBadCommand = errors.New("error bad command")
 func (svcCtx *HttpContext) PostHandler() (ret interface{}, err error) {
 
 	//db := &data.Ctx{Ctx: svcCtx.Ctx, Rds: config.Rds, Key: svcCtx.Key}
-	db := data.New[interface{}, interface{}](data.Option.WithKey(svcCtx.Key).WithRds(svcCtx.RedisDataSource))
+	db := data.New[interface{}, interface{}](&data.DataOption{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 
 	//service name is stored in svcCtx.Key
 	switch svcCtx.Cmd {

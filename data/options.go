@@ -7,7 +7,7 @@ type DataOption struct {
 	DataSource string
 }
 
-var Option *DataOption
+var Option *DataOption = nil
 
 // WithKey purpose of ApiNamed is to allow different API to have the same input type
 func (o *DataOption) WithKey(key string) (out *DataOption) {

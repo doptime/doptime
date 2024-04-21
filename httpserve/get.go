@@ -19,7 +19,7 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 		members  []interface{} = []interface{}{}
 	)
 
-	db := data.New[string, interface{}](data.Option.WithKey(svcCtx.Key).WithRds(svcCtx.RedisDataSource))
+	db := data.New[string, interface{}](&data.DataOption{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 	//case Is a member of a set
 	switch svcCtx.Cmd {
 	// all data that appears in the form or body is json format, will be stored in paramIn["JsonPack"]
@@ -185,6 +185,29 @@ func (svcCtx *HttpContext) GetHandler() (ret interface{}, err error) {
 			return "", err
 		}
 		return json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+	case "LRANGE":
+		var (
+			start, stop int64 = 0, -1
+		)
+		if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
+			return "", errors.New("parse start error:" + err.Error())
+		}
+		if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
+			return "", errors.New("parse stop error:" + err.Error())
+		}
+		return db.LRange(start, stop)
+	case "LLEN":
+		return db.LLen()
+	case "LINDEX":
+		var index int64
+		if index, err = strconv.ParseInt(svcCtx.Req.FormValue("Index"), 10, 64); err != nil {
+			return "", errors.New("parse index error:" + err.Error())
+		}
+		return db.LIndex(index)
+	case "LPOP":
+		return db.LPop()
+	case "RPOP":
+		return db.RPop()
 
 	//case default
 	default:
