@@ -11,6 +11,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type dWriter struct {
@@ -40,7 +41,8 @@ func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 		//lock saveLogTextMutextLock to read and write SavedText
 		saveLogTextMutex.Lock()
 		if _, ok = SavedText[xxhash64]; !ok {
-			redisPipeline.HSet(context.Background(), keyLogTextName, xxhash64, p)
+			bytes, _ := msgpack.Marshal(p)
+			redisPipeline.HSet(context.Background(), keyLogTextName, xxhash64, bytes)
 			SavedText[xxhash64] = true
 		}
 		saveLogTextMutex.Unlock()
