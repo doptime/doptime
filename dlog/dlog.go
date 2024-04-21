@@ -32,8 +32,7 @@ func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 		redisPipeline := RdsClientToLog.Pipeline()
 		now := time.Now()
 		timeStr := strconv.FormatInt(now.UnixMicro(), 10)
-
-		xxhash64 := big.NewInt(int64(xxhash.Sum64(p))).Text(62)
+		xxhash64 := big.NewInt(int64(xxhash.Sum64(p) & 0x7FFFFFFFFFFFFFFF)).Text(62)
 
 		redisPipeline.LPush(context.Background(), keyLogName, timeStr+":"+xxhash64)
 		//keep 32768 log items only
