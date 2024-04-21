@@ -223,8 +223,53 @@ func httpStart(path string, port int64) {
 				}
 			case "LPOP":
 				result, err = db.LPop()
+			case "LPUSH":
+				result = "false"
+				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rds.LPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
+					result = "true"
+				}
+			case "LREM":
+				var count int64
+				if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse count error:"+err.Error())
+				} else if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rds.LRem(svcCtx.Ctx, svcCtx.Key, count, bs).Err(); err == nil {
+					result = "true"
+				}
+			case "LSET":
+				result = "false"
+				var index int64
+				if index, err = strconv.ParseInt(svcCtx.Req.FormValue("Index"), 10, 64); err != nil {
+					err = errors.New("parse index error:" + err.Error())
+				} else if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rds.LSet(svcCtx.Ctx, svcCtx.Key, index, bs).Err(); err == nil {
+					result = "true"
+				}
+			case "LTRIM":
+				var start, stop int64
+				if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse start error:"+err.Error())
+				} else if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse stop error:"+err.Error())
+				} else if err = rds.LTrim(svcCtx.Ctx, svcCtx.Key, start, stop).Err(); err == nil {
+					result = "true"
+				}
 			case "RPOP":
 				result, err = db.RPop()
+			case "RPUSH":
+				result = "false"
+				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rds.RPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
+					result = "true"
+				}
+
+			case "RPUSHX":
+				result = "false"
+				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rds.RPushX(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
+					result = "true"
+				}
 
 			case "ZADD":
 				var Score float64
@@ -257,13 +302,6 @@ func httpStart(path string, port int64) {
 				} else if err = rds.HSet(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, bs).Err(); err == nil {
 					result = "true"
 				}
-			case "RPUSH":
-				result = "false"
-				if bs, err = svcCtx.MsgpackBody(); err != nil {
-				} else if err = rds.RPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
-					result = "true"
-				}
-
 			case "HDEL":
 				result = "false"
 				//error if empty Key or Field
