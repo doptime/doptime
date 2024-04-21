@@ -2,6 +2,7 @@ package dlog
 
 import (
 	"context"
+	"math/big"
 	"os"
 	"strconv"
 	"sync"
@@ -32,7 +33,7 @@ func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 		now := time.Now()
 		timeStr := strconv.FormatInt(now.UnixMicro(), 10)
 
-		xxhash64 := strconv.FormatUint(xxhash.Sum64(p), 10)
+		xxhash64 := big.NewInt(int64(xxhash.Sum64(p))).Text(62)
 
 		redisPipeline.LPush(context.Background(), keyLogName, timeStr+":"+xxhash64)
 		//keep 32768 log items only
