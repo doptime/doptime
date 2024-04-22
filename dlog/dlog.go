@@ -42,8 +42,8 @@ func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 		//lock saveLogTextMutextLock to read and write SavedText
 		saveLogTextMutex.Lock()
 		if _, ok = SavedText[xxhash64]; !ok {
-			bytes, _ := msgpack.Marshal(p)
-			redisPipeline.HSet(context.Background(), keyLogTextName, xxhash64, string(bytes))
+			bytes, _ := msgpack.Marshal(string(p))
+			redisPipeline.HSet(context.Background(), keyLogTextName, xxhash64, bytes)
 			SavedText[xxhash64] = true
 		}
 		saveLogTextMutex.Unlock()
