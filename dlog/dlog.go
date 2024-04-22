@@ -22,7 +22,7 @@ var RdsClientToLog *redis.Client = nil
 var SavedText = map[string]bool{}
 var saveLogTextMutex = &sync.Mutex{} // 使用 sync.Mutex 替代通道
 var keyLogName = "doptimelog:" + getMachineName()
-var keyLogTextName = "doptimelog:" + getMachineName() + ":text"
+var keyLogTextName = "doptimelogtext:" + getMachineName()
 
 func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 	var (
@@ -32,7 +32,7 @@ func (dr dWriter) WriteLevel(level zerolog.Level, p []byte) (n int, err error) {
 	if RdsClientToLog != nil {
 		redisPipeline := RdsClientToLog.Pipeline()
 		now := time.Now()
-		timeStr := strconv.FormatInt(now.UnixMicro(), 10)
+		timeStr := strconv.FormatInt(now.UnixMilli(), 10)
 		xxhash64 := big.NewInt(int64(xxhash.Sum64(p) & 0x7FFFFFFFFFFFFFFF)).Text(62)
 
 		bytes, _ := msgpack.Marshal(timeStr + ":" + xxhash64)
