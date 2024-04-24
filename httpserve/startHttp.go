@@ -338,6 +338,38 @@ func httpStart(path string, port int64) {
 				} else if err = rds.ZRemRangeByScore(svcCtx.Ctx, svcCtx.Key, Min, Max).Err(); err == nil {
 					result = "true"
 				}
+			case "TYPE":
+				result, err = rds.Type(svcCtx.Ctx, svcCtx.Key).Result()
+			case "EXPIRE":
+				var seconds int64
+				if seconds, err = strconv.ParseInt(svcCtx.Req.FormValue("Seconds"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse seconds error:"+err.Error())
+				} else if err = rds.Expire(svcCtx.Ctx, svcCtx.Key, time.Duration(seconds)*time.Second).Err(); err == nil {
+					result = "true"
+				}
+			case "EXPIREAT":
+				var seconds int64
+				if seconds, err = strconv.ParseInt(svcCtx.Req.FormValue("Seconds"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse seconds error:"+err.Error())
+				} else if err = rds.ExpireAt(svcCtx.Ctx, svcCtx.Key, time.Now().Add(time.Duration(seconds)*time.Second)).Err(); err == nil {
+					result = "true"
+				}
+			case "PERSIST":
+				if err = rds.Persist(svcCtx.Ctx, svcCtx.Key).Err(); err == nil {
+					result = "true"
+				}
+			case "TTL":
+				result, err = rds.TTL(svcCtx.Ctx, svcCtx.Key).Result()
+			case "PTTL":
+				result, err = rds.PTTL(svcCtx.Ctx, svcCtx.Key).Result()
+			case "RENAME":
+				if newKey := svcCtx.Req.FormValue("NewKey"); newKey == "" {
+					result, err = "false", errors.New("no NewKey")
+				} else if err = rds.Rename(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
+					result = "true"
+				}
+			case "EXISTS":
+				result, err = rds.Exists(svcCtx.Ctx, svcCtx.Key).Result()
 			//case default
 			default:
 				result, err = nil, ErrBadCommand
