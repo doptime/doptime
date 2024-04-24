@@ -348,10 +348,10 @@ func httpStart(path string, port int64) {
 					result = "true"
 				}
 			case "EXPIREAT":
-				var seconds int64
-				if seconds, err = strconv.ParseInt(svcCtx.Req.FormValue("Seconds"), 10, 64); err != nil {
+				var timestamp int64
+				if timestamp, err = strconv.ParseInt(svcCtx.Req.FormValue("Timestamp"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse seconds error:"+err.Error())
-				} else if err = rds.ExpireAt(svcCtx.Ctx, svcCtx.Key, time.Now().Add(time.Duration(seconds)*time.Second)).Err(); err == nil {
+				} else if err = rds.ExpireAt(svcCtx.Ctx, svcCtx.Key, time.Unix(timestamp, 0)).Err(); err == nil {
 					result = "true"
 				}
 			case "PERSIST":
@@ -368,8 +368,92 @@ func httpStart(path string, port int64) {
 				} else if err = rds.Rename(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
 					result = "true"
 				}
+			case "RENAMEX":
+				if newKey := svcCtx.Req.FormValue("NewKey"); newKey == "" {
+					result, err = "false", errors.New("no NewKey")
+				} else if err = rds.RenameNX(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
+					result = "true"
+				}
 			case "EXISTS":
 				result, err = rds.Exists(svcCtx.Ctx, svcCtx.Key).Result()
+			case "KEYS":
+				result, err = rds.Keys(svcCtx.Ctx, svcCtx.Key).Result()
+			case "SSCAN":
+				var (
+					cursor uint64
+					count  int64
+					keys   []string
+					match  string
+				)
+				result = ""
+				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if keys, cursor, err = rds.SScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
+				} else {
+					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+				}
+			case "HSCAN":
+				var (
+					cursor uint64
+					count  int64
+					keys   []string
+					match  string
+				)
+				result = ""
+				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if keys, cursor, err = rds.HScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
+				} else {
+					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+				}
+			case "ZSCAN":
+				var (
+					cursor uint64
+					count  int64
+					keys   []string
+					match  string
+				)
+				result = ""
+				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if keys, cursor, err = rds.ZScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
+				} else {
+					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+				}
+			case "ZINCRBY":
+				var (
+					incr   float64
+					member string
+				)
+				if member = svcCtx.Req.FormValue("Member"); member == "" {
+					result, err = "false", errors.New("no Member")
+				} else if incr, err = strconv.ParseFloat(svcCtx.Req.FormValue("Incr"), 64); err != nil {
+					result, err = "false", errors.New("parse Incr error:"+err.Error())
+				} else if err = rds.ZIncrBy(svcCtx.Ctx, svcCtx.Key, incr, member).Err(); err == nil {
+					result = "true"
+				}
+			case "HINCRBY":
+				var (
+					incr int64
+				)
+				if incr, err = strconv.ParseInt(svcCtx.Req.FormValue("Incr"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse Incr error:"+err.Error())
+				} else if err = rds.HIncrBy(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
+					result = "true"
+				}
+			case "HINCRBYFLOAT":
+				var (
+					incr float64
+				)
+				if incr, err = strconv.ParseFloat(svcCtx.Req.FormValue("Incr"), 64); err != nil {
+					result, err = "false", errors.New("parse Incr error:"+err.Error())
+				} else if err = rds.HIncrByFloat(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
+					result = "true"
+				}
+
 			//case default
 			default:
 				result, err = nil, ErrBadCommand
