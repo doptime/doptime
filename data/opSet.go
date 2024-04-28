@@ -11,6 +11,10 @@ func (ctx *Ctx[k, v]) SAdd(param v) (err error) {
 	status := ctx.Rds.SAdd(ctx.Ctx, ctx.Key, valStr)
 	return status.Err()
 }
+func (ctx *Ctx[k, v]) SCard() (count int64, err error) {
+	status := ctx.Rds.SCard(ctx.Ctx, ctx.Key)
+	return status.Result()
+}
 func (ctx *Ctx[k, v]) SRem(param v) (err error) {
 	valStr, err := ctx.toValueStr(param)
 	if err != nil {

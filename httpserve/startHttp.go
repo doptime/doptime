@@ -62,6 +62,97 @@ func httpStart(path string, port int64) {
 			switch svcCtx.Cmd {
 			// all data that appears in the form or body is json format, will be stored in paramIn["JsonPack"]
 			// this is used to support 3rd party api
+			case "HLEN":
+				result, err = db.HLen()
+			case "LLEN":
+				result, err = db.LLen()
+			case "XLEN":
+				result, err = rds.XLen(svcCtx.Ctx, svcCtx.Key).Result()
+			case "ZCARD":
+				result, err = db.ZCard()
+			case "SCARD":
+				result, err = db.SCard()
+
+			case "SSCAN":
+				var (
+					cursor uint64
+					count  int64
+					keys   []string
+					match  string
+				)
+				result = ""
+				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if keys, cursor, err = rds.SScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
+				} else {
+					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+				}
+			case "HSCAN":
+				var (
+					cursor uint64
+					count  int64
+					keys   []string
+					match  string
+				)
+				result = ""
+				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if keys, cursor, err = rds.HScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
+				} else {
+					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+				}
+			case "ZSCAN":
+				var (
+					cursor uint64
+					count  int64
+					keys   []string
+					match  string
+				)
+				result = ""
+				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if keys, cursor, err = rds.ZScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
+				} else {
+					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+				}
+			case "LRANGE":
+				var (
+					start, stop int64 = 0, -1
+				)
+				if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
+					result, err = "", errors.New("parse start error:"+err.Error())
+				} else if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
+					result, err = "", errors.New("parse stop error:"+err.Error())
+				} else {
+					result, err = db.LRange(start, stop)
+				}
+			case "XRANGE":
+				var (
+					start, stop string
+				)
+				if start = svcCtx.Req.FormValue("Start"); start == "" {
+					result, err = "false", errors.New("no Start")
+				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+					result, err = "false", errors.New("no Stop")
+				} else {
+					result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
+				}
+			case "XREAD":
+				var (
+					count int64
+					block time.Duration
+				)
+				if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse count error:"+err.Error())
+				} else if block, err = time.ParseDuration(svcCtx.Req.FormValue("Block")); err != nil {
+					result, err = "false", errors.New("parse block error:"+err.Error())
+				} else {
+					result, err = rds.XRead(svcCtx.Ctx, &redis.XReadArgs{Streams: []string{svcCtx.Key, svcCtx.Req.FormValue("ID")}, Count: count, Block: block}).Result()
+				}
+
 			case "GET":
 				result, err = db.Get(svcCtx.Field)
 			case "HGET":
@@ -81,8 +172,6 @@ func httpStart(path string, port int64) {
 				} else {
 					result, err = db.HRandField(count)
 				}
-			case "HLEN":
-				result, err = db.HLen()
 			case "HVALS":
 				result, err = db.HVals()
 			case "SISMEMBER":
@@ -178,8 +267,6 @@ func httpStart(path string, port int64) {
 					//ZREVRANGEBYSCORE key max min [WITHSCORES==false]
 					result, err = db.ZRevRangeByScore(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
 				}
-			case "ZCARD":
-				result, err = db.ZCard()
 			case "ZRANK":
 				result, err = db.ZRank(svcCtx.Req.FormValue("Member"))
 			case "ZCOUNT":
@@ -201,19 +288,6 @@ func httpStart(path string, port int64) {
 				} else {
 					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
 				}
-			case "LRANGE":
-				var (
-					start, stop int64 = 0, -1
-				)
-				if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
-					result, err = "", errors.New("parse start error:"+err.Error())
-				} else if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
-					result, err = "", errors.New("parse stop error:"+err.Error())
-				} else {
-					result, err = db.LRange(start, stop)
-				}
-			case "LLEN":
-				result, err = db.LLen()
 			case "LINDEX":
 				var index int64
 				if index, err = strconv.ParseInt(svcCtx.Req.FormValue("Index"), 10, 64); err != nil {
@@ -378,51 +452,6 @@ func httpStart(path string, port int64) {
 				result, err = rds.Exists(svcCtx.Ctx, svcCtx.Key).Result()
 			case "KEYS":
 				result, err = rds.Keys(svcCtx.Ctx, svcCtx.Key).Result()
-			case "SSCAN":
-				var (
-					cursor uint64
-					count  int64
-					keys   []string
-					match  string
-				)
-				result = ""
-				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
-				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
-				} else if keys, cursor, err = rds.SScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
-				} else {
-					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
-				}
-			case "HSCAN":
-				var (
-					cursor uint64
-					count  int64
-					keys   []string
-					match  string
-				)
-				result = ""
-				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
-				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
-				} else if keys, cursor, err = rds.HScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
-				} else {
-					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
-				}
-			case "ZSCAN":
-				var (
-					cursor uint64
-					count  int64
-					keys   []string
-					match  string
-				)
-				result = ""
-				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
-				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
-				} else if keys, cursor, err = rds.ZScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err != nil {
-				} else {
-					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
-				}
 			case "ZINCRBY":
 				var (
 					incr   float64
@@ -453,17 +482,6 @@ func httpStart(path string, port int64) {
 				} else if err = rds.HIncrByFloat(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
 					result = "true"
 				}
-			case "XRANGE":
-				var (
-					start, stop string
-				)
-				if start = svcCtx.Req.FormValue("Start"); start == "" {
-					result, err = "false", errors.New("no Start")
-				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
-					result, err = "false", errors.New("no Stop")
-				} else {
-					result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
-				}
 			case "XADD":
 				var (
 					id  string
@@ -478,8 +496,6 @@ func httpStart(path string, port int64) {
 				} else if err = rds.XAdd(svcCtx.Ctx, &redis.XAddArgs{Stream: svcCtx.Key, Values: map[string]interface{}{id: obj}}).Err(); err != nil {
 					result = "false"
 				}
-			case "XLEN":
-				result, err = rds.XLen(svcCtx.Ctx, svcCtx.Key).Result()
 			case "XDEL":
 				var (
 					id string
