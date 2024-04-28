@@ -453,6 +453,44 @@ func httpStart(path string, port int64) {
 				} else if err = rds.HIncrByFloat(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
 					result = "true"
 				}
+			case "XRANGE":
+				var (
+					start, stop string
+				)
+				if start = svcCtx.Req.FormValue("Start"); start == "" {
+					result, err = "false", errors.New("no Start")
+				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+					result, err = "false", errors.New("no Stop")
+				} else {
+					result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
+				}
+			case "XADD":
+				var (
+					id  string
+					obj interface{}
+				)
+				if id = svcCtx.Req.FormValue("ID"); id == "" {
+					result, err = "false", errors.New("no ID")
+				} else if MsgPack := svcCtx.MsgpackBodyBytes(); len(MsgPack) == 0 {
+					result, err = "false", errors.New("missing MsgPack content")
+				} else if result, err = "true", msgpack.Unmarshal(MsgPack, &obj); err != nil {
+					result = "false"
+				} else if err = rds.XAdd(svcCtx.Ctx, &redis.XAddArgs{Stream: svcCtx.Key, Values: map[string]interface{}{id: obj}}).Err(); err != nil {
+					result = "false"
+				}
+			case "XLEN":
+				result, err = rds.XLen(svcCtx.Ctx, svcCtx.Key).Result()
+			case "XDEL":
+				var (
+					id string
+				)
+				if id = svcCtx.Req.FormValue("ID"); id == "" {
+					result, err = "false", errors.New("no ID")
+				} else if err = rds.XDel(svcCtx.Ctx, svcCtx.Key, id).Err(); err != nil {
+					result = "false"
+				} else {
+					result = "true"
+				}
 
 			//case default
 			default:
