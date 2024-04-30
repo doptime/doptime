@@ -85,7 +85,7 @@ func httpStart(path string, port int64) {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if keys, cursor, err = rds.SScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					result = []interface{}{keys, cursor}
+					result = map[string]interface{}{"keys": keys, "cursor": cursor}
 				}
 			case "HSCAN":
 				var (
@@ -99,7 +99,7 @@ func httpStart(path string, port int64) {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if keys, cursor, err = rds.HScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					result = []interface{}{keys, cursor}
+					result = map[string]interface{}{"keys": keys, "cursor": cursor}
 				}
 			case "ZSCAN":
 				var (
@@ -113,7 +113,7 @@ func httpStart(path string, port int64) {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if keys, cursor, err = rds.ZScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					result = []interface{}{keys, cursor}
+					result = map[string]interface{}{"keys": keys, "cursor": cursor}
 				}
 			case "LRANGE":
 				var (
