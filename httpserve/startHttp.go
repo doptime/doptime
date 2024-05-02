@@ -134,8 +134,47 @@ func httpStart(path string, port int64) {
 					result, err = "false", errors.New("no Start")
 				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
 					result, err = "false", errors.New("no Stop")
-				} else if result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result(); err == nil {
-					result = convertKeysToBytes(result.([]string))
+				} else {
+					result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
+				}
+			case "XRANGEN":
+				var (
+					start, stop string
+					n           int64
+				)
+				if start = svcCtx.Req.FormValue("Start"); start == "" {
+					result, err = "false", errors.New("no Start")
+				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+					result, err = "false", errors.New("no Stop")
+				} else if n, err = strconv.ParseInt(svcCtx.Req.FormValue("N"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse N error:"+err.Error())
+				} else {
+					result, err = rds.XRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, n).Result()
+				}
+			case "XREVRANGE":
+				var (
+					start, stop string
+				)
+				if start = svcCtx.Req.FormValue("Start"); start == "" {
+					result, err = "false", errors.New("no Start")
+				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+					result, err = "false", errors.New("no Stop")
+				} else {
+					result, err = rds.XRevRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
+				}
+			case "XREVRANGEN":
+				var (
+					start, stop string
+					n           int64
+				)
+				if start = svcCtx.Req.FormValue("Start"); start == "" {
+					result, err = "false", errors.New("no Start")
+				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+					result, err = "false", errors.New("no Stop")
+				} else if n, err = strconv.ParseInt(svcCtx.Req.FormValue("N"), 10, 64); err != nil {
+					result, err = "false", errors.New("parse N error:"+err.Error())
+				} else {
+					result, err = rds.XRevRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, n).Result()
 				}
 			case "XREAD":
 				var (
