@@ -99,7 +99,12 @@ func httpStart(path string, port int64) {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if keys, cursor, err = rds.HScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					result = map[string]interface{}{"keys": keys, "cursor": cursor}
+					var keyValues []interface{}
+					for i := 0; i < len(keys); i += 2 {
+						keyValues = append(keyValues, keys[i])
+						keyValues = append(keyValues, []byte(keys[i+1]))
+					}
+					result = map[string]interface{}{"keys": keyValues, "cursor": cursor}
 				}
 			case "ZSCAN":
 				var (
