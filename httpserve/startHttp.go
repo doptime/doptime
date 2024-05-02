@@ -140,16 +140,16 @@ func httpStart(path string, port int64) {
 			case "XRANGEN":
 				var (
 					start, stop string
-					n           int64
+					count       int64
 				)
 				if start = svcCtx.Req.FormValue("Start"); start == "" {
 					result, err = "false", errors.New("no Start")
 				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
 					result, err = "false", errors.New("no Stop")
-				} else if n, err = strconv.ParseInt(svcCtx.Req.FormValue("N"), 10, 64); err != nil {
+				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse N error:"+err.Error())
 				} else {
-					result, err = rds.XRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, n).Result()
+					result, err = rds.XRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, count).Result()
 				}
 			case "XREVRANGE":
 				var (
@@ -165,16 +165,16 @@ func httpStart(path string, port int64) {
 			case "XREVRANGEN":
 				var (
 					start, stop string
-					n           int64
+					count       int64
 				)
 				if start = svcCtx.Req.FormValue("Start"); start == "" {
 					result, err = "false", errors.New("no Start")
 				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
 					result, err = "false", errors.New("no Stop")
-				} else if n, err = strconv.ParseInt(svcCtx.Req.FormValue("N"), 10, 64); err != nil {
+				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse N error:"+err.Error())
 				} else {
-					result, err = rds.XRevRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, n).Result()
+					result, err = rds.XRevRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, count).Result()
 				}
 			case "XREAD":
 				var (
