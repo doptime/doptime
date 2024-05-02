@@ -85,7 +85,7 @@ func httpStart(path string, port int64) {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if keys, cursor, err = rds.SScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					result = map[string]interface{}{"keys": keys, "cursor": cursor}
+					result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursor}
 				}
 			case "HSCAN":
 				var (
@@ -99,12 +99,7 @@ func httpStart(path string, port int64) {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if keys, cursor, err = rds.HScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					var keyValues []interface{}
-					for i := 0; i < len(keys); i += 2 {
-						keyValues = append(keyValues, keys[i])
-						keyValues = append(keyValues, []byte(keys[i+1]))
-					}
-					result = map[string]interface{}{"keys": keyValues, "cursor": cursor}
+					result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursor}
 				}
 			case "ZSCAN":
 				var (
@@ -118,7 +113,7 @@ func httpStart(path string, port int64) {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if keys, cursor, err = rds.ZScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					result = map[string]interface{}{"keys": keys, "cursor": cursor}
+					result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursor}
 				}
 			case "LRANGE":
 				var (
@@ -128,8 +123,8 @@ func httpStart(path string, port int64) {
 					result, err = "", errors.New("parse start error:"+err.Error())
 				} else if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
 					result, err = "", errors.New("parse stop error:"+err.Error())
-				} else {
-					result, err = rds.LRange(context.Background(), svcCtx.Key, start, stop).Result()
+				} else if result, err = rds.LRange(context.Background(), svcCtx.Key, start, stop).Result(); err == nil {
+					result = convertKeysToBytes(result.([]string))
 				}
 			case "XRANGE":
 				var (
@@ -139,8 +134,8 @@ func httpStart(path string, port int64) {
 					result, err = "false", errors.New("no Start")
 				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
 					result, err = "false", errors.New("no Stop")
-				} else {
-					result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
+				} else if result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result(); err == nil {
+					result = convertKeysToBytes(result.([]string))
 				}
 			case "XREAD":
 				var (
