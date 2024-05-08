@@ -103,32 +103,9 @@ var Cfg Configuration = Configuration{
 }
 
 var ErrNoSuchRedisDB = fmt.Errorf("no such redis db")
-var rds map[string]*redis.Client = map[string]*redis.Client{}
-
-func GetRdsClientByName(name string) (rc *redis.Client, err error) {
-	var (
-		ok bool
-	)
-	if rc, ok = rds[name]; !ok {
-		return nil, ErrNoSuchRedisDB
-	}
-
-	return rc, nil
-}
-
+var Rds map[string]*redis.Client = map[string]*redis.Client{}
 var ErrNoSuchRpcServer = fmt.Errorf("no such http Rpc Server")
-var httpRpc map[string]*ApiSourceHttp = map[string]*ApiSourceHttp{}
-
-func GetHttpServerByName(name string) (server *ApiSourceHttp, err error) {
-	var (
-		ok bool
-	)
-	if server, ok = httpRpc[name]; !ok {
-		return nil, ErrNoSuchRpcServer
-	}
-
-	return server, nil
-}
+var HttpRpc map[string]*ApiSourceHttp = map[string]*ApiSourceHttp{}
 
 func init() {
 	dlog.Info().Msg("Step1.0: App Start! load config from OS env")
@@ -165,7 +142,7 @@ func init() {
 		}
 		//save to the list
 		dlog.Info().Str("Step1.3 Redis Load ", "Success").Any("RedisUsername", rdsCfg.Username).Any("RedisHost", rdsCfg.Host).Any("RedisPort", rdsCfg.Port).Send()
-		rds[rdsCfg.Name] = rdsClient
+		Rds[rdsCfg.Name] = rdsClient
 		timeCmd := rdsClient.Time(context.Background())
 		dlog.Info().Any("Step1.4 Redis server time: ", timeCmd.Val().String()).Send()
 		//ping the address of redisAddress, if failed, print to log
@@ -173,14 +150,15 @@ func init() {
 
 	}
 	//check if default redis is set
-	if rds, ok := rds["default"]; !ok {
+	if _rds, ok := Rds["default"]; !ok {
 		dlog.Warn().Msg("Step1.0 \"default\" redis server missing in Configuration. RPC will can not be received. Please ensure this is what your want")
 		return
 	} else {
-		dlog.RdsClientToLog = rds
+		Rds[""] = _rds
+		dlog.RdsClientToLog = _rds
 	}
 	for _, rpc := range Cfg.HttpRPC {
-		httpRpc[rpc.Name] = rpc
+		HttpRpc[rpc.Name] = rpc
 	}
 	dlog.Info().Msg("Step1.E: App loaded done")
 

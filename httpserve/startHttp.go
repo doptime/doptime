@@ -44,7 +44,7 @@ func httpStart(path string, port int64) {
 		defer cancel()
 		if svcCtx, err = NewHttpContext(ctx, r, w); err != nil || svcCtx == nil {
 			httpStatus = http.StatusBadRequest
-		} else if rds, err = config.GetRdsClientByName(svcCtx.RedisDataSource); err != nil {
+		} else if rds, ok = config.Rds[svcCtx.RedisDataSource]; !ok {
 			httpStatus = http.StatusInternalServerError
 		} else if operation, err = svcCtx.KeyFieldAtJwt(); err != nil {
 			httpStatus = http.StatusInternalServerError

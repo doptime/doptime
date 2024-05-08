@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
 	"time"
@@ -17,14 +18,15 @@ func CallAtCancel[i any](f func(timeAt time.Time, InParam i) (err error), timeAt
 		Rds    *redis.Client
 		api    ApiInterface
 		Values []string
-		ok     bool
+		exists bool
 	)
 	funcPtr := reflect.ValueOf(f).Pointer()
-	if api, ok = callAtfun2Api.Get(funcPtr); !ok {
+	if api, exists = callAtfun2Api.Get(funcPtr); !exists {
 		dlog.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
 	}
-	if Rds, err = config.GetRdsClientByName(api.GetDataSource()); err != nil {
-		return err
+	if Rds, exists = config.Rds[api.GetDataSource()]; !exists {
+		dlog.Info().Str("DataSource not defined in enviroment", api.GetDataSource()).Send()
+		return fmt.Errorf("DataSource not defined in enviroment")
 	}
 	Values = []string{"timeAt", strconv.FormatInt(timeAt.UnixNano(), 10), "data", ""}
 	args := &redis.XAddArgs{Stream: api.GetName(), Values: Values, MaxLen: 4096}

@@ -24,10 +24,15 @@ var mut sync.Mutex = sync.Mutex{}
 // the reason why rpc can be removed locally is that the when doing rpc. api will recheck the data. only non empty data will be processed
 func rpcCallAtTaskRemoveOne(serviceName string, timeAtStr string) {
 	var (
-		rds          *redis.Client = GetServiceDB(serviceName)
-		TimeAtUnixNs int64
-		err          error
+		rds, redisExists = GetServiceDB(serviceName)
+		TimeAtUnixNs     int64
+		err              error
 	)
+	if !redisExists {
+		dlog.Error().Str("rpcCallAtTaskRemoveOne missing redis server", serviceName).Send()
+		return
+	}
+
 	if TimeAtUnixNs, err = strconv.ParseInt(timeAtStr, 10, 64); err != nil {
 		dlog.Info().Err(err).Send()
 		return
@@ -47,9 +52,13 @@ func rpcCallAtTaskRemoveOne(serviceName string, timeAtStr string) {
 // put parameter to redis ,make it persistent
 func rpcCallAtTaskAddOne(serviceName string, timeAtStr string, bytesValue string) {
 	var (
-		rds *redis.Client = GetServiceDB(serviceName)
-		err error
+		rds, redisExists = GetServiceDB(serviceName)
+		err              error
 	)
+	if !redisExists {
+		dlog.Error().Str("rpcCallAtTaskAddOne missing redis server", serviceName).Send()
+		return
+	}
 	task := &TaskAtFuture{ServiceName: serviceName}
 	if task.TimeAtUnixNs, err = strconv.ParseInt(timeAtStr, 10, 64); err != nil {
 		dlog.Info().Err(err).Send()
@@ -72,6 +81,8 @@ func rpcCallAtDispatcher() {
 		TaskAtFutureNs, nowNs int64
 		err                   error
 		cmd                   []redis.Cmder
+		rds                   *redis.Client
+		redisExists           bool
 	)
 	for {
 		if len(TasksAtFutureList) == 0 {
@@ -93,7 +104,10 @@ func rpcCallAtDispatcher() {
 		}
 		TasksAtFutureList = TasksAtFutureList[1:]
 		strTime := strconv.FormatInt(TaskAtFutureNs, 10)
-		rds := GetServiceDB(task.ServiceName)
+		if rds, redisExists = GetServiceDB(task.ServiceName); !redisExists {
+			dlog.Error().Str("rpcCallAtDispatcher missing redis server", task.ServiceName).Send()
+			return
+		}
 		pipeline := rds.Pipeline()
 		pipeline.HGet(context.Background(), task.ServiceName+":delay", strTime)
 		pipeline.HDel(context.Background(), task.ServiceName+":delay", strTime)
@@ -117,6 +131,7 @@ func rpcCallAtTasksLoad() {
 		cmd        []redis.Cmder
 		err        error
 		rds        *redis.Client
+		exists     bool
 	)
 	dlog.Info().Msg("rpcCallAtTasksLoading started")
 	var _TasksAtFutureList = []*TaskAtFuture{}
@@ -125,7 +140,7 @@ func rpcCallAtTasksLoad() {
 		if !ok {
 			continue
 		}
-		if rds, err = config.GetRdsClientByName(dataSource); err != nil {
+		if rds, exists = config.Rds[dataSource]; !exists {
 			dlog.Info().AnErr("err LoadDelayApiTask, ", err).Send()
 			continue
 		}

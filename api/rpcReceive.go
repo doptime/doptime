@@ -31,16 +31,15 @@ func rpcReceive() {
 	var (
 		rds      *redis.Client
 		services []string
-		err      error
-		ok       bool
+		exists   bool
 	)
 	for _, dataSource := range APIGroupByRdsToReceiveJob.Keys() {
-		if services, ok = APIGroupByRdsToReceiveJob.Get(dataSource); !ok {
+		if services, exists = APIGroupByRdsToReceiveJob.Get(dataSource); !exists {
 			dlog.Error().Str("dataSource missing in APIGroupByRdsToReceiveJob", dataSource).Send()
 			continue
 		}
 
-		if rds, err = config.GetRdsClientByName(dataSource); err != nil {
+		if rds, exists = config.Rds[dataSource]; !exists {
 			dlog.Error().Str("dataSource missing in rpcReceive", dataSource).Send()
 			continue
 		}
@@ -108,9 +107,9 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 		ret           interface{}
 		service       ApiInterface
 		rds           *redis.Client
-		ok            bool
+		exists        bool
 	)
-	if service, ok = ApiServices.Get(apiName); !ok {
+	if service, exists = ApiServices.Get(apiName); !exists {
 		return fmt.Errorf("service %s not found", apiName)
 	}
 	var _map = map[string]interface{}{}
@@ -125,7 +124,7 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 	}
 	ctx := context.Background()
 	DataSource := service.GetDataSource()
-	if rds, err = config.GetRdsClientByName(DataSource); err != nil {
+	if rds, exists = config.Rds[DataSource]; !exists {
 		dlog.Error().Str("DataSource not defined in enviroment while CallApiLocallyAndSendBackResult", DataSource).Send()
 		return fmt.Errorf("DataSource not defined in enviroment %s", DataSource)
 	}

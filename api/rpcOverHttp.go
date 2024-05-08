@@ -49,9 +49,9 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 func RpcOverHttp[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceHttp: "doptime"}, options...)
 
-	httpServer, err := config.GetHttpServerByName(option.ApiSourceHttp)
-	if err != nil {
-		dlog.Info().AnErr("DataSource not defined in enviroment", err).Send()
+	httpServer, exists := config.HttpRpc[option.ApiSourceHttp]
+	if !exists {
+		dlog.Error().Str("DataSource not defined in enviroment", option.ApiSourceHttp).Send()
 		return nil
 	}
 	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceHttp: httpServer, Ctx: context.Background(),

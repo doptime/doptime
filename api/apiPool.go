@@ -19,16 +19,16 @@ func GetApiByName(serviceName string) (apiInfo ApiInterface, ok bool) {
 	return ApiServices.Get(stdServiceName)
 }
 
-func GetServiceDB(serviceName string) (db *redis.Client) {
+func GetServiceDB(serviceName string) (db *redis.Client, ok bool) {
 	var (
-		err error
+		exists bool
 	)
 	serviceInfo, _ := ApiServices.Get(serviceName)
 	DataSource := serviceInfo.GetDataSource()
-	if db, err = config.GetRdsClientByName(DataSource); err != nil {
-		dlog.Panic().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
+	if db, exists = config.Rds[DataSource]; !exists {
+		dlog.Error().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
 	}
-	return db
+	return db, exists
 }
 func apiServiceNames() (serviceNames []string) {
 	for _, serviceInfo := range ApiServices.Items() {

@@ -22,7 +22,7 @@ func New[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
 	var (
 		rds    *redis.Client
 		option *DataOption = &DataOption{}
-		err    error
+		exists bool
 	)
 	if len(ops) > 0 {
 		option = ops[0]
@@ -31,7 +31,7 @@ func New[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
 	if !specification.GetValidDataKeyName((*v)(nil), &option.Key) {
 		dlog.Panic().Str("Key is empty in Data.New", option.Key).Send()
 	}
-	if rds, err = config.GetRdsClientByName(option.DataSource); err != nil {
+	if rds, exists = config.Rds[option.DataSource]; !exists {
 		dlog.Error().Str("DataSource not defined in enviroment while calling Data.New", option.DataSource).Send()
 		return nil
 	}

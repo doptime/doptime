@@ -32,6 +32,7 @@ func Rpc[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 			cmd     *redis.StringCmd
 			b       []byte
 			db      *redis.Client
+			exists  bool
 		)
 		if b, err = specification.MarshalApiInput(InParam); err != nil {
 			return ret, err
@@ -43,7 +44,7 @@ func Rpc[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
 		// } else {
 		// 	Values = []string{"data", string(b)}
 		// }
-		if db, err = config.GetRdsClientByName(rpc.ApiSourceRds); err != nil {
+		if db, exists = config.Rds[rpc.ApiSourceRds]; !exists {
 			dlog.Info().Str("DataSource not defined in enviroment", rpc.ApiSourceRds).Send()
 			return ret, err
 		}

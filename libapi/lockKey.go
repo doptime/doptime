@@ -25,7 +25,7 @@ var ApiLockKey = api.Api(func(req *InLockKey) (ok bool, err error) {
 		score  float64
 		rds    *redis.Client
 	)
-	if rds, err = config.GetRdsClientByName("default"); err != nil {
+	if rds, ok = config.Rds["default"]; !ok {
 		dlog.Error().Err(err).Str("DataSource name not defined in enviroment while calling ApiLockKey", "default").Send()
 		return false, err
 	}
