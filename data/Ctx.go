@@ -69,5 +69,6 @@ func (ctx *Ctx[k, v]) LoadDataOption(ops ...*DataOption) error {
 	if ctx.Rds, exists = config.Rds[rdsName]; !exists {
 		return fmt.Errorf("Rds item unconfigured: " + rdsName)
 	}
+	ctx.Context = context.Background()
 	return nil
 }
