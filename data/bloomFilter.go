@@ -10,7 +10,7 @@ import (
 func (ctx *Ctx[k, v]) BuildBloomFilterHKeys(capacity int, falsePosition float64) (err error) {
 	//get type of key, if not hash, then return error
 	var keys []string
-	if keys, err = ctx.Rds.HKeys(ctx.Ctx, ctx.Key).Result(); err != nil {
+	if keys, err = ctx.Rds.HKeys(ctx.Context, ctx.Key).Result(); err != nil {
 		return err
 	}
 	return ctx.BuildBloomFilterByKeys(keys, capacity, falsePosition)

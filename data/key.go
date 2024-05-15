@@ -8,21 +8,21 @@ import (
 
 func (ctx *Ctx[k, v]) YMD(tm time.Time) *Ctx[k, v] {
 	//year is 4 digits, month is 2 digits, day is 2 digits
-	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:YMD_%04v%02v%02v", ctx.Key, tm.Year(), int(tm.Month()), tm.Day()), ctx.BloomFilterKeys}
+	return &Ctx[k, v]{ctx.Context, ctx.Rds, fmt.Sprintf("%s:YMD_%04v%02v%02v", ctx.Key, tm.Year(), int(tm.Month()), tm.Day()), ctx.BloomFilterKeys}
 }
 func (ctx *Ctx[k, v]) YM(tm time.Time) *Ctx[k, v] {
 	//year is 4 digits, month is 2 digits
-	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:YM_%04v%02v", ctx.Key, tm.Year(), int(tm.Month())), ctx.BloomFilterKeys}
+	return &Ctx[k, v]{ctx.Context, ctx.Rds, fmt.Sprintf("%s:YM_%04v%02v", ctx.Key, tm.Year(), int(tm.Month())), ctx.BloomFilterKeys}
 }
 func (ctx *Ctx[k, v]) Y(tm time.Time) *Ctx[k, v] {
 	//year is 4 digits
-	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:Y_%04v", ctx.Key, tm.Year()), ctx.BloomFilterKeys}
+	return &Ctx[k, v]{ctx.Context, ctx.Rds, fmt.Sprintf("%s:Y_%04v", ctx.Key, tm.Year()), ctx.BloomFilterKeys}
 }
 func (ctx *Ctx[k, v]) YW(tm time.Time) *Ctx[k, v] {
 	tm = tm.UTC()
 	isoYear, isoWeek := tm.ISOWeek()
 	//year is 4 digits, week is 2 digits
-	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:YW_%04v%02v", ctx.Key, isoYear, isoWeek), ctx.BloomFilterKeys}
+	return &Ctx[k, v]{ctx.Context, ctx.Rds, fmt.Sprintf("%s:YW_%04v%02v", ctx.Key, isoYear, isoWeek), ctx.BloomFilterKeys}
 }
 func ConcatedKeys(fields ...interface{}) string {
 	//	concacate all fields with ':'
@@ -53,5 +53,5 @@ func (ctx *Ctx[k, v]) Concat(fields ...interface{}) *Ctx[k, v] {
 	for _, field := range fields {
 		results = append(results, fmt.Sprintf("%v", field))
 	}
-	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, strings.Join(results, ":"), ctx.BloomFilterKeys}
+	return &Ctx[k, v]{ctx.Context, ctx.Rds, strings.Join(results, ":"), ctx.BloomFilterKeys}
 }

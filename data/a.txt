@@ -1,0 +1,1220 @@
+UpgradeSchema.go:package data
+UpgradeSchema.go:
+UpgradeSchema.go:import (
+UpgradeSchema.go:	"fmt"
+UpgradeSchema.go:	"reflect"
+UpgradeSchema.go:
+UpgradeSchema.go:	"github.com/jinzhu/copier"
+UpgradeSchema.go:	"github.com/vmihailenco/msgpack/v5"
+UpgradeSchema.go:)
+UpgradeSchema.go:
+UpgradeSchema.go:func (ctx *Ctx[k, v]) upgradeSchemaFromRawString(raw string, upgrade func(in v) (out v)) (out v, err error) {
+UpgradeSchema.go:	var (
+UpgradeSchema.go:		vType       = reflect.TypeOf((*v)(nil)).Elem()
+UpgradeSchema.go:		vIsPtr bool = vType.Kind() == reflect.Ptr
+UpgradeSchema.go:		vValue interface{}
+UpgradeSchema.go:		obj    interface{}
+UpgradeSchema.go:	)
+UpgradeSchema.go:	if vIsPtr {
+UpgradeSchema.go:		vValue = reflect.New(vType.Elem()).Interface().(v)
+UpgradeSchema.go:	} else {
+UpgradeSchema.go:		vValue = reflect.New(vType).Interface().(*v)
+UpgradeSchema.go:	}
+UpgradeSchema.go:	//  step1: Advance conversion using copier, i.e. copy from string to float32
+UpgradeSchema.go:	msgpack.Unmarshal([]byte(raw), &obj)
+UpgradeSchema.go:	copier.Copy(vValue, &obj)
+UpgradeSchema.go:	// step2: read raw format from redis
+UpgradeSchema.go:	msgpack.Unmarshal([]byte(raw), vValue)
+UpgradeSchema.go:	// step3: upgrade scheme using user defined function
+UpgradeSchema.go:	// this is used, to allow user break point to work
+UpgradeSchema.go:
+UpgradeSchema.go:	if vIsPtr {
+UpgradeSchema.go:		return upgrade(vValue.(v)), nil
+UpgradeSchema.go:	} else {
+UpgradeSchema.go:		return upgrade(*vValue.(*v)), nil
+UpgradeSchema.go:	}
+UpgradeSchema.go:}
+UpgradeSchema.go:
+UpgradeSchema.go:func (ctx *Ctx[k, v]) UpgradeSchema(upgrader func(in v) (out v)) (err error) {
+UpgradeSchema.go:	var (
+UpgradeSchema.go:		keyType string
+UpgradeSchema.go:	)
+UpgradeSchema.go:	//get redis key type. if is hash, then upgrade all hash fields. if is list, then upgrade all list items. if is set, then upgrade all set members. if is zset, then upgrade all zset members.  if is string, then upgrade this string.
+UpgradeSchema.go:	//get redis key type
+UpgradeSchema.go:	if keyType, err = ctx.Rds.Type(ctx.Ctx, ctx.Key).Result(); err != nil {
+UpgradeSchema.go:		return err
+UpgradeSchema.go:	}
+UpgradeSchema.go:	switch keyType {
+UpgradeSchema.go:	case "hash":
+UpgradeSchema.go:		var mapIn map[string]string
+UpgradeSchema.go:		if mapIn, err = ctx.Rds.HGetAll(ctx.Ctx, ctx.Key).Result(); err != nil {
+UpgradeSchema.go:			return err
+UpgradeSchema.go:		}
+UpgradeSchema.go:		var mapOut map[string]interface{} = make(map[string]interface{})
+UpgradeSchema.go:		for k, v := range mapIn {
+UpgradeSchema.go:			if mapOut[k], err = ctx.upgradeSchemaFromRawString(v, upgrader); err != nil {
+UpgradeSchema.go:				return err
+UpgradeSchema.go:			}
+UpgradeSchema.go:		}
+UpgradeSchema.go:		return ctx.HSet(mapOut)
+UpgradeSchema.go:	case "list":
+UpgradeSchema.go:		//return not implemented error
+UpgradeSchema.go:		return fmt.Errorf("not implemented")
+UpgradeSchema.go:	case "set":
+UpgradeSchema.go:		return fmt.Errorf("not implemented")
+UpgradeSchema.go:	case "zset":
+UpgradeSchema.go:		return fmt.Errorf("not implemented")
+UpgradeSchema.go:	case "string":
+UpgradeSchema.go:		return fmt.Errorf("not implemented")
+UpgradeSchema.go:	}
+UpgradeSchema.go:	return nil
+UpgradeSchema.go:}
+bloomFilter.go:package data
+bloomFilter.go:
+bloomFilter.go:import (
+bloomFilter.go:	"log"
+bloomFilter.go:	"math/rand"
+bloomFilter.go:
+bloomFilter.go:	"github.com/bits-and-blooms/bloom/v3"
+bloomFilter.go:)
+bloomFilter.go:
+bloomFilter.go:func (ctx *Ctx[k, v]) BuildBloomFilterHKeys(capacity int, falsePosition float64) (err error) {
+bloomFilter.go:	//get type of key, if not hash, then return error
+bloomFilter.go:	var keys []string
+bloomFilter.go:	if keys, err = ctx.Rds.HKeys(ctx.Ctx, ctx.Key).Result(); err != nil {
+bloomFilter.go:		return err
+bloomFilter.go:	}
+bloomFilter.go:	return ctx.BuildBloomFilterByKeys(keys, capacity, falsePosition)
+bloomFilter.go:}
+bloomFilter.go:func (ctx *Ctx[k, v]) BuildBloomFilterByKeys(keys []string, capacity int, falsePosition float64) (err error) {
+bloomFilter.go:	if capacity < 0 {
+bloomFilter.go:		capacity = int(float64(len(keys))*1.2) + 1024*1024 + int(rand.Uint32()%10000)
+bloomFilter.go:	}
+bloomFilter.go:	if falsePosition <= 0 || falsePosition >= 1 {
+bloomFilter.go:		falsePosition = 0.0000001 + rand.Float64()/10000000
+bloomFilter.go:	}
+bloomFilter.go:	ctx.BloomFilterKeys = bloom.NewWithEstimates(uint(capacity), falsePosition)
+bloomFilter.go:	//if type of k is string, then AddString is faster than Add
+bloomFilter.go:	for _, it := range keys {
+bloomFilter.go:		ctx.BloomFilterKeys.AddString(it)
+bloomFilter.go:	}
+bloomFilter.go:	return nil
+bloomFilter.go:}
+bloomFilter.go:func (ctx *Ctx[k, v]) TestHKey(key k) (exist bool) {
+bloomFilter.go:	var (
+bloomFilter.go:		keyStr string
+bloomFilter.go:		err    error
+bloomFilter.go:	)
+bloomFilter.go:	if ctx.BloomFilterKeys == nil {
+bloomFilter.go:		log.Fatal("BloomKeys is nil, please BuildKeysBloomFilter first")
+bloomFilter.go:	}
+bloomFilter.go:	if keyStr, err = ctx.toKeyStr(key); err != nil {
+bloomFilter.go:		log.Fatalf("TestKey -> toKeyStr error: %v", err.Error())
+bloomFilter.go:	}
+bloomFilter.go:	return ctx.BloomFilterKeys.TestString(keyStr)
+bloomFilter.go:}
+bloomFilter.go:func (ctx *Ctx[k, v]) TestKey(key k) (exist bool) {
+bloomFilter.go:	var (
+bloomFilter.go:		keyStr string
+bloomFilter.go:		err    error
+bloomFilter.go:	)
+bloomFilter.go:	if ctx.BloomFilterKeys == nil {
+bloomFilter.go:		log.Fatal("BloomKeys is nil, please BuildKeysBloomFilter first")
+bloomFilter.go:	}
+bloomFilter.go:	if keyStr, err = ctx.toKeyStr(key); err != nil {
+bloomFilter.go:		log.Fatalf("TestKey -> toKeyStr error: %v", err.Error())
+bloomFilter.go:	}
+bloomFilter.go:	return ctx.BloomFilterKeys.TestString(ctx.Key + ":" + keyStr)
+bloomFilter.go:}
+bloomFilter.go:func (ctx *Ctx[k, v]) AddBloomKey(key k) (err error) {
+bloomFilter.go:	var (
+bloomFilter.go:		keyStr string
+bloomFilter.go:	)
+bloomFilter.go:	if ctx.BloomFilterKeys == nil {
+bloomFilter.go:		log.Fatal("BloomKeys is nil, please BuildKeysBloomFilter first")
+bloomFilter.go:	}
+bloomFilter.go:	if keyStr, err = ctx.toKeyStr(key); err != nil {
+bloomFilter.go:		return err
+bloomFilter.go:	}
+bloomFilter.go:	ctx.BloomFilterKeys.AddString(keyStr)
+bloomFilter.go:	return nil
+bloomFilter.go:}
+clientKeys.go:package data
+clientKeys.go:
+clientKeys.go:import (
+clientKeys.go:	"github.com/redis/go-redis/v9"
+clientKeys.go:)
+clientKeys.go:
+clientKeys.go:// sacn key by pattern
+clientKeys.go:func (ctx *Ctx[k, v]) Scan(cursorOld uint64, match string, count int64) (keys []string, cursorNew uint64, err error) {
+clientKeys.go:	var (
+clientKeys.go:		cmd   *redis.ScanCmd
+clientKeys.go:		_keys []string
+clientKeys.go:	)
+clientKeys.go:	//scan all keys
+clientKeys.go:	for {
+clientKeys.go:
+clientKeys.go:		if cmd = ctx.Rds.Scan(ctx.Ctx, cursorOld, match, count); cmd.Err() != nil {
+clientKeys.go:			return nil, 0, cmd.Err()
+clientKeys.go:		}
+clientKeys.go:		if _keys, cursorNew, err = cmd.Result(); err != nil {
+clientKeys.go:			return nil, 0, err
+clientKeys.go:		}
+clientKeys.go:		keys = append(keys, _keys...)
+clientKeys.go:		if cursorNew == 0 {
+clientKeys.go:			break
+clientKeys.go:		}
+clientKeys.go:	}
+clientKeys.go:	return keys, cursorNew, nil
+clientKeys.go:}
+context.go:package data
+context.go:
+context.go:import (
+context.go:	"context"
+context.go:	"time"
+context.go:
+context.go:	"github.com/bits-and-blooms/bloom/v3"
+context.go:	"github.com/doptime/doptime/config"
+context.go:	"github.com/doptime/doptime/dlog"
+context.go:	"github.com/doptime/doptime/specification"
+context.go:	"github.com/redis/go-redis/v9"
+context.go:)
+context.go:
+context.go:type Ctx[k comparable, v any] struct {
+context.go:	Ctx             context.Context
+context.go:	Rds             *redis.Client
+context.go:	Key             string
+context.go:	BloomFilterKeys *bloom.BloomFilter
+context.go:}
+context.go:
+context.go:func New[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
+context.go:	var (
+context.go:		rds    *redis.Client
+context.go:		option *DataOption = &DataOption{}
+context.go:		exists bool
+context.go:	)
+context.go:	if len(ops) > 0 {
+context.go:		option = ops[0]
+context.go:	}
+context.go:	//panic if Key is empty
+context.go:	if !specification.GetValidDataKeyName((*v)(nil), &option.Key) {
+context.go:		dlog.Panic().Str("Key is empty in Data.New", option.Key).Send()
+context.go:	}
+context.go:	if rds, exists = config.Rds[option.DataSource]; !exists {
+context.go:		dlog.Error().Str("DataSource not defined in enviroment while calling Data.New", option.DataSource).Send()
+context.go:		return nil
+context.go:	}
+context.go:	ctx := &Ctx[k, v]{Ctx: context.Background(), Rds: rds, Key: option.Key}
+context.go:	dlog.Debug().Str("data New create end!", option.Key).Send()
+context.go:	return ctx
+context.go:}
+context.go:func (ctx *Ctx[k, v]) Time() (tm time.Time, err error) {
+context.go:	cmd := ctx.Rds.Time(ctx.Ctx)
+context.go:	return cmd.Result()
+context.go:}
+deserialization.go:package data
+deserialization.go:
+deserialization.go:import (
+deserialization.go:	"encoding/json"
+deserialization.go:	"reflect"
+deserialization.go:
+deserialization.go:	"github.com/doptime/doptime/dlog"
+deserialization.go:	"github.com/vmihailenco/msgpack/v5"
+deserialization.go:)
+deserialization.go:
+deserialization.go:func (ctx *Ctx[k, v]) toKeys(valStr []string) (keys []k, err error) {
+deserialization.go:	if _, ok := interface{}(valStr).([]k); ok {
+deserialization.go:		return interface{}(valStr).([]k), nil
+deserialization.go:	}
+deserialization.go:	if keys = make([]k, len(valStr)); len(valStr) == 0 {
+deserialization.go:		return keys, nil
+deserialization.go:	}
+deserialization.go:	keyStruct := reflect.TypeOf((*k)(nil)).Elem()
+deserialization.go:	isElemPtr := keyStruct.Kind() == reflect.Ptr
+deserialization.go:
+deserialization.go:	//save all data to mapOut
+deserialization.go:	for i, val := range valStr {
+deserialization.go:		if isElemPtr {
+deserialization.go:			keys[i] = reflect.New(keyStruct.Elem()).Interface().(k)
+deserialization.go:			err = json.Unmarshal([]byte(val), keys[i])
+deserialization.go:		} else {
+deserialization.go:			//if key is type of string, just return string
+deserialization.go:			if keyStruct.Kind() == reflect.String {
+deserialization.go:				keys[i] = interface{}(string(val)).(k)
+deserialization.go:			} else {
+deserialization.go:				err = json.Unmarshal([]byte(val), &keys[i])
+deserialization.go:			}
+deserialization.go:		}
+deserialization.go:		if err != nil {
+deserialization.go:			dlog.Info().AnErr("HKeys: field unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+deserialization.go:			continue
+deserialization.go:		}
+deserialization.go:	}
+deserialization.go:	return keys, nil
+deserialization.go:}
+deserialization.go:
+deserialization.go:// unmarhsal using msgpack
+deserialization.go:func (ctx *Ctx[k, v]) toValues(valStr ...string) (values []v, err error) {
+deserialization.go:	if values = make([]v, len(valStr)); len(valStr) == 0 {
+deserialization.go:		return values, nil
+deserialization.go:	}
+deserialization.go:	valueStruct := reflect.TypeOf((*v)(nil)).Elem()
+deserialization.go:	isElemPtr := valueStruct.Kind() == reflect.Ptr
+deserialization.go:
+deserialization.go:	//save all data to mapOut
+deserialization.go:	for i, val := range valStr {
+deserialization.go:		if isElemPtr {
+deserialization.go:			values[i] = reflect.New(valueStruct.Elem()).Interface().(v)
+deserialization.go:			err = msgpack.Unmarshal([]byte(val), values[i])
+deserialization.go:		} else {
+deserialization.go:			err = msgpack.Unmarshal([]byte(val), &values[i])
+deserialization.go:		}
+deserialization.go:		if err != nil {
+deserialization.go:			dlog.Info().AnErr("HVals: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+deserialization.go:			continue
+deserialization.go:		}
+deserialization.go:	}
+deserialization.go:	return values, nil
+deserialization.go:}
+deserialization.go:func (ctx *Ctx[k, v]) toValue(valbytes []byte) (value v, err error) {
+deserialization.go:	valueStruct := reflect.TypeOf((*v)(nil)).Elem()
+deserialization.go:	isElemPtr := valueStruct.Kind() == reflect.Ptr
+deserialization.go:	if isElemPtr {
+deserialization.go:		value = reflect.New(valueStruct.Elem()).Interface().(v)
+deserialization.go:		return value, msgpack.Unmarshal(valbytes, value)
+deserialization.go:	} else {
+deserialization.go:		err = msgpack.Unmarshal(valbytes, &value)
+deserialization.go:		return value, err
+deserialization.go:	}
+deserialization.go:}
+deserialization.go:
+deserialization.go:func (ctx *Ctx[k, v]) toKey(valBytes []byte) (key k, err error) {
+deserialization.go:	keyStruct := reflect.TypeOf((*k)(nil)).Elem()
+deserialization.go:	isElemPtr := keyStruct.Kind() == reflect.Ptr
+deserialization.go:	if isElemPtr {
+deserialization.go:		key = reflect.New(keyStruct.Elem()).Interface().(k)
+deserialization.go:		return key, json.Unmarshal(valBytes, key)
+deserialization.go:	} else {
+deserialization.go:		//if key is type of string, just return string
+deserialization.go:		if keyStruct.Kind() == reflect.String {
+deserialization.go:			return reflect.ValueOf(string(valBytes)).Interface().(k), nil
+deserialization.go:		}
+deserialization.go:		err = json.Unmarshal(valBytes, &key)
+deserialization.go:		return key, err
+deserialization.go:	}
+deserialization.go:}
+key.go:package data
+key.go:
+key.go:import (
+key.go:	"fmt"
+key.go:	"strings"
+key.go:	"time"
+key.go:)
+key.go:
+key.go:func (ctx *Ctx[k, v]) YMD(tm time.Time) *Ctx[k, v] {
+key.go:	//year is 4 digits, month is 2 digits, day is 2 digits
+key.go:	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:YMD_%04v%02v%02v", ctx.Key, tm.Year(), int(tm.Month()), tm.Day()), ctx.BloomFilterKeys}
+key.go:}
+key.go:func (ctx *Ctx[k, v]) YM(tm time.Time) *Ctx[k, v] {
+key.go:	//year is 4 digits, month is 2 digits
+key.go:	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:YM_%04v%02v", ctx.Key, tm.Year(), int(tm.Month())), ctx.BloomFilterKeys}
+key.go:}
+key.go:func (ctx *Ctx[k, v]) Y(tm time.Time) *Ctx[k, v] {
+key.go:	//year is 4 digits
+key.go:	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:Y_%04v", ctx.Key, tm.Year()), ctx.BloomFilterKeys}
+key.go:}
+key.go:func (ctx *Ctx[k, v]) YW(tm time.Time) *Ctx[k, v] {
+key.go:	tm = tm.UTC()
+key.go:	isoYear, isoWeek := tm.ISOWeek()
+key.go:	//year is 4 digits, week is 2 digits
+key.go:	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:YW_%04v%02v", ctx.Key, isoYear, isoWeek), ctx.BloomFilterKeys}
+key.go:}
+key.go:func ConcatedKeys(fields ...interface{}) string {
+key.go:	//	concacate all fields with ':'
+key.go:	var key string
+key.go:	for _, field := range fields {
+key.go:		key += fmt.Sprintf("%v:", field)
+key.go:	}
+key.go:	//	remove the last ':'
+key.go:	if len(key) == 0 {
+key.go:		return ""
+key.go:	}
+key.go:	return key[:len(key)-1]
+key.go:}
+key.go:
+key.go:func (ctx *Ctx[k, v]) Concat(fields ...interface{}) *Ctx[k, v] {
+key.go:	//for each field ,it it's type if float64 or float32,but it's value is integer,then convert it to int
+key.go:	for i, field := range fields {
+key.go:		if f64, ok := field.(float64); ok && f64 == float64(int64(f64)) {
+key.go:			fields[i] = int64(field.(float64))
+key.go:		} else if f32, ok := field.(float32); ok && f32 == float32(int32(f32)) {
+key.go:			fields[i] = int32(field.(float32))
+key.go:		}
+key.go:	}
+key.go:	//implete logic of  return &Ctx{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:%v", ctx.Key, ConcatedKeys(fields...))}
+key.go:	//but ,do not use recursion
+key.go:	results := make([]string, 0, len(fields)+1)
+key.go:	results = append(results, ctx.Key)
+key.go:	for _, field := range fields {
+key.go:		results = append(results, fmt.Sprintf("%v", field))
+key.go:	}
+key.go:	return &Ctx[k, v]{ctx.Ctx, ctx.Rds, strings.Join(results, ":"), ctx.BloomFilterKeys}
+key.go:}
+mapStructure.go:package data
+mapStructure.go:
+mapStructure.go:import (
+mapStructure.go:	"reflect"
+mapStructure.go:
+mapStructure.go:	"github.com/redis/go-redis/v9"
+mapStructure.go:	"github.com/vmihailenco/msgpack/v5"
+mapStructure.go:)
+mapStructure.go:
+mapStructure.go:func (ctx *Ctx[k, v]) UnmarshalToSlice(members []string) (out []v, err error) {
+mapStructure.go:	out = make([]v, 0, len(members))
+mapStructure.go:	//unmarshal each member in cmd.Result() using msgpack,to the type of element of out
+mapStructure.go:	elemType := reflect.TypeOf(out).Elem()
+mapStructure.go:	//don't set elemType to elemType.Elem() again, because out is a slice of pointer
+mapStructure.go:	for _, member := range members {
+mapStructure.go:		elem := reflect.New(elemType).Interface()
+mapStructure.go:		if err := msgpack.Unmarshal([]byte(member), elem); err != nil {
+mapStructure.go:			return out, err
+mapStructure.go:		}
+mapStructure.go:		out = append(out, *elem.(*v))
+mapStructure.go:	}
+mapStructure.go:
+mapStructure.go:	return out, nil
+mapStructure.go:}
+mapStructure.go:
+mapStructure.go:func (ctx *Ctx[k, v]) UnmarshalRedisZ(members []redis.Z) (out []v, scores []float64, err error) {
+mapStructure.go:	var (
+mapStructure.go:		str string
+mapStructure.go:		ok  bool
+mapStructure.go:	)
+mapStructure.go:	out = make([]v, 0, len(members))
+mapStructure.go:	//unmarshal each member in cmd.Result() using msgpack,to the type of element of out
+mapStructure.go:	elemType := reflect.TypeOf(out).Elem()
+mapStructure.go:	scores = make([]float64, len(members))
+mapStructure.go:	for i, member := range members {
+mapStructure.go:		if str, ok = member.Member.(string); !ok || str == "" {
+mapStructure.go:			continue
+mapStructure.go:		}
+mapStructure.go:		elem := reflect.New(elemType).Interface()
+mapStructure.go:		if err := msgpack.Unmarshal([]byte(str), elem); err != nil {
+mapStructure.go:			return nil, nil, err
+mapStructure.go:		}
+mapStructure.go:		out = append(out, *elem.(*v))
+mapStructure.go:
+mapStructure.go:		scores[i] = member.Score
+mapStructure.go:	}
+mapStructure.go:	return out, scores, nil
+mapStructure.go:}
+opHash.go:package data
+opHash.go:
+opHash.go:import (
+opHash.go:	"encoding/json"
+opHash.go:	"reflect"
+opHash.go:
+opHash.go:	"github.com/doptime/doptime/dlog"
+opHash.go:	"github.com/redis/go-redis/v9"
+opHash.go:)
+opHash.go:
+opHash.go:func (ctx *Ctx[k, v]) HGet(field k) (value v, err error) {
+opHash.go:
+opHash.go:	var (
+opHash.go:		cmd      *redis.StringCmd
+opHash.go:		valBytes []byte
+opHash.go:		fieldStr string
+opHash.go:	)
+opHash.go:	if fieldStr, err = ctx.toKeyStr(field); err != nil {
+opHash.go:		return value, err
+opHash.go:	}
+opHash.go:
+opHash.go:	if cmd = ctx.Rds.HGet(ctx.Ctx, ctx.Key, fieldStr); cmd.Err() != nil {
+opHash.go:		return value, cmd.Err()
+opHash.go:	}
+opHash.go:	if valBytes, err = cmd.Bytes(); err != nil {
+opHash.go:		return value, err
+opHash.go:	}
+opHash.go:	return ctx.toValue(valBytes)
+opHash.go:}
+opHash.go:
+opHash.go:// HSet accepts values in following formats:
+opHash.go://
+opHash.go://   - HSet("myhash", "key1", "value1", "key2", "value2")
+opHash.go://
+opHash.go://   - HSet("myhash", map[string]interface{}{"key1": "value1", "key2": "value2"})
+opHash.go:func (ctx *Ctx[k, v]) HSet(values ...interface{}) (err error) {
+opHash.go:	var (
+opHash.go:		KeyValuesStrs []string
+opHash.go:	)
+opHash.go:	if KeyValuesStrs, err = ctx.toKeyValueStrs(values...); err != nil {
+opHash.go:		return err
+opHash.go:	}
+opHash.go:	status := ctx.Rds.HSet(ctx.Ctx, ctx.Key, KeyValuesStrs)
+opHash.go:	return status.Err()
+opHash.go:}
+opHash.go:
+opHash.go:func (ctx *Ctx[k, v]) HExists(field k) (ok bool, err error) {
+opHash.go:
+opHash.go:	var (
+opHash.go:		cmd      *redis.BoolCmd
+opHash.go:		fieldStr string
+opHash.go:	)
+opHash.go:	if fieldStr, err = ctx.toKeyStr(field); err != nil {
+opHash.go:		return false, err
+opHash.go:	}
+opHash.go:	cmd = ctx.Rds.HExists(ctx.Ctx, ctx.Key, fieldStr)
+opHash.go:	return cmd.Result()
+opHash.go:
+opHash.go:}
+opHash.go:func (ctx *Ctx[k, v]) HGetAll() (mapOut map[k]v, err error) {
+opHash.go:	var (
+opHash.go:		cmd *redis.MapStringStringCmd
+opHash.go:		key k
+opHash.go:		val v
+opHash.go:	)
+opHash.go:	mapOut = make(map[k]v)
+opHash.go:	if cmd = ctx.Rds.HGetAll(ctx.Ctx, ctx.Key); cmd.Err() != nil {
+opHash.go:		return mapOut, cmd.Err()
+opHash.go:	}
+opHash.go:	//append all data to mapOut
+opHash.go:	for k, v := range cmd.Val() {
+opHash.go:		if key, err = ctx.toKey([]byte(k)); err != nil {
+opHash.go:			dlog.Info().AnErr("HGetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+opHash.go:			continue
+opHash.go:		}
+opHash.go:		if val, err = ctx.toValue([]byte(v)); err != nil {
+opHash.go:			dlog.Info().AnErr("HGetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+opHash.go:			continue
+opHash.go:		}
+opHash.go:		mapOut[key] = val
+opHash.go:	}
+opHash.go:	return mapOut, err
+opHash.go:}
+opHash.go:func (ctx *Ctx[k, v]) HRandField(count int) (fields []k, err error) {
+opHash.go:	var (
+opHash.go:		cmd *redis.StringSliceCmd
+opHash.go:	)
+opHash.go:	if cmd = ctx.Rds.HRandField(ctx.Ctx, ctx.Key, count); cmd.Err() != nil {
+opHash.go:		return nil, cmd.Err()
+opHash.go:	}
+opHash.go:	return ctx.toKeys(cmd.Val())
+opHash.go:}
+opHash.go:
+opHash.go:func (ctx *Ctx[k, v]) HMGET(fields ...k) (values []v, err error) {
+opHash.go:	var (
+opHash.go:		cmd          *redis.SliceCmd
+opHash.go:		fieldsString []string
+opHash.go:		rawValues    []string
+opHash.go:	)
+opHash.go:	if fieldsString, err = ctx.toKeyStrs(fields...); err != nil {
+opHash.go:		return nil, err
+opHash.go:	}
+opHash.go:	if cmd = ctx.Rds.HMGet(ctx.Ctx, ctx.Key, fieldsString...); cmd.Err() != nil {
+opHash.go:		return nil, cmd.Err()
+opHash.go:	}
+opHash.go:	rawValues = make([]string, len(cmd.Val()))
+opHash.go:	for i, val := range cmd.Val() {
+opHash.go:		if val == nil {
+opHash.go:			continue
+opHash.go:		}
+opHash.go:		rawValues[i] = val.(string)
+opHash.go:	}
+opHash.go:	return ctx.toValues(rawValues...)
+opHash.go:}
+opHash.go:
+opHash.go:func (ctx *Ctx[k, v]) HLen() (length int64, err error) {
+opHash.go:	cmd := ctx.Rds.HLen(ctx.Ctx, ctx.Key)
+opHash.go:	return cmd.Val(), cmd.Err()
+opHash.go:}
+opHash.go:func (ctx *Ctx[k, v]) HDel(fields ...k) (err error) {
+opHash.go:	var (
+opHash.go:		cmd       *redis.IntCmd
+opHash.go:		fieldStrs []string
+opHash.go:		bytes     []byte
+opHash.go:	)
+opHash.go:	if len(fields) == 0 {
+opHash.go:		return nil
+opHash.go:	}
+opHash.go:	//if k is  string, then use HDEL directly
+opHash.go:	if reflect.TypeOf(fields[0]).Kind() == reflect.String {
+opHash.go:		fieldStrs = interface{}(fields).([]string)
+opHash.go:	} else {
+opHash.go:		//if k is not string, then marshal k to string
+opHash.go:		fieldStrs = make([]string, len(fields))
+opHash.go:		for i, field := range fields {
+opHash.go:			if bytes, err = json.Marshal(field); err != nil {
+opHash.go:				return err
+opHash.go:			}
+opHash.go:			fieldStrs[i] = string(bytes)
+opHash.go:		}
+opHash.go:	}
+opHash.go:	cmd = ctx.Rds.HDel(ctx.Ctx, ctx.Key, fieldStrs...)
+opHash.go:	return cmd.Err()
+opHash.go:}
+opHash.go:func (ctx *Ctx[k, v]) HKeys() (fields []k, err error) {
+opHash.go:	var (
+opHash.go:		cmd *redis.StringSliceCmd
+opHash.go:	)
+opHash.go:	if cmd = ctx.Rds.HKeys(ctx.Ctx, ctx.Key); cmd.Err() != nil {
+opHash.go:		return nil, cmd.Err()
+opHash.go:	}
+opHash.go:	return ctx.toKeys(cmd.Val())
+opHash.go:}
+opHash.go:func (ctx *Ctx[k, v]) HVals() (values []v, err error) {
+opHash.go:	var cmd *redis.StringSliceCmd
+opHash.go:	if cmd = ctx.Rds.HVals(ctx.Ctx, ctx.Key); cmd.Err() != nil {
+opHash.go:		return nil, cmd.Err()
+opHash.go:	}
+opHash.go:	return ctx.toValues(cmd.Val()...)
+opHash.go:}
+opHash.go:func (ctx *Ctx[k, v]) HIncrBy(field k, increment int64) (err error) {
+opHash.go:	var (
+opHash.go:		cmd      *redis.IntCmd
+opHash.go:		fieldStr string
+opHash.go:	)
+opHash.go:	if fieldStr, err = ctx.toKeyStr(field); err != nil {
+opHash.go:		return err
+opHash.go:	}
+opHash.go:	cmd = ctx.Rds.HIncrBy(ctx.Ctx, ctx.Key, fieldStr, increment)
+opHash.go:	return cmd.Err()
+opHash.go:}
+opHash.go:
+opHash.go:func (ctx *Ctx[k, v]) HIncrByFloat(field k, increment float64) (err error) {
+opHash.go:	var (
+opHash.go:		cmd      *redis.FloatCmd
+opHash.go:		fieldStr string
+opHash.go:	)
+opHash.go:	if fieldStr, err = ctx.toKeyStr(field); err != nil {
+opHash.go:		return err
+opHash.go:	}
+opHash.go:	cmd = ctx.Rds.HIncrByFloat(ctx.Ctx, ctx.Key, fieldStr, increment)
+opHash.go:	return cmd.Err()
+opHash.go:
+opHash.go:}
+opHash.go:func (ctx *Ctx[k, v]) HSetNX(field k, value v) (err error) {
+opHash.go:	var (
+opHash.go:		cmd      *redis.BoolCmd
+opHash.go:		fieldStr string
+opHash.go:		valStr   string
+opHash.go:	)
+opHash.go:	if fieldStr, err = ctx.toKeyStr(field); err != nil {
+opHash.go:		return err
+opHash.go:	}
+opHash.go:	if valStr, err = ctx.toValueStr(value); err != nil {
+opHash.go:		return err
+opHash.go:	}
+opHash.go:	cmd = ctx.Rds.HSetNX(ctx.Ctx, ctx.Key, fieldStr, valStr)
+opHash.go:	return cmd.Err()
+opHash.go:}
+opList.go:package data
+opList.go:
+opList.go:import (
+opList.go:	"time"
+opList.go:
+opList.go:	"github.com/redis/go-redis/v9"
+opList.go:)
+opList.go:
+opList.go:func (ctx *Ctx[k, v]) RPush(param ...v) (err error) {
+opList.go:	if val, err := ctx.toValueStrs(param); err != nil {
+opList.go:		return err
+opList.go:	} else {
+opList.go:
+opList.go:		return ctx.Rds.RPush(ctx.Ctx, ctx.Key, val).Err()
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LPush(param ...v) (err error) {
+opList.go:	if val, err := ctx.toValueStrs(param); err != nil {
+opList.go:		return err
+opList.go:	} else {
+opList.go:		return ctx.Rds.LPush(ctx.Ctx, ctx.Key, val).Err()
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) RPop() (ret v, err error) {
+opList.go:	cmd := ctx.Rds.RPop(ctx.Ctx, ctx.Key)
+opList.go:	if data, err := cmd.Bytes(); err != nil {
+opList.go:		return ret, err
+opList.go:	} else {
+opList.go:		return ctx.toValue(data)
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LPop() (ret v, err error) {
+opList.go:	cmd := ctx.Rds.LPop(ctx.Ctx, ctx.Key)
+opList.go:	if data, err := cmd.Bytes(); err != nil {
+opList.go:		return ret, err
+opList.go:	} else {
+opList.go:		return ctx.toValue(data)
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LRange(start, stop int64) (ret []v, err error) {
+opList.go:	cmd := ctx.Rds.LRange(ctx.Ctx, ctx.Key, start, stop)
+opList.go:	if data, err := cmd.Result(); err != nil {
+opList.go:		return ret, err
+opList.go:	} else {
+opList.go:		for _, val := range data {
+opList.go:			if v, err := ctx.toValue([]byte(val)); err != nil {
+opList.go:				return ret, err
+opList.go:			} else {
+opList.go:				ret = append(ret, v)
+opList.go:			}
+opList.go:		}
+opList.go:		return ret, nil
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LRem(count int64, param v) (err error) {
+opList.go:	if val, err := ctx.toValueStr(param); err != nil {
+opList.go:		return err
+opList.go:	} else {
+opList.go:		return ctx.Rds.LRem(ctx.Ctx, ctx.Key, count, val).Err()
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LSet(index int64, param v) (err error) {
+opList.go:	if val, err := ctx.toValueStr(param); err != nil {
+opList.go:		return err
+opList.go:	} else {
+opList.go:		return ctx.Rds.LSet(ctx.Ctx, ctx.Key, index, val).Err()
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) BLPop(timeout time.Duration) (ret v, err error) {
+opList.go:	cmd := ctx.Rds.BLPop(ctx.Ctx, timeout, ctx.Key)
+opList.go:	if data, err := cmd.Result(); err != nil {
+opList.go:		return ret, err
+opList.go:	} else {
+opList.go:		return ctx.toValue([]byte(data[1]))
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) BRPop(timeout time.Duration) (ret v, err error) {
+opList.go:	cmd := ctx.Rds.BRPop(ctx.Ctx, timeout, ctx.Key)
+opList.go:	if data, err := cmd.Result(); err != nil {
+opList.go:		return ret, err
+opList.go:	} else {
+opList.go:		return ctx.toValue([]byte(data[1]))
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) BRPopLPush(destination string, timeout time.Duration) (ret v, err error) {
+opList.go:	cmd := ctx.Rds.BRPopLPush(ctx.Ctx, ctx.Key, destination, timeout)
+opList.go:	if data, err := cmd.Bytes(); err != nil {
+opList.go:		return ret, err
+opList.go:	} else {
+opList.go:		return ctx.toValue(data)
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LInsertBefore(pivot, param v) (err error) {
+opList.go:	var (
+opList.go:		pivotStr string
+opList.go:	)
+opList.go:	if val, err := ctx.toValueStr(param); err != nil {
+opList.go:		return err
+opList.go:	} else {
+opList.go:		if pivotStr, err = ctx.toValueStr(pivot); err != nil {
+opList.go:			return err
+opList.go:		} else {
+opList.go:			return ctx.Rds.LInsertBefore(ctx.Ctx, ctx.Key, pivotStr, val).Err()
+opList.go:		}
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LInsertAfter(pivot, param v) (err error) {
+opList.go:	var (
+opList.go:		pivotStr string
+opList.go:	)
+opList.go:	if val, err := ctx.toValueStr(param); err != nil {
+opList.go:		return err
+opList.go:	} else {
+opList.go:		if pivotStr, err = ctx.toValueStr(pivot); err != nil {
+opList.go:			return err
+opList.go:		} else {
+opList.go:			return ctx.Rds.LInsertAfter(ctx.Ctx, ctx.Key, pivotStr, val).Err()
+opList.go:		}
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) Sort(sort *redis.Sort) (ret []v, err error) {
+opList.go:	cmd := ctx.Rds.Sort(ctx.Ctx, ctx.Key, sort)
+opList.go:	if data, err := cmd.Result(); err != nil {
+opList.go:		return ret, err
+opList.go:	} else {
+opList.go:		for _, val := range data {
+opList.go:			if v, err := ctx.toValue([]byte(val)); err != nil {
+opList.go:				return ret, err
+opList.go:			} else {
+opList.go:				ret = append(ret, v)
+opList.go:			}
+opList.go:		}
+opList.go:		return ret, nil
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LTrim(start, stop int64) (err error) {
+opList.go:	return ctx.Rds.LTrim(ctx.Ctx, ctx.Key, start, stop).Err()
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LIndex(index int64) (ret v, err error) {
+opList.go:	cmd := ctx.Rds.LIndex(ctx.Ctx, ctx.Key, index)
+opList.go:	if data, err := cmd.Bytes(); err != nil {
+opList.go:		return ret, err
+opList.go:	} else {
+opList.go:		return ctx.toValue(data)
+opList.go:	}
+opList.go:}
+opList.go:func (ctx *Ctx[k, v]) LLen() (length int64, err error) {
+opList.go:	cmd := ctx.Rds.LLen(ctx.Ctx, ctx.Key)
+opList.go:	return cmd.Result()
+opList.go:}
+opSet.go:package data
+opSet.go:
+opSet.go:import "github.com/redis/go-redis/v9"
+opSet.go:
+opSet.go:// append to Set
+opSet.go:func (ctx *Ctx[k, v]) SAdd(param v) (err error) {
+opSet.go:	valStr, err := ctx.toValueStr(param)
+opSet.go:	if err != nil {
+opSet.go:		return err
+opSet.go:	}
+opSet.go:	status := ctx.Rds.SAdd(ctx.Ctx, ctx.Key, valStr)
+opSet.go:	return status.Err()
+opSet.go:}
+opSet.go:func (ctx *Ctx[k, v]) SCard() (count int64, err error) {
+opSet.go:	status := ctx.Rds.SCard(ctx.Ctx, ctx.Key)
+opSet.go:	return status.Result()
+opSet.go:}
+opSet.go:func (ctx *Ctx[k, v]) SRem(param v) (err error) {
+opSet.go:	valStr, err := ctx.toValueStr(param)
+opSet.go:	if err != nil {
+opSet.go:		return err
+opSet.go:	}
+opSet.go:	status := ctx.Rds.SRem(ctx.Ctx, ctx.Key, valStr)
+opSet.go:	return status.Err()
+opSet.go:}
+opSet.go:func (ctx *Ctx[k, v]) SIsMember(param v) (isMember bool, err error) {
+opSet.go:	valStr, err := ctx.toValueStr(param)
+opSet.go:	if err != nil {
+opSet.go:		return false, err
+opSet.go:	}
+opSet.go:	status := ctx.Rds.SIsMember(ctx.Ctx, ctx.Key, valStr)
+opSet.go:	return status.Result()
+opSet.go:}
+opSet.go:func (ctx *Ctx[k, v]) SMembers() (members []v, err error) {
+opSet.go:	var cmd *redis.StringSliceCmd
+opSet.go:	if cmd = ctx.Rds.SMembers(ctx.Ctx, ctx.Key); cmd.Err() != nil {
+opSet.go:		return nil, cmd.Err()
+opSet.go:	}
+opSet.go:	return ctx.toValues(cmd.Val()...)
+opSet.go:}
+opStream.go:package data
+opStream.go:
+opStream.go:func (ctx *Ctx[k, v]) XLen() (length int64, err error) {
+opStream.go:	return ctx.Rds.XLen(ctx.Ctx, ctx.Key).Result()
+opStream.go:}
+opString.go:package data
+opString.go:
+opString.go:import (
+opString.go:	"github.com/doptime/doptime/dlog"
+opString.go:	"github.com/vmihailenco/msgpack/v5"
+opString.go:)
+opString.go:
+opString.go:// get all keys that match the pattern, and return a map of key->value
+opString.go:func (ctx *Ctx[k, v]) GetAll(match string) (mapOut map[k]v, err error) {
+opString.go:	var (
+opString.go:		keys []string = []string{match}
+opString.go:		val  []byte
+opString.go:	)
+opString.go:	if keys, _, err = ctx.Scan(0, match, 1024*1024*1024); err != nil {
+opString.go:		return nil, err
+opString.go:	}
+opString.go:	mapOut = make(map[k]v, len(keys))
+opString.go:	var result error
+opString.go:	for _, key := range keys {
+opString.go:		if val, result = ctx.Rds.Get(ctx.Ctx, key).Bytes(); result != nil {
+opString.go:			err = result
+opString.go:			continue
+opString.go:		}
+opString.go:		//use default prefix to avoid confict of hash key
+opString.go:		//k is start with ctx.Key, remove it
+opString.go:		if len(ctx.Key) > 0 && (len(key) >= len(ctx.Key)) && key[:len(ctx.Key)] == ctx.Key {
+opString.go:			key = key[len(ctx.Key)+1:]
+opString.go:		}
+opString.go:
+opString.go:		k, err := ctx.toKey([]byte(key))
+opString.go:		if err != nil {
+opString.go:			dlog.Info().AnErr("GetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+opString.go:			continue
+opString.go:		}
+opString.go:		v, err := ctx.toValue(val)
+opString.go:		if err != nil {
+opString.go:			dlog.Info().AnErr("GetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
+opString.go:			continue
+opString.go:		}
+opString.go:		mapOut[k] = v
+opString.go:	}
+opString.go:	return mapOut, err
+opString.go:}
+opString.go:
+opString.go:// set each key value of _map to redis string type key value
+opString.go:func (ctx *Ctx[k, v]) SetAll(_map map[k]v) (err error) {
+opString.go:	//HSet each element of _map to redis
+opString.go:	var (
+opString.go:		result error
+opString.go:		bytes  []byte
+opString.go:		keyStr string
+opString.go:	)
+opString.go:	pipe := ctx.Rds.Pipeline()
+opString.go:	for k, v := range _map {
+opString.go:		if bytes, err = msgpack.Marshal(v); err != nil {
+opString.go:			return err
+opString.go:		}
+opString.go:		if keyStr, err = ctx.toKeyStr(k); err != nil {
+opString.go:			return err
+opString.go:		}
+opString.go:
+opString.go:		pipe.Set(ctx.Ctx, ctx.Key+":"+keyStr, bytes, -1)
+opString.go:	}
+opString.go:	pipe.Exec(ctx.Ctx)
+opString.go:	return result
+opString.go:}
+opText.go:package data
+opText.go:
+opText.go:import (
+opText.go:	"time"
+opText.go:
+opText.go:	"github.com/redis/go-redis/v9"
+opText.go:)
+opText.go:
+opText.go:func (ctx *Ctx[k, v]) Get(key k) (value v, err error) {
+opText.go:	var (
+opText.go:		keyStr string
+opText.go:		cmd    *redis.StringCmd
+opText.go:		data   []byte
+opText.go:	)
+opText.go:	if keyStr, err = ctx.toKeyStr(key); err != nil {
+opText.go:		return value, err
+opText.go:	}
+opText.go:
+opText.go:	if cmd = ctx.Rds.Get(ctx.Ctx, ctx.Key+":"+keyStr); cmd.Err() != nil {
+opText.go:		return value, cmd.Err()
+opText.go:	}
+opText.go:	if data, err = cmd.Bytes(); err != nil {
+opText.go:		return value, err
+opText.go:	}
+opText.go:	return ctx.toValue(data)
+opText.go:}
+opText.go:func (ctx *Ctx[k, v]) Keys() (out []k, err error) {
+opText.go:	var (
+opText.go:		cmd  *redis.StringSliceCmd
+opText.go:		keys []string
+opText.go:	)
+opText.go:	cmd = ctx.Rds.Keys(ctx.Ctx, ctx.Key+":*")
+opText.go:	if keys, err = cmd.Result(); err != nil {
+opText.go:		return nil, err
+opText.go:	}
+opText.go:	return ctx.toKeys(keys)
+opText.go:}
+opText.go:
+opText.go:// for the reason of protection, both ctx.Key & Key are required. the avoid set Hash table to the wrong type , and thus leading to data loss.
+opText.go:func (ctx *Ctx[k, v]) Set(key k, param v, expiration time.Duration) (err error) {
+opText.go:	var (
+opText.go:		keyStr string
+opText.go:		valStr string
+opText.go:	)
+opText.go:	if keyStr, err = ctx.toKeyStr(key); err != nil {
+opText.go:		return err
+opText.go:	}
+opText.go:	if valStr, err = ctx.toValueStr(param); err != nil {
+opText.go:		return err
+opText.go:	} else {
+opText.go:		status := ctx.Rds.Set(ctx.Ctx, ctx.Key+":"+keyStr, valStr, expiration)
+opText.go:		return status.Err()
+opText.go:	}
+opText.go:}
+opText.go:
+opText.go:// for the reason of protection, both ctx.Key & Key are required. the avoid set Hash table to the wrong type , and thus leading to data loss.
+opText.go:func (ctx *Ctx[k, v]) Del(key k) (err error) {
+opText.go:	var (
+opText.go:		keyStr string
+opText.go:	)
+opText.go:	if keyStr, err = ctx.toKeyStr(key); err != nil {
+opText.go:		return err
+opText.go:	}
+opText.go:	status := ctx.Rds.Del(ctx.Ctx, ctx.Key+":"+keyStr)
+opText.go:	return status.Err()
+opText.go:}
+opZSet.go:package data
+opZSet.go:
+opZSet.go:import (
+opZSet.go:	"github.com/redis/go-redis/v9"
+opZSet.go:	"github.com/vmihailenco/msgpack/v5"
+opZSet.go:)
+opZSet.go:
+opZSet.go:func (ctx *Ctx[k, v]) ZAdd(members ...redis.Z) (err error) {
+opZSet.go:	//MarshalRedisZ
+opZSet.go:	for i := range members {
+opZSet.go:		if members[i].Member != nil {
+opZSet.go:			members[i].Member, _ = msgpack.Marshal(members[i].Member)
+opZSet.go:		}
+opZSet.go:	}
+opZSet.go:	status := ctx.Rds.ZAdd(ctx.Ctx, ctx.Key, members...)
+opZSet.go:	return status.Err()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRem(members ...interface{}) (err error) {
+opZSet.go:	//msgpack marshal members to slice of bytes
+opZSet.go:	var bytes = make([][]byte, len(members))
+opZSet.go:	for i, member := range members {
+opZSet.go:		if bytes[i], err = msgpack.Marshal(member); err != nil {
+opZSet.go:			return err
+opZSet.go:		}
+opZSet.go:	}
+opZSet.go:	var redisPipe = ctx.Rds.Pipeline()
+opZSet.go:	for _, memberBytes := range bytes {
+opZSet.go:		redisPipe.ZRem(ctx.Ctx, ctx.Key, memberBytes)
+opZSet.go:	}
+opZSet.go:	_, err = redisPipe.Exec(ctx.Ctx)
+opZSet.go:
+opZSet.go:	return err
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRange(start, stop int64) (members []v, err error) {
+opZSet.go:	var cmd *redis.StringSliceCmd
+opZSet.go:
+opZSet.go:	if cmd = ctx.Rds.ZRange(ctx.Ctx, ctx.Key, start, stop); cmd.Err() != nil && cmd.Err() != redis.Nil {
+opZSet.go:		return nil, cmd.Err()
+opZSet.go:	}
+opZSet.go:	return ctx.UnmarshalToSlice(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRangeWithScores(start, stop int64) (members []v, scores []float64, err error) {
+opZSet.go:	cmd := ctx.Rds.ZRangeWithScores(ctx.Ctx, ctx.Key, start, stop)
+opZSet.go:	return ctx.UnmarshalRedisZ(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRevRangeWithScores(start, stop int64) (members []v, scores []float64, err error) {
+opZSet.go:	cmd := ctx.Rds.ZRevRangeWithScores(ctx.Ctx, ctx.Key, start, stop)
+opZSet.go:	return ctx.UnmarshalRedisZ(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRank(member interface{}) (rank int64, err error) {
+opZSet.go:	var (
+opZSet.go:		memberBytes []byte
+opZSet.go:	)
+opZSet.go:	//marshal member using msgpack
+opZSet.go:	if memberBytes, err = msgpack.Marshal(member); err != nil {
+opZSet.go:		return 0, err
+opZSet.go:	}
+opZSet.go:	cmd := ctx.Rds.ZRank(ctx.Ctx, ctx.Key, string(memberBytes))
+opZSet.go:	return cmd.Val(), cmd.Err()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRevRank(member interface{}) (rank int64, err error) {
+opZSet.go:	var (
+opZSet.go:		memberBytes []byte
+opZSet.go:	)
+opZSet.go:	//marshal member using msgpack
+opZSet.go:	if memberBytes, err = msgpack.Marshal(member); err != nil {
+opZSet.go:		return 0, err
+opZSet.go:	}
+opZSet.go:	cmd := ctx.Rds.ZRevRank(ctx.Ctx, ctx.Key, string(memberBytes))
+opZSet.go:	return cmd.Val(), cmd.Err()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZScore(member interface{}) (score float64, err error) {
+opZSet.go:	var (
+opZSet.go:		memberBytes []byte
+opZSet.go:		cmd         *redis.FloatCmd
+opZSet.go:	)
+opZSet.go:	//marshal member using msgpack
+opZSet.go:	if memberBytes, err = msgpack.Marshal(member); err != nil {
+opZSet.go:		return 0, err
+opZSet.go:	}
+opZSet.go:	if cmd = ctx.Rds.ZScore(ctx.Ctx, ctx.Key, string(memberBytes)); cmd.Err() != nil && cmd.Err() != redis.Nil {
+opZSet.go:		return 0, err
+opZSet.go:	} else if cmd.Err() == redis.Nil {
+opZSet.go:		return 0, nil
+opZSet.go:	}
+opZSet.go:	return cmd.Result()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZCard() (length int64, err error) {
+opZSet.go:	cmd := ctx.Rds.ZCard(ctx.Ctx, ctx.Key)
+opZSet.go:	return cmd.Result()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZCount(min, max string) (length int64, err error) {
+opZSet.go:	cmd := ctx.Rds.ZCount(ctx.Ctx, ctx.Key, min, max)
+opZSet.go:	return cmd.Result()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRangeByScore(opt *redis.ZRangeBy) (out []v, err error) {
+opZSet.go:	cmd := ctx.Rds.ZRangeByScore(ctx.Ctx, ctx.Key, opt)
+opZSet.go:
+opZSet.go:	return ctx.UnmarshalToSlice(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRangeByScoreWithScores(opt *redis.ZRangeBy) (out []v, scores []float64, err error) {
+opZSet.go:	cmd := ctx.Rds.ZRangeByScoreWithScores(ctx.Ctx, ctx.Key, opt)
+opZSet.go:	return ctx.UnmarshalRedisZ(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRevRangeByScore(opt *redis.ZRangeBy) (out []v, err error) {
+opZSet.go:	cmd := ctx.Rds.ZRevRangeByScore(ctx.Ctx, ctx.Key, opt)
+opZSet.go:	return ctx.UnmarshalToSlice(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRevRange(start, stop int64) (out []v, err error) {
+opZSet.go:	var cmd *redis.StringSliceCmd
+opZSet.go:
+opZSet.go:	if cmd = ctx.Rds.ZRevRange(ctx.Ctx, ctx.Key, start, stop); cmd.Err() != nil && cmd.Err() != redis.Nil {
+opZSet.go:		return nil, cmd.Err()
+opZSet.go:	}
+opZSet.go:	return ctx.UnmarshalToSlice(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRevRangeByScoreWithScores(opt *redis.ZRangeBy) (out []v, scores []float64, err error) {
+opZSet.go:	cmd := ctx.Rds.ZRevRangeByScoreWithScores(ctx.Ctx, ctx.Key, opt)
+opZSet.go:	return ctx.UnmarshalRedisZ(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRemRangeByRank(start, stop int64) (err error) {
+opZSet.go:	status := ctx.Rds.ZRemRangeByRank(ctx.Ctx, ctx.Key, start, stop)
+opZSet.go:	return status.Err()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZRemRangeByScore(min, max string) (err error) {
+opZSet.go:	status := ctx.Rds.ZRemRangeByScore(ctx.Ctx, ctx.Key, min, max)
+opZSet.go:	return status.Err()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZIncrBy(increment float64, member interface{}) (err error) {
+opZSet.go:	var (
+opZSet.go:		memberBytes []byte
+opZSet.go:	)
+opZSet.go:	//marshal member using msgpack
+opZSet.go:	if memberBytes, err = msgpack.Marshal(member); err != nil {
+opZSet.go:		return err
+opZSet.go:	}
+opZSet.go:	status := ctx.Rds.ZIncrBy(ctx.Ctx, ctx.Key, increment, string(memberBytes))
+opZSet.go:	return status.Err()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZPopMax(count int64) (out []v, scores []float64, err error) {
+opZSet.go:	cmd := ctx.Rds.ZPopMax(ctx.Ctx, ctx.Key, count)
+opZSet.go:	return ctx.UnmarshalRedisZ(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZPopMin(count int64) (out []v, scores []float64, err error) {
+opZSet.go:	cmd := ctx.Rds.ZPopMin(ctx.Ctx, ctx.Key, count)
+opZSet.go:	return ctx.UnmarshalRedisZ(cmd.Val())
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZLexCount(min, max string) (length int64) {
+opZSet.go:	cmd := ctx.Rds.ZLexCount(ctx.Ctx, ctx.Key, min, max)
+opZSet.go:	return cmd.Val()
+opZSet.go:}
+opZSet.go:func (ctx *Ctx[k, v]) ZScan(cursor uint64, match string, count int64) ([]string, uint64, error) {
+opZSet.go:	cmd := ctx.Rds.ZScan(ctx.Ctx, ctx.Key, cursor, match, count)
+opZSet.go:	return cmd.Result()
+opZSet.go:}
+options.go:// package do stands for data options
+options.go:package data
+options.go:
+options.go:// DataOption is parameter to create an API, RPC, or CallAt
+options.go:type DataOption struct {
+options.go:	Key        string
+options.go:	DataSource string
+options.go:}
+options.go:
+options.go:var Option *DataOption = nil
+options.go:
+options.go:// WithKey purpose of ApiNamed is to allow different API to have the same input type
+options.go:func (o *DataOption) WithKey(key string) (out *DataOption) {
+options.go:	if out = o; o == Option {
+options.go:		out = &DataOption{DataSource: "default"}
+options.go:	}
+options.go:	out.Key = key
+options.go:	return out
+options.go:}
+options.go:func (o *DataOption) WithRds(dataSource string) (out *DataOption) {
+options.go:	if out = o; o == Option {
+options.go:		out = &DataOption{DataSource: "default"}
+options.go:	}
+options.go:	out.DataSource = dataSource
+options.go:	return out
+options.go:}
+serialization.go:package data
+serialization.go:
+serialization.go:import (
+serialization.go:	"encoding/json"
+serialization.go:	"fmt"
+serialization.go:	"reflect"
+serialization.go:
+serialization.go:	"github.com/doptime/doptime/dlog"
+serialization.go:	"github.com/doptime/doptime/vars"
+serialization.go:	"github.com/vmihailenco/msgpack/v5"
+serialization.go:)
+serialization.go:
+serialization.go:func (ctx *Ctx[k, v]) toKeyStr(key k) (keyStr string, err error) {
+serialization.go:	vv := reflect.ValueOf(key)
+serialization.go:	if !vv.IsValid() || (vv.Kind() == reflect.Ptr && vv.IsNil()) {
+serialization.go:		return keyStr, vars.ErrInvalidField
+serialization.go:	}
+serialization.go:	//if key is a string, directly append to keyBytes
+serialization.go:	if strkey, ok := interface{}(key).(string); ok {
+serialization.go:		return strkey, nil
+serialization.go:	}
+serialization.go:	if keyBytes, err := json.Marshal(key); err != nil {
+serialization.go:		return keyStr, err
+serialization.go:	} else {
+serialization.go:		return string(keyBytes), nil
+serialization.go:	}
+serialization.go:}
+serialization.go:func (ctx *Ctx[k, v]) toValueStr(value v) (valueStr string, err error) {
+serialization.go:	//marshal with msgpack
+serialization.go:	//nil value is allowed
+serialization.go:	if bytes, err := msgpack.Marshal(value); err != nil {
+serialization.go:		return valueStr, err
+serialization.go:	} else {
+serialization.go:		return string(bytes), nil
+serialization.go:	}
+serialization.go:}
+serialization.go:
+serialization.go:func (ctx *Ctx[k, v]) toValueStrs(values []v) (valueStrs []string, err error) {
+serialization.go:	var bytes []byte
+serialization.go:	for _, value := range values {
+serialization.go:		if bytes, err = msgpack.Marshal(value); err != nil {
+serialization.go:			return nil, err
+serialization.go:		}
+serialization.go:		valueStrs = append(valueStrs, string(bytes))
+serialization.go:	}
+serialization.go:	return valueStrs, nil
+serialization.go:}
+serialization.go:func (ctx *Ctx[k, v]) toKeyStrs(keys ...k) (KeyStrs []string, err error) {
+serialization.go:	var keyStr string
+serialization.go:	for _, key := range keys {
+serialization.go:		if keyStr, err = ctx.toKeyStr(key); err != nil {
+serialization.go:			return nil, err
+serialization.go:		}
+serialization.go:		KeyStrs = append(KeyStrs, keyStr)
+serialization.go:	}
+serialization.go:	return KeyStrs, nil
+serialization.go:}
+serialization.go:
+serialization.go:func (ctx *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []string, err error) {
+serialization.go:	var (
+serialization.go:		key              k
+serialization.go:		value            v
+serialization.go:		strkey, strvalue string
+serialization.go:	)
+serialization.go:	if len(keyValue) == 0 {
+serialization.go:		return keyValStrs, fmt.Errorf("key value is nil")
+serialization.go:	}
+serialization.go:	// if key value is a map, convert it to key value slice
+serialization.go:	if kvMap, ok := keyValue[0].(map[k]v); ok {
+serialization.go:		for key, value := range kvMap {
+serialization.go:			if strkey, err = ctx.toKeyStr(key); err != nil {
+serialization.go:				return nil, err
+serialization.go:			}
+serialization.go:			if strvalue, err = ctx.toValueStr(value); err != nil {
+serialization.go:				return nil, err
+serialization.go:			}
+serialization.go:			keyValStrs = append(keyValStrs, strkey, strvalue)
+serialization.go:		}
+serialization.go:	} else if l := len(keyValue); l%2 == 0 {
+serialization.go:		for i := 0; i < l; i += 2 {
+serialization.go:			//type check, should be of type k and v
+serialization.go:			if key, ok = interface{}(keyValue[i]).(k); !ok {
+serialization.go:				dlog.Error().Any(" key must be of type k", key).Any("raw", keyValue[i+1]).Send()
+serialization.go:				return nil, vars.ErrInvalidField
+serialization.go:			}
+serialization.go:			if value, ok = interface{}(keyValue[i+1]).(v); !ok {
+serialization.go:				dlog.Error().Any(" value must be of type v", value).Any("raw", keyValue[i+1]).Send()
+serialization.go:				return nil, vars.ErrInvalidField
+serialization.go:			}
+serialization.go:			if strkey, err = ctx.toKeyStr(key); err != nil {
+serialization.go:				return nil, err
+serialization.go:			}
+serialization.go:			if strvalue, err = ctx.toValueStr(value); err != nil {
+serialization.go:				return nil, err
+serialization.go:			}
+serialization.go:
+serialization.go:			keyValStrs = append(keyValStrs, strkey, strvalue)
+serialization.go:		}
+serialization.go:	} else {
+serialization.go:		return nil, vars.ErrInvalidField
+serialization.go:	}
+serialization.go:	return keyValStrs, nil
+serialization.go:}

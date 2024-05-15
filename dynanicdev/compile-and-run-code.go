@@ -1,4 +1,4 @@
-package libapi
+package dynamicdev
 
 import (
 	"os"

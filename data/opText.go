@@ -6,30 +6,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func (ctx *Ctx[k, v]) Get(key k) (value v, err error) {
-	var (
-		keyStr string
-		cmd    *redis.StringCmd
-		data   []byte
-	)
-	if keyStr, err = ctx.toKeyStr(key); err != nil {
-		return value, err
-	}
-
-	if cmd = ctx.Rds.Get(ctx.Ctx, ctx.Key+":"+keyStr); cmd.Err() != nil {
-		return value, cmd.Err()
-	}
-	if data, err = cmd.Bytes(); err != nil {
-		return value, err
-	}
-	return ctx.toValue(data)
-}
 func (ctx *Ctx[k, v]) Keys() (out []k, err error) {
 	var (
 		cmd  *redis.StringSliceCmd
 		keys []string
 	)
-	cmd = ctx.Rds.Keys(ctx.Ctx, ctx.Key+":*")
+	cmd = ctx.Rds.Keys(ctx.Context, ctx.Key+":*")
 	if keys, err = cmd.Result(); err != nil {
 		return nil, err
 	}
@@ -48,7 +30,7 @@ func (ctx *Ctx[k, v]) Set(key k, param v, expiration time.Duration) (err error) 
 	if valStr, err = ctx.toValueStr(param); err != nil {
 		return err
 	} else {
-		status := ctx.Rds.Set(ctx.Ctx, ctx.Key+":"+keyStr, valStr, expiration)
+		status := ctx.Rds.Set(ctx.Context, ctx.Key+":"+keyStr, valStr, expiration)
 		return status.Err()
 	}
 }
@@ -61,6 +43,6 @@ func (ctx *Ctx[k, v]) Del(key k) (err error) {
 	if keyStr, err = ctx.toKeyStr(key); err != nil {
 		return err
 	}
-	status := ctx.Rds.Del(ctx.Ctx, ctx.Key+":"+keyStr)
+	status := ctx.Rds.Del(ctx.Context, ctx.Key+":"+keyStr)
 	return status.Err()
 }
