@@ -6,6 +6,5 @@ func Enable() {
 	dlog.Debug().Msg("dynamicdev enabled")
 }
 func init() {
-	Enable()
-
+	go Enable()
 }

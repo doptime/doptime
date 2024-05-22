@@ -44,4 +44,4 @@ var ApiCompileAndRunGoCode = api.Api(func(req *CompileAndRunGoCodeIn) (ok bool, 
 		return false, err
 	}
 	return true, nil
-})
+}).Func
