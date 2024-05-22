@@ -20,13 +20,10 @@ func keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(content stri
 	var curlyBrackets []string
 
 	for i, lineString := range lines {
-		//support comment on function definition line
+		//remove comment on function definition line
 		line := strings.Split(lineString, "//")[0]
+		//remove leading and trailing spaces
 		line = strings.TrimSpace(line)
-		//remove ending tag of {}, such as string{} or map[string]string{} ...
-		if len(line) > 2 && line[len(line)-2:] == "{}" {
-			line = line[:len(line)-2]
-		}
 		//skip empty line
 		l := len(line)
 		if l == 0 {
@@ -42,16 +39,18 @@ func keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(content stri
 			curlyBrackets = append(curlyBrackets, "{")
 			funcDefinitionStarting = len(curlyBrackets) == 1
 		}
+		//exception case of {}, such as string{} or map[string]string{} ...
+		exceptionCaseOfVarInitiation := len(line) > 2 && line[len(line)-2:] == "{}"
 		//capture the function definition end
-		if L2plusFuncEnd, L1FunEnd := line[l-1] == '}', line[0] == '}'; (L2plusFuncEnd || L1FunEnd) && len(curlyBrackets) > 0 {
+		if L2plusFuncEnd, L1FunEnd := line[l-1] == '}', line[0] == '}'; (L2plusFuncEnd || L1FunEnd) && len(curlyBrackets) > 0 && !exceptionCaseOfVarInitiation {
+			//pop the last element
 			if curlyBrackets[len(curlyBrackets)-1] == "{" {
-				//pop the last element
 				curlyBrackets = curlyBrackets[:len(curlyBrackets)-1]
 			}
 			funcDefinitionEnding = len(curlyBrackets) == 0
 		}
-		inFunctionDefinition := len(curlyBrackets) > 0
-		if funcDefinitionEnding || funcDefinitionStarting || !inFunctionDefinition {
+
+		if inFunctionDefinition := len(curlyBrackets) > 0; funcDefinitionEnding || funcDefinitionStarting || !inFunctionDefinition {
 			contentBuilder.WriteString(fmt.Sprintf("%d:%s\n", i+1, lineString))
 
 		}
