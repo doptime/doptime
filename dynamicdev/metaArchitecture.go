@@ -2,6 +2,7 @@ package dynamicdev
 
 import (
 	"bufio"
+	"doptime/api"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -9,8 +10,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-
-	"github.com/doptime/doptime/api"
 )
 
 func keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(content string) string {
