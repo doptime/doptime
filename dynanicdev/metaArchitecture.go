@@ -1,108 +1,175 @@
 package dynamicdev
 
 import (
+	"bufio"
 	"fmt"
-	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/doptime/doptime/api"
 )
 
-type StructInfo struct {
-	StructName            string
-	FieldsWithNameTypeTag []string
-}
-type RedisData struct {
-	RedisKeyType string
-	KeyName      string
-	KeyType      string
-	ValType      string
-}
+func keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(content string) string {
+	lines := strings.Split(content, "\n")
+	var contentBuilder strings.Builder
 
-type ArchitechInfoOfAPackage struct {
-	StructInfos     []*StructInfo
-	FuncProtos      []string
-	TypeProtos      []string
-	RedisDataProtos []*RedisData
-}
+	var curlyBrackets []string
 
-type ApiGetArchitectureInfoOfAPackageIn struct {
-	PackageName string `annotation:"@empty=useAllPackages;"`
-}
-type ApiGetArchitectureInfoOfAPackageOut map[string]*ArchitechInfoOfAPackage
-
-var APIGetArchitectureDetailOfPackages = api.Api(func(packInfo *ApiGetArchitectureInfoOfAPackageIn) (architects ApiGetArchitectureInfoOfAPackageOut, err error) {
-	var (
-		typeSpec   *ast.TypeSpec
-		structType *ast.StructType
-		ok         bool
-		pkgs       map[string]*ast.Package
-	)
-
-	//get all package names
-	if packInfo.PackageName == "" {
-		packInfo.PackageName = "."
-	}
-	fset := token.NewFileSet()
-	if pkgs, err = parser.ParseDir(fset, packInfo.PackageName, nil, parser.PackageClauseOnly); err != nil {
-		return architects, err
-	}
-
-	architects = make(map[string]*ArchitechInfoOfAPackage)
-
-	for _, pkg := range pkgs {
-		architects[pkg.Name] = &ArchitechInfoOfAPackage{
-			StructInfos: []*StructInfo{},
-			TypeProtos:  []string{},
-			FuncProtos:  []string{},
+	for i, lineString := range lines {
+		//support comment on function definition line
+		line := strings.Split(lineString, "//")[0]
+		line = strings.TrimSpace(line)
+		//remove ending tag of {}, such as string{} or map[string]string{} ...
+		if len(line) > 2 && line[len(line)-2:] == "{}" {
+			line = line[:len(line)-2]
 		}
-		ast.Inspect(pkg, func(n ast.Node) bool {
-			if typeSpec, ok = n.(*ast.TypeSpec); ok {
-				if structType, ok = typeSpec.Type.(*ast.StructType); ok {
-					var fields []string
-					for _, field := range structType.Fields.List {
-						var tag string
-						var names []string
-						if field.Tag != nil {
-							tag = " `" + field.Tag.Value + "`"
-						}
-						// names joined with comma
-						for _, name := range field.Names {
-							names = append(names, name.Name)
-						}
+		//skip empty line
+		l := len(line)
+		if l == 0 {
+			continue
+		}
+		funcDefinitionStarting, funcDefinitionEnding := false, false
 
-						fields = append(fields, strings.Join(names, ", ")+" "+field.Type.(*ast.Ident).Name+tag)
-					}
-					architects[pkg.Name].StructInfos = append(architects[pkg.Name].StructInfos, &StructInfo{
-						StructName:            typeSpec.Name.Name,
-						FieldsWithNameTypeTag: fields,
-					})
-				} else {
-					// structType to string
-					structTypeString := typeSpec.Type.(*ast.Ident).Name
-					architects[pkg.Name].TypeProtos = append(architects[pkg.Name].TypeProtos, "type "+typeSpec.Name.Name+" "+structTypeString)
-				}
-			} else if funcDecl, ok := n.(*ast.FuncDecl); ok {
-				var funcProto string
-				funcProto = funcDecl.Name.Name + "("
-				for _, param := range funcDecl.Type.Params.List {
-					for _, name := range param.Names {
-						funcProto += name.Name + " " + param.Type.(*ast.Ident).Name + ", "
-					}
-				}
-				funcProto = funcProto[:len(funcProto)-2] + ") ("
-				for _, result := range funcDecl.Type.Results.List {
-					funcProto += result.Type.(*ast.Ident).Name + ", "
-				}
-				funcProto = funcProto[:len(funcProto)-2] + ")"
-				architects[pkg.Name].FuncProtos = append(architects[pkg.Name].FuncProtos, funcProto)
+		//capture the function definition line
+		//golang hash strict ast tree, so this evidence is enough
+		//seek position of func start
+		exceptionCaseOfTypeDefinition := len(curlyBrackets) == 0 && len(line) > 5 && line[:4] == "type"
+		if line[l-1] == '{' && !exceptionCaseOfTypeDefinition {
+			curlyBrackets = append(curlyBrackets, "{")
+			funcDefinitionStarting = len(curlyBrackets) == 1
+		}
+		//capture the function definition end
+		if L2plusFuncEnd, L1FunEnd := line[l-1] == '}', line[0] == '}'; (L2plusFuncEnd || L1FunEnd) && len(curlyBrackets) > 0 {
+			if curlyBrackets[len(curlyBrackets)-1] == "{" {
+				//pop the last element
+				curlyBrackets = curlyBrackets[:len(curlyBrackets)-1]
 			}
-			return true
+			funcDefinitionEnding = len(curlyBrackets) == 0
+		}
+		inFunctionDefinition := len(curlyBrackets) > 0
+		if funcDefinitionEnding || funcDefinitionStarting || !inFunctionDefinition {
+			contentBuilder.WriteString(fmt.Sprintf("%d:%s\n", i+1, lineString))
 
-		})
+		}
+
 	}
-	fmt.Println(fmt.Sprintf("%+v", architects))
-	return architects, nil
+
+	return strings.Trim(contentBuilder.String(), "\n")
+}
+
+func removeStandardLibraryPackages_SourceCodeToArchitecture(fileContentWithName string) (content string, err error) {
+	var contentBuilder strings.Builder
+	var importStatements []string
+	var importStarted bool = false
+	for _, line := range strings.Split(fileContentWithName, "\n") {
+		seqWithLinestring := strings.SplitN(line, ":", 2)
+		_, lineString := seqWithLinestring[0], seqWithLinestring[1]
+
+		if strings.Contains(lineString, "import (") {
+			importStarted = true
+		} else if importStarted && strings.Contains(lineString, ")") {
+			importStatements = append(importStatements, line)
+			importStarted = false
+			for i := len(importStatements) - 2; i >= 1; i-- {
+				//remove the import statements if not contains "."
+				if !strings.Contains(importStatements[i], ".") {
+					importStatements = append(importStatements[:i], importStatements[i+1:]...)
+				}
+			}
+			//if lefts no import statements, skip the import block
+			if len(importStatements) <= 2 {
+				importStatements = []string{}
+			}
+			//append left import statement to contentBuilder
+			for _, importStatement := range importStatements {
+				contentBuilder.WriteString(importStatement + "\n")
+			}
+			continue
+		}
+
+		if importStarted {
+			importStatements = append(importStatements, line)
+		} else {
+			contentBuilder.WriteString(line + "\n")
+		}
+	}
+
+	return contentBuilder.String(), nil
+
+}
+
+type GetProjectArchitectureInfoIn struct {
+	SouceCodeFilesToFocus string
+}
+type GetProjectArchitectureInfoOut map[string]string
+
+var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architects GetProjectArchitectureInfoOut, err error) {
+
+	ReadInGoFile := func(filePath string) (content string, err error) {
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+
+		var contentBuilder strings.Builder
+
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			contentBuilder.WriteString(scanner.Text() + "\n")
+		}
+
+		if err = scanner.Err(); err != nil {
+			return "", err
+		}
+
+		return contentBuilder.String(), nil
+	}
+	architects = map[string]string{}
+
+	//get bin path as dirPath
+	_, binPath, _, _ := runtime.Caller(0)
+	binPath = filepath.Dir(binPath) + "/."
+
+	// walkDir recursively walks through a directory and processes all .go files
+	filepath.Walk(binPath, func(path string, info os.FileInfo, err error) error {
+
+		if err != nil {
+			return err
+		}
+		var processedPage string
+		if !info.IsDir() && strings.HasSuffix(path, ".go") {
+			page, err := ReadInGoFile(path)
+			if err != nil {
+				return err
+			}
+
+			// 先确认语法树是否正确，如果正确再进行替换
+			if _, err = parser.ParseFile(token.NewFileSet(), "", page, parser.ParseComments); err != nil {
+				return err
+			}
+			if len(packInfo.SouceCodeFilesToFocus) > 0 && strings.Contains(strings.ToLower(path), strings.ToLower(packInfo.SouceCodeFilesToFocus)) {
+				var contentBuilder strings.Builder
+				for lineNum, line := range strings.Split(page, "\n") {
+					contentBuilder.WriteString(fmt.Sprintf("%d:%s\n", lineNum+1, line))
+				}
+				processedPage = contentBuilder.String()
+
+			} else {
+				processedPage = keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(page)
+				if processedPage, err = removeStandardLibraryPackages_SourceCodeToArchitecture(processedPage); err != nil {
+					return err
+				}
+			}
+			fmt.Println(path, processedPage)
+			architects[path] = processedPage
+		}
+		return nil
+	})
+	return nil, nil
 }).Func
