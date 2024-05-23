@@ -167,7 +167,8 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 					return err
 				}
 			}
-			architectures[path] = processedPage
+			fileName := path[len(dir):]
+			architectures[fileName] = processedPage
 		}
 		return nil
 	})
