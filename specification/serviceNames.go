@@ -33,44 +33,45 @@ var DisAllowedServiceNames = map[string]bool{
 // 1. the type name of the first parameter of the function
 // 2. the name give by the user
 // do not panic, because it may be called by web client. otherwise the server can be maliciously closed by the client
-func ApiName(nmOld string) (ServiceName string) {
+func ApiName(nameOld string) (nameNew string) {
+	nameNew = nameOld
 	//remove postfix
-	nameLowercase := "      " + strings.ToLower(nmOld)
+	nameLowercase := "      " + strings.ToLower(nameOld)
 	if p := nameLowercase[len(nameLowercase)-6:]; p == "output" {
-		ServiceName = nmOld[:len(nmOld)-6]
+		nameNew = nameOld[:len(nameOld)-6]
 	} else if p := nameLowercase[len(nameLowercase)-5:]; p == "input" || p == "param" {
-		ServiceName = nmOld[:len(nmOld)-5]
+		nameNew = nameOld[:len(nameOld)-5]
 	} else if p := nameLowercase[len(nameLowercase)-4:]; p == "data" {
-		ServiceName = nmOld[:len(nmOld)-4]
+		nameNew = nameOld[:len(nameOld)-4]
 	} else if p := nameLowercase[len(nameLowercase)-3:]; p == "arg" || p == "req" || p == "src" || p == "out" {
-		ServiceName = nmOld[:len(nmOld)-3]
+		nameNew = nameOld[:len(nameOld)-3]
 	} else if p := nameLowercase[len(nameLowercase)-2:]; p == "in" {
-		ServiceName = nmOld[:len(nmOld)-2]
+		nameNew = nameOld[:len(nameOld)-2]
 	}
 
 	//remove prefix
-	nameLowercase = strings.ToLower(ServiceName) + "      "
+	nameLowercase = strings.ToLower(nameNew) + "      "
 	if p := nameLowercase[:5]; p == "input" || p == "param" {
-		ServiceName = ServiceName[5:]
+		nameNew = nameNew[5:]
 	} else if p := nameLowercase[:4]; p == "api:" || p == "data" {
-		ServiceName = ServiceName[4:]
+		nameNew = nameNew[4:]
 	} else if p := nameLowercase[:3]; p == "arg" || p == "req" || p == "src" {
-		ServiceName = ServiceName[3:]
+		nameNew = nameNew[3:]
 	} else if p := nameLowercase[:2]; p == "in" {
-		ServiceName = ServiceName[2:]
+		nameNew = nameNew[2:]
 	}
 
-	if _, ok := DisAllowedServiceNames[ServiceName]; ok || len(ServiceName) == 0 {
-		ServiceName = big.NewInt(rand.Int63()).String()
-		dlog.Error().Msg("Service created failed when calling ApiNamed, service name " + nmOld + " is invalid , it's renamed to " + ServiceName)
+	if _, ok := DisAllowedServiceNames[nameNew]; ok || len(nameNew) == 0 {
+		nameNew = big.NewInt(rand.Int63()).String()
+		dlog.Error().Msg("Service created failed when calling ApiNamed, service name " + nameOld + " is invalid , it's renamed to " + nameNew)
 	}
 
 	//first byte of ServiceName should be lower case
-	if ServiceName[0] >= 'A' && ServiceName[0] <= 'Z' {
-		ServiceName = string(ServiceName[0]+32) + ServiceName[1:]
+	if nameNew[0] >= 'A' && nameNew[0] <= 'Z' {
+		nameNew = string(nameNew[0]+32) + nameNew[1:]
 	}
 	//ensure ServiceKey start with "api:"
-	return "api:" + ServiceName
+	return "api:" + nameNew
 }
 
 func ApiNameByType(i interface{}) (name string) {
