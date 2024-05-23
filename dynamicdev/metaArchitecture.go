@@ -105,7 +105,7 @@ type GetProjectArchitectureInfoIn struct {
 }
 type GetProjectArchitectureInfoOut map[string]string
 
-var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architects GetProjectArchitectureInfoOut, err error) {
+var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
 
 	ReadInGoFile := func(filePath string) (content string, err error) {
 
@@ -128,7 +128,7 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 
 		return contentBuilder.String(), nil
 	}
-	architects = map[string]string{}
+	architectures = map[string]string{}
 
 	//get bin path as dirPath
 	// _, binPath, _, _ := runtime.Caller(0)
@@ -167,10 +167,9 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 					return err
 				}
 			}
-			fmt.Println(path, processedPage)
-			architects[path] = processedPage
+			architectures[path] = processedPage
 		}
 		return nil
 	})
-	return nil, nil
+	return architectures, nil
 }).Func
