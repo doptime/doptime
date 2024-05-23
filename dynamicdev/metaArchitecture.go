@@ -7,7 +7,6 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/doptime/doptime/api"
@@ -132,11 +131,14 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 	architects = map[string]string{}
 
 	//get bin path as dirPath
-	_, binPath, _, _ := runtime.Caller(0)
-	binPath = filepath.Dir(binPath) + "/."
-
+	// _, binPath, _, _ := runtime.Caller(0)
+	// binPath = filepath.Dir(binPath) + "/."
+	dir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
 	// walkDir recursively walks through a directory and processes all .go files
-	filepath.Walk(binPath, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 
 		if err != nil {
 			return err
