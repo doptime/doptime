@@ -1,6 +1,8 @@
 package specification
 
 import (
+	"math/big"
+	"math/rand"
 	"reflect"
 	"strings"
 
@@ -31,35 +33,38 @@ var DisAllowedServiceNames = map[string]bool{
 // 1. the type name of the first parameter of the function
 // 2. the name give by the user
 // do not panic, because it may be called by web client. otherwise the server can be maliciously closed by the client
-func ApiName(ServiceName string) string {
-	var ServiceNameLowercase string
-	//remove  prefix. "api:" is the case of encoded service name. other wise for the case of parameter type name
-	if ServiceNameLowercase = strings.ToLower(ServiceName); len(ServiceNameLowercase) == 0 {
-		dlog.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
-		return ""
-	}
-	for _, prefix := range []string{"api:", "input", "in", "req", "arg", "param", "src", "data"} {
-		if strings.HasPrefix(ServiceNameLowercase, prefix) {
-			ServiceName = ServiceName[len(prefix):]
-			break
-		}
-	}
+func ApiName(ServiceNameOriginal string) (ServiceName string) {
 	//remove postfix
-	if ServiceNameLowercase = strings.ToLower(ServiceName); len(ServiceNameLowercase) == 0 {
-		dlog.Warn().Msg("Service created failed when calling ApiNamed, service name is empty")
-		return ""
-	}
-	for _, postfix := range []string{"input", "in", "req", "arg", "param", "src", "data"} {
-		if strings.HasSuffix(ServiceName, postfix) {
-			ServiceName = ServiceName[:len(ServiceName)-len(postfix)]
-			break
-		}
+	nameLowercase := "      " + strings.ToLower(ServiceNameOriginal)
+	if p := nameLowercase[len(nameLowercase)-6:]; p == "output" {
+		ServiceName = ServiceNameOriginal[:len(ServiceName)-6]
+	} else if p := nameLowercase[len(nameLowercase)-5:]; p == "input" || p == "param" {
+		ServiceName = ServiceNameOriginal[:len(ServiceName)-5]
+	} else if p := nameLowercase[len(nameLowercase)-4:]; p == "data" {
+		ServiceName = ServiceNameOriginal[:len(ServiceName)-4]
+	} else if p := nameLowercase[len(nameLowercase)-3:]; p == "arg" || p == "req" || p == "src" || p == "out" {
+		ServiceName = ServiceNameOriginal[:len(ServiceName)-3]
+	} else if p := nameLowercase[len(nameLowercase)-2:]; p == "in" {
+		ServiceName = ServiceNameOriginal[:len(ServiceName)-2]
 	}
 
-	if _, ok := DisAllowedServiceNames[ServiceName]; ok {
-		dlog.Error().Str("Service created failed when calling ApiNamed, service name disallowed", ServiceName).Send()
-		return ""
+	//remove prefix
+	nameLowercase = strings.ToLower(ServiceName) + "      "
+	if p := nameLowercase[:5]; p == "input" || p == "param" {
+		ServiceName = ServiceName[5:]
+	} else if p := nameLowercase[:4]; p == "api:" || p == "data" {
+		ServiceName = ServiceName[4:]
+	} else if p := nameLowercase[:3]; p == "arg" || p == "req" || p == "src" {
+		ServiceName = ServiceName[3:]
+	} else if p := nameLowercase[:2]; p == "in" {
+		ServiceName = ServiceName[2:]
 	}
+
+	if _, ok := DisAllowedServiceNames[ServiceName]; ok || len(ServiceName) == 0 {
+		ServiceName = big.NewInt(rand.Int63()).String()
+		dlog.Error().Msg("Service created failed when calling ApiNamed, service name " + ServiceNameOriginal + " is invalid , it's renamed to " + ServiceName)
+	}
+
 	//first byte of ServiceName should be lower case
 	if ServiceName[0] >= 'A' && ServiceName[0] <= 'Z' {
 		ServiceName = string(ServiceName[0]+32) + ServiceName[1:]
