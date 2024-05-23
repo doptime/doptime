@@ -1,9 +1,10 @@
 package dynamicdev
 
 import (
-	"doptime/api"
 	"os"
 	"os/exec"
+
+	"github.com/doptime/doptime/api"
 )
 
 type CompileAndRunGoCodeIn struct {
