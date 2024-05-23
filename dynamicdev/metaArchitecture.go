@@ -138,7 +138,7 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		return nil, err
 	}
 	// walkDir recursively walks through a directory and processes all .go files
-	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(dir+"/.", func(path string, info os.FileInfo, err error) error {
 
 		if err != nil {
 			return err
