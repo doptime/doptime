@@ -1,7 +1,6 @@
 package dynamicdev
 
 import (
-	"bufio"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -100,6 +99,18 @@ func removeStandardLibraryPackages_SourceCodeToArchitecture(fileContentWithName 
 
 }
 
+func SourceCodeToArchitecture(sourceCode string) (architecture string, err error) {
+	// 先确认语法树是否正确，如果正确再进行替换
+	if _, err = parser.ParseFile(token.NewFileSet(), "", sourceCode, parser.ParseComments); err != nil {
+		return "", err
+	}
+	processedPage := keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(sourceCode)
+	if processedPage, err = removeStandardLibraryPackages_SourceCodeToArchitecture(processedPage); err != nil {
+		return "", err
+	}
+	return processedPage, nil
+}
+
 type GetProjectArchitectureInfoIn struct {
 	SouceCodeFilesToFocus string
 }
@@ -107,27 +118,6 @@ type GetProjectArchitectureInfoOut map[string]string
 
 var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
 
-	ReadInGoFile := func(filePath string) (content string, err error) {
-
-		file, err := os.Open(filePath)
-		if err != nil {
-			return "", err
-		}
-		defer file.Close()
-
-		var contentBuilder strings.Builder
-
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			contentBuilder.WriteString(scanner.Text() + "\n")
-		}
-
-		if err = scanner.Err(); err != nil {
-			return "", err
-		}
-
-		return contentBuilder.String(), nil
-	}
 	architectures = map[string]string{}
 
 	//get bin path as dirPath
@@ -143,32 +133,11 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		if err != nil {
 			return err
 		}
-		var processedPage string
 		if !info.IsDir() && strings.HasSuffix(path, ".go") {
-			page, err := ReadInGoFile(path)
-			if err != nil {
-				return err
-			}
-
-			// 先确认语法树是否正确，如果正确再进行替换
-			if _, err = parser.ParseFile(token.NewFileSet(), "", page, parser.ParseComments); err != nil {
-				return err
-			}
-			if len(packInfo.SouceCodeFilesToFocus) > 0 && strings.Contains(strings.ToLower(path), strings.ToLower(packInfo.SouceCodeFilesToFocus)) {
-				var contentBuilder strings.Builder
-				for lineNum, line := range strings.Split(page, "\n") {
-					contentBuilder.WriteString(fmt.Sprintf("%d:%s\n", lineNum+1, line))
-				}
-				processedPage = contentBuilder.String()
-
-			} else {
-				processedPage = keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(page)
-				if processedPage, err = removeStandardLibraryPackages_SourceCodeToArchitecture(processedPage); err != nil {
-					return err
-				}
-			}
 			fileName := path[len(dir):]
-			architectures[fileName] = processedPage
+			if page, err := ReadInGoFile(path); err == nil {
+				architectures[fileName], err = SourceCodeToArchitecture(page)
+			}
 		}
 		return nil
 	})
