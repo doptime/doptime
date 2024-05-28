@@ -104,10 +104,6 @@ func removeStandardLibraryPackages_SourceCodeToArchitecture(fileContentWithName 
 }
 
 func SourceCodeToArchitecture(sourceCode string) (architecture string, err error) {
-	// 先确认语法树是否正确，如果正确再进行替换
-	if _, err = parser.ParseFile(token.NewFileSet(), "", sourceCode, parser.ParseComments); err != nil {
-		return "", err
-	}
 	processedPage := keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(sourceCode)
 	if processedPage, err = removeStandardLibraryPackages_SourceCodeToArchitecture(processedPage); err != nil {
 		return "", err
@@ -116,34 +112,69 @@ func SourceCodeToArchitecture(sourceCode string) (architecture string, err error
 }
 
 type GetProjectArchitectureInfoIn struct {
-	SouceCodeFilesToFocus string
+	//default is current dir
+	ProjectDir  string
+	SkippedDirs []string
 }
-type GetProjectArchitectureInfoOut map[string]string
+type ArchitectureItem struct {
+	FileName     string
+	Architecture string
+}
+type GetProjectArchitectureInfoOut map[string]*ArchitectureItem
 
 var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
 
-	architectures = map[string]string{}
+	architectures = map[string]*ArchitectureItem{}
 
 	//get bin path as dirPath
-	// _, binPath, _, _ := runtime.Caller(0)
+	// _, binPath, _, _ := runtime.产品经理Caller(0)
 	// binPath = filepath.Dir(binPath) + "/."
-	dir, err := os.Getwd()
-	if err != nil {
-		return nil, err
+	dir := dirOfProject
+	if len(packInfo.ProjectDir) > 0 {
+		dir = packInfo.ProjectDir
 	}
 	// walkDir recursively walks through a directory and processes all .go files
-	filepath.Walk(dir+"/.", func(path string, info os.FileInfo, err error) error {
-
+	filepath.WalkDir(dir+"/.", func(path string, info os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.HasSuffix(path, ".go") {
-			fileName := path[len(dir):]
-			if page, err := ReadInGoFile(path); err == nil {
-				architectures[fileName], err = SourceCodeToArchitecture(page)
+		if info.IsDir() {
+			name := info.Name()
+			for _, skippedDir := range packInfo.SkippedDirs {
+				if name == skippedDir {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+		fileName := path[len(dir):]
+		page, err := ReadInFile(path)
+		if err != nil {
+			return err
+		}
+		arc, extractArch := &ArchitectureItem{FileName: fileName, Architecture: page}, false
+
+		if strings.HasSuffix(path, ".go") {
+			// 先确认语法树是否正确，如果正确再进行替换
+			if _, err = parser.ParseFile(token.NewFileSet(), "", page, parser.ParseComments); err != nil {
+				return err
+			}
+			extractArch = true
+		} else if strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".ts") || strings.HasSuffix(path, ".vue") || strings.HasSuffix(path, ".jsx") ||
+			strings.HasSuffix(path, ".tsx") {
+			extractArch = true
+		} else if !(strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".md") || strings.HasSuffix(path, ".json") || strings.HasSuffix(path, ".mdx")) {
+			return nil
+		}
+
+		if extractArch {
+			if arc.Architecture, err = SourceCodeToArchitecture(page); err != nil {
+				return nil
 			}
 		}
+		architectures[fileName] = arc
 		return nil
 	})
+
 	return architectures, nil
 }).Func
