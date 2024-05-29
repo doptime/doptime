@@ -122,6 +122,7 @@ type GetProjectArchitectureInfoOut map[RelativeFileName]string
 var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
 
 	architectures = map[RelativeFileName]string{}
+	var surffixType = map[string]string{"go": "go", "js": "js", "ts": "js", "vue": "js", "jsx": "js", "tsx": "js", "html": "text", "md": "text", "json": "text", "mdx": "text"}
 
 	//get bin path as dirPath
 	// _, binPath, _, _ := runtime.产品经理Caller(0)
@@ -145,31 +146,24 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 			}
 			return nil
 		}
-		fileName := path[len(dir):]
-		page, err := ReadInFile(path)
-		if err != nil {
-			return err
-		}
-		extractArch := false
-
-		if strings.HasSuffix(path, ".go") {
-			// 先确认语法树是否正确，如果正确再进行替换
-			if _, err = parser.ParseFile(token.NewFileSet(), "", page, parser.ParseComments); err != nil {
-				return err
-			}
-			extractArch = true
-		} else if strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".ts") || strings.HasSuffix(path, ".vue") || strings.HasSuffix(path, ".jsx") ||
-			strings.HasSuffix(path, ".tsx") {
-			extractArch = true
-		} else if !(strings.HasSuffix(path, ".html") || strings.HasSuffix(path, ".md") || strings.HasSuffix(path, ".json") || strings.HasSuffix(path, ".mdx")) {
+		doctype, typeExisted := surffixType[filepath.Ext(path)]
+		if !typeExisted {
 			return nil
 		}
 
+		page, _ := ReadInFile(path)
+
+		corrupted := false
+		if doctype == "go" {
+			// 先确认语法树是否正确，如果正确再进行替换
+			_, err = parser.ParseFile(token.NewFileSet(), "", page, parser.ParseComments)
+			corrupted = err != nil
+		}
+
+		fileName := path[len(dir):]
 		architectures[RelativeFileName(fileName)] = page
-		if extractArch {
-			if architectures[RelativeFileName(fileName)], err = SourceCodeToArchitecture(page); err != nil {
-				return nil
-			}
+		if (doctype == "go" || doctype == "js") && !corrupted {
+			architectures[RelativeFileName(fileName)], _ = SourceCodeToArchitecture(page)
 		}
 		return nil
 	})
