@@ -113,8 +113,9 @@ func SourceCodeToArchitecture(sourceCode string) (architecture string, err error
 
 type GetProjectArchitectureInfoIn struct {
 	//default is current dir
-	ProjectDir  string
-	SkippedDirs []string
+	ProjectDir        string
+	SkippedDirs       []string
+	IncludedSurffixes []string
 }
 type RelativeFileName string
 type GetProjectArchitectureInfoOut map[RelativeFileName]string
@@ -122,7 +123,12 @@ type GetProjectArchitectureInfoOut map[RelativeFileName]string
 var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
 
 	architectures = map[RelativeFileName]string{}
-	var surffixType = map[string]string{"go": "go", "js": "js", "ts": "js", "vue": "js", "jsx": "js", "tsx": "js", "html": "text", "md": "text", "json": "text", "mdx": "text"}
+	var surffixType = map[string]string{".go": "go", ".js": "js", ".ts": "js", ".vue": "js", ".jsx": "js", ".tsx": "js", ".html": "text", ".md": "text", ".json": "text", ".mdx": "text", ".toml": "text", ".txt": "text", "yaml": "text"}
+	if packInfo.IncludedSurffixes != nil {
+		for _, surffix := range packInfo.IncludedSurffixes {
+			surffixType[surffix] = "text"
+		}
+	}
 
 	//get bin path as dirPath
 	// _, binPath, _, _ := runtime.产品经理Caller(0)
