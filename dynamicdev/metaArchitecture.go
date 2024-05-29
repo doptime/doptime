@@ -130,17 +130,18 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 	if len(packInfo.ProjectDir) > 0 {
 		dir = packInfo.ProjectDir
 	}
+	var skipDirs = map[string]bool{}
+	for _, skippedDir := range packInfo.SkippedDirs {
+		skipDirs[skippedDir] = true
+	}
 	// walkDir recursively walks through a directory and processes all .go files
 	filepath.WalkDir(dir+"/.", func(path string, info os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
-			name := info.Name()
-			for _, skippedDir := range packInfo.SkippedDirs {
-				if name == skippedDir {
-					return filepath.SkipDir
-				}
+			if skipDirs[info.Name()] {
+				return filepath.SkipDir
 			}
 			return nil
 		}
@@ -164,6 +165,7 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 			return nil
 		}
 
+		architectures[RelativeFileName(fileName)] = page
 		if extractArch {
 			if architectures[RelativeFileName(fileName)], err = SourceCodeToArchitecture(page); err != nil {
 				return nil
