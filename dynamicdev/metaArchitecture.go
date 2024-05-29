@@ -116,15 +116,12 @@ type GetProjectArchitectureInfoIn struct {
 	ProjectDir  string
 	SkippedDirs []string
 }
-type ArchitectureItem struct {
-	FileName     string
-	Architecture string
-}
-type GetProjectArchitectureInfoOut map[string]*ArchitectureItem
+type RelativeFileName string
+type GetProjectArchitectureInfoOut map[RelativeFileName]string
 
 var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
 
-	architectures = map[string]*ArchitectureItem{}
+	architectures = map[RelativeFileName]string{}
 
 	//get bin path as dirPath
 	// _, binPath, _, _ := runtime.产品经理Caller(0)
@@ -152,7 +149,7 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		if err != nil {
 			return err
 		}
-		arc, extractArch := &ArchitectureItem{FileName: fileName, Architecture: page}, false
+		extractArch := false
 
 		if strings.HasSuffix(path, ".go") {
 			// 先确认语法树是否正确，如果正确再进行替换
@@ -168,11 +165,10 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		}
 
 		if extractArch {
-			if arc.Architecture, err = SourceCodeToArchitecture(page); err != nil {
+			if architectures[RelativeFileName(fileName)], err = SourceCodeToArchitecture(page); err != nil {
 				return nil
 			}
 		}
-		architectures[fileName] = arc
 		return nil
 	})
 
