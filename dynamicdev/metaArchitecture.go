@@ -113,9 +113,9 @@ func SourceCodeToArchitecture(sourceCode string) (architecture string, err error
 
 type GetProjectArchitectureInfoIn struct {
 	//default is current dir
-	ProjectDir        string
-	SkippedDirs       []string
-	IncludedSurffixes []string
+	ProjectDir       string
+	SkippedDirs      []string
+	IncludedFileExts []string
 }
 type RelativeFileName string
 type GetProjectArchitectureInfoOut map[RelativeFileName]string
@@ -124,10 +124,13 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 
 	architectures = map[RelativeFileName]string{}
 	var surffixType = map[string]string{".go": "go", ".js": "js", ".ts": "js", ".vue": "js", ".jsx": "js", ".tsx": "js", ".html": "text", ".md": "text", ".json": "text", ".mdx": "text", ".toml": "text", ".txt": "text", "yaml": "text"}
-	if packInfo.IncludedSurffixes != nil {
-		for _, surffix := range packInfo.IncludedSurffixes {
-			surffixType[surffix] = "text"
+	for _, surffix := range packInfo.IncludedFileExts {
+		if len(surffix) == 0 {
+			continue
+		} else if surffix[0] != '.' {
+			surffix = "." + surffix
 		}
+		surffixType[surffix] = "text"
 	}
 
 	//get bin path as dirPath
