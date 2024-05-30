@@ -140,7 +140,7 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 	if len(packInfo.ProjectDir) > 0 {
 		dir = packInfo.ProjectDir
 	}
-	var skipDirs = map[string]bool{}
+	var skipDirs = map[string]bool{".vscode": true, "node_modules": true}
 	for _, skippedDir := range packInfo.SkippedDirs {
 		skipDirs[skippedDir] = true
 	}
