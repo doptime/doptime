@@ -120,8 +120,8 @@ type GetProjectArchitectureInfoIn struct {
 	IncludedFileExts []string
 }
 type GetProjectArchitectureInfoOut struct {
-	Path         string
-	RelPath2Arch map[string]string
+	BasePath     string
+	RelName2Arch map[string]string
 }
 
 var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
@@ -137,18 +137,18 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 	}
 
 	architectures = GetProjectArchitectureInfoOut{
-		Path:         dirOfDefaultProject,
-		RelPath2Arch: make(map[string]string),
+		BasePath:     dirOfDefaultProject,
+		RelName2Arch: make(map[string]string),
 	}
 	if len(packInfo.ProjectDir) > 0 {
-		architectures.Path = packInfo.ProjectDir
+		architectures.BasePath = packInfo.ProjectDir
 	}
 	var skipDirs = map[string]bool{".vscode": true, "node_modules": true}
 	for _, skippedDir := range packInfo.SkippedDirs {
 		skipDirs[skippedDir] = true
 	}
 	// walkDir recursively walks through a directory and processes all .go files
-	filepath.WalkDir(architectures.Path+"/.", func(path string, info os.DirEntry, err error) error {
+	filepath.WalkDir(architectures.BasePath+"/.", func(path string, info os.DirEntry, err error) error {
 		if err == filepath.SkipDir {
 			return nil
 		}
@@ -171,10 +171,10 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 			_, err = parser.ParseFile(token.NewFileSet(), "", page, parser.ParseComments)
 			corrupted = err != nil
 		}
-		RelName := path[len(architectures.Path):]
-		architectures.RelPath2Arch[RelName] = page
+		RelName := path[len(architectures.BasePath):]
+		architectures.RelName2Arch[RelName] = page
 		if (doctype == "go" || doctype == "js") && !corrupted {
-			architectures.RelPath2Arch[RelName], _ = SourceCodeToArchitecture(page)
+			architectures.RelName2Arch[RelName], _ = SourceCodeToArchitecture(page)
 		}
 		return nil
 	})
