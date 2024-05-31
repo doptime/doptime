@@ -116,7 +116,8 @@ var dirOfDefaultProject, _ = os.Getwd()
 type GetProjectArchitectureInfoIn struct {
 	//default is current dir
 	ProjectDir       string
-	SkippedDirs      []string
+	SkipDirs         []string
+	SkipFiles        []string
 	IncludedFileExts []string
 }
 type GetProjectArchitectureInfoOut struct {
@@ -144,8 +145,12 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		architectures.BasePath = packInfo.ProjectDir
 	}
 	var skipDirs = map[string]bool{".vscode": true, "node_modules": true}
-	for _, skippedDir := range packInfo.SkippedDirs {
+	for _, skippedDir := range packInfo.SkipDirs {
 		skipDirs[skippedDir] = true
+	}
+	var skipFiles = map[string]bool{}
+	for _, skipFile := range packInfo.SkipFiles {
+		skipFiles[skipFile] = true
 	}
 	// walkDir recursively walks through a directory and processes all .go files
 	filepath.WalkDir(architectures.BasePath+"/.", func(path string, info os.DirEntry, err error) error {
@@ -156,6 +161,8 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 			if skiodir, ok := skipDirs[info.Name()]; ok && skiodir {
 				return filepath.SkipDir
 			}
+			return nil
+		} else if skipfile, ok := skipFiles[info.Name()]; ok && skipfile {
 			return nil
 		}
 		doctype, typeExisted := surffixType[filepath.Ext(path)]
