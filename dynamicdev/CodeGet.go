@@ -15,8 +15,6 @@ type CodeGetOut struct {
 	SourceCode string
 }
 
-var dirOfProject, _ = os.Getwd()
-
 // used to read either go file or front end file
 func ReadInFile(filePath string) (content string, err error) {
 
@@ -42,7 +40,7 @@ func ReadInFile(filePath string) (content string, err error) {
 
 var APICodeGet = api.Api(func(paramIn *CodeGetIn) (result *CodeGetOut, err error) {
 	result = &CodeGetOut{}
-	if result.SourceCode, err = ReadInFile(dirOfProject + paramIn.FileName); err != nil {
+	if result.SourceCode, err = ReadInFile(paramIn.FileName); err != nil {
 		return nil, err
 	}
 	return result, nil

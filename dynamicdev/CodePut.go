@@ -24,7 +24,7 @@ var APICodePut = api.Api(func(paramIn *CodePutIn) (architectures *CodePutOut, er
 	if paramIn.SourceCode == "" || paramIn.FileName == "" {
 		return architectures, nil
 	}
-	file, err := os.Create(dirOfProject + paramIn.FileName)
+	file, err := os.Create(paramIn.FileName)
 	if err != nil {
 		return nil, err
 	}

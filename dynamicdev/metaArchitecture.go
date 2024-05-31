@@ -111,18 +111,21 @@ func SourceCodeToArchitecture(sourceCode string) (architecture string, err error
 	return processedPage, nil
 }
 
+var dirOfDefaultProject, _ = os.Getwd()
+
 type GetProjectArchitectureInfoIn struct {
 	//default is current dir
 	ProjectDir       string
 	SkippedDirs      []string
 	IncludedFileExts []string
 }
-type RelativeFileName string
-type GetProjectArchitectureInfoOut map[RelativeFileName]string
+type GetProjectArchitectureInfoOut struct {
+	Path         string
+	RelPath2Arch map[string]string
+}
 
 var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
 
-	architectures = map[RelativeFileName]string{}
 	var surffixType = map[string]string{".go": "go", ".js": "js", ".ts": "js", ".vue": "js", ".jsx": "js", ".tsx": "js", ".html": "text", ".md": "text", ".json": "text", ".mdx": "text", ".toml": "text", ".txt": "text", "yaml": "text"}
 	for _, surffix := range packInfo.IncludedFileExts {
 		if len(surffix) == 0 {
@@ -133,19 +136,19 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		surffixType[surffix] = "text"
 	}
 
-	//get bin path as dirPath
-	// _, binPath, _, _ := runtime.产品经理Caller(0)
-	// binPath = filepath.Dir(binPath) + "/."
-	dir := dirOfProject
+	architectures = GetProjectArchitectureInfoOut{
+		Path:         dirOfDefaultProject,
+		RelPath2Arch: make(map[string]string),
+	}
 	if len(packInfo.ProjectDir) > 0 {
-		dir = packInfo.ProjectDir
+		architectures.Path = packInfo.ProjectDir
 	}
 	var skipDirs = map[string]bool{".vscode": true, "node_modules": true}
 	for _, skippedDir := range packInfo.SkippedDirs {
 		skipDirs[skippedDir] = true
 	}
 	// walkDir recursively walks through a directory and processes all .go files
-	filepath.WalkDir(dir+"/.", func(path string, info os.DirEntry, err error) error {
+	filepath.WalkDir(architectures.Path+"/.", func(path string, info os.DirEntry, err error) error {
 		if err == filepath.SkipDir {
 			return nil
 		}
@@ -168,11 +171,10 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 			_, err = parser.ParseFile(token.NewFileSet(), "", page, parser.ParseComments)
 			corrupted = err != nil
 		}
-
-		fileName := path[len(dir):]
-		architectures[RelativeFileName(fileName)] = page
+		RelName := path[len(architectures.Path):]
+		architectures.RelPath2Arch[RelName] = page
 		if (doctype == "go" || doctype == "js") && !corrupted {
-			architectures[RelativeFileName(fileName)], _ = SourceCodeToArchitecture(page)
+			architectures.RelPath2Arch[RelName], _ = SourceCodeToArchitecture(page)
 		}
 		return nil
 	})

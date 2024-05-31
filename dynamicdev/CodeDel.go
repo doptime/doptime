@@ -12,7 +12,7 @@ type CodeDelIn struct {
 type CodeDelOut string
 
 var APICodeDel = api.Api(func(paramIn *CodeDelIn) (result CodeDelOut, err error) {
-	if err = os.Remove(dirOfProject + paramIn.FileName); err != nil {
+	if err = os.Remove(paramIn.FileName); err != nil {
 		return "false", err
 	}
 	return "true", nil
