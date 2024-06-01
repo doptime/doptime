@@ -39,8 +39,8 @@ func keepFunctionDefinitionAndRemoveDetail_SourceCodeToArchitecture(content stri
 		}
 		//exception case of {}, such as string{} or map[string]string{} ... , return mytype{ a: 1, b: 2}
 		exceptionCaseOfVarInitiation := len(line) > 2 && line[len(line)-1:] == "}"
-		for i = len(line) - 2; i >= 1 && exceptionCaseOfVarInitiation; i-- {
-			exceptionCaseOfVarInitiation = line[i] != '{'
+		for li := len(line) - 2; li >= 1 && exceptionCaseOfVarInitiation; li-- {
+			exceptionCaseOfVarInitiation = line[li] != '{'
 		}
 
 		//capture the function definition end
