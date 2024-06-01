@@ -1,24 +1,20 @@
-## doptime, the most concise, redis based web-server framework
-    the name doptime borrow from "杀悟",means kill bad wisdom。 I hate bad tools.
-### major advantages on API design
-* APIs you defined, support both monolithic and microservice architecture. perfect!
-* very simple to define and use API. just see the golang example demo.
-* No API version related problem. Just see web client demo.
-* Very easy to upgrade API , just change the data structure. no extra schema definition needed.
-* You don't need to write any CREATE GET PUT or DELETE  Logic. Just use redis to query，modify or delete. That means most CURD can be done at frontend, needs no backend job.
-* You can focus on operations with multiple data logic only.  We call it "API".
-    doptime will put API data to redis stream, and the API receive and process the stream data.
-* redis pipeline  brings high batch process performance.  
-### major advantages on Data Op
-* Using most welcomed redis compatible db. no database but redis compatible KEYDB. With flash storage supportion, KEYDB brings both memory speed and whole disk capacity
-* Very Easy to define and access data. see keyInDemo.HSET(req.Id, req) in golang example.
- - Schema data is adopted to keep maintain-bility. Easy to upgrade data structure.
-### other features
-* Use msgpack to support structure data by default. Easily to upgrade data sturecture.
-* All HTTP requests are transferd as binary msgpack data. It's compact and fast.
-* allow specify Content-Type in web client.
-* allow specify response fields in web client to reduce web traffic
-* support JWT for authorization
-* fully access control
-* support CORS
+<!-- this page is homepage of golang project: doptime. doptime is a develop framework empower by ai to minimize developing efforts, while maxize the utilities   -->
+<!-- rewrite according to document of 'https://www.doptime.com/docs/' -->
+
+## doptime: A Concise, Redis-Based Web-Server Framework
+    The name “doptime” is abbreviation of "DevOps Time". When try to do DevOps, it's your doptime.
+### Major Advantages in API Design
+	•	Versatile Architecture: Supports both monolithic and microservice architectures.
+	•	Simplicity: Easy to define and use APIs. See the document.
+	•	Effortless CRUD Operations: Perform most CRUD operations on the frontend using Redis, minimizing backend logic.
+	•	High Performance: Redis pipelines enhance batch processing performance.
+
+### Major Advantages in Data Operations
+	•	Redis-Compatible DB: Uses Redis-compatible databases like KEYDB, offering both memory speed and disk capacity with flash storage support.
+	•	Ease of Use: Define and access data effortlessly. See the document.
+	•	Maintainability: Adopt schema data for easy data structure upgrades.
+
+### Document online
+[https://www.doptime.com/](https://www.doptime.com/)
   
+
