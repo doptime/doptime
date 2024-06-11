@@ -28,6 +28,11 @@ func Api[i any, o any](
 			return ret, vars.ErrApiNameEmpty
 		}
 	}
+	// Error handling: Check for naming conflicts
+	if _, exists := ApiServices.Get(out.Name); exists {
+		dlog.Panic().Str("same service not allowed to defined twice!", out.Name).Send()
+		return out
+	}
 
 	ApiServices.Set(out.Name, out)
 

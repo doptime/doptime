@@ -7,52 +7,28 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type SigningMethod string
-
-const (
-	SigningMethodNone SigningMethod = "none"
-
-	SigningMethodHS256 SigningMethod = "HS256"
-	SigningMethodHS384 SigningMethod = "HS384"
-	SigningMethodHS512 SigningMethod = "HS512"
-
-	SigningMethodRS256 SigningMethod = "RS256"
-	SigningMethodRS384 SigningMethod = "RS384"
-	SigningMethodRS512 SigningMethod = "RS512"
-
-	SigningMethodES256 SigningMethod = "ES256"
-	SigningMethodES384 SigningMethod = "ES384"
-	SigningMethodES512 SigningMethod = "ES512"
-
-	SigningMethodPS256 SigningMethod = "PS256"
-	SigningMethodPS384 SigningMethod = "PS384"
-	SigningMethodPS512 SigningMethod = "PS512"
-)
-
 type JwtEncodingIn struct {
-	Params     map[string]interface{}
-	JwtSecret  string
-	SignMethod SigningMethod
+	Params    map[string]interface{}
+	JwtSecret string
+	// SigningMethod is the signing method for the JWT token
+	// Possible values are HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512
+	SignMethod string
 	Duration   int64                  // seconds of expire time, format is unix time
 	Other      map[string]interface{} `mapstructure:",remain" msgpack:"-" `
 }
 
-type JwtEncodingOut struct {
-	Token string `json:"token"`
-}
-
-func ApiJwtSign(in *JwtEncodingIn) (out *JwtEncodingOut, err error) {
+func ApiJwtSign(in *JwtEncodingIn) (AccessToken string, err error) {
 	if in == nil {
-		return nil, errors.New("input parameter is nil")
+		return "", errors.New("input parameter is nil")
 	}
 	if in.Params == nil {
-		return nil, errors.New("params is nil")
+		return "", errors.New("params is nil")
 	}
 	if in.JwtSecret == "" {
-		return nil, errors.New("jwt secret is empty")
+		return "", errors.New("jwt secret is empty")
 	}
 	if in.SignMethod == "" {
-		return nil, errors.New("sign method is empty")
+		return "", errors.New("sign method is empty")
 	}
 
 	claims := jwt.MapClaims{
@@ -67,10 +43,10 @@ func ApiJwtSign(in *JwtEncodingIn) (out *JwtEncodingOut, err error) {
 	token := jwt.NewWithClaims(jwt.GetSigningMethod(string(in.SignMethod)), claims)
 	tokenString, err := token.SignedString([]byte(in.JwtSecret))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &JwtEncodingOut{Token: tokenString}, nil
+	return tokenString, nil
 }
 
 type JwtDecodingIn struct {
