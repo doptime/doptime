@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
-	"github.com/doptime/doptime/data"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/permission"
+	data "github.com/doptime/doptime/redisdata"
 	"github.com/redis/go-redis/v9"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -193,22 +193,22 @@ func httpStart(path string, port int64) {
 				db := data.StringKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.Get(svcCtx.Field)
 			case "HGET":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := data.Hash[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HGet(svcCtx.Field)
 			case "HGETALL":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := data.Hash[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HGetAll()
 			case "HMGET":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := data.Hash[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HMGET(strings.Split(svcCtx.Field, ",")...)
 			case "HKEYS":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := data.Hash[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HKeys()
 			case "HEXISTS":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := data.Hash[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HExists(svcCtx.Field)
 			case "HRANDFIELD":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := data.Hash[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
 				var count int
 				if count, err = strconv.Atoi(svcCtx.Req.FormValue("Count")); err != nil {
 					result, err = "", errors.New("parse count error:"+err.Error())
@@ -216,7 +216,7 @@ func httpStart(path string, port int64) {
 					result, err = db.HRandField(count)
 				}
 			case "HVALS":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := data.Hash[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HVals()
 			case "SISMEMBER":
 				db := data.SetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))

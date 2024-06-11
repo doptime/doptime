@@ -1,4 +1,4 @@
-package data
+package redisdata
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ type CtxHash[k comparable, v any] struct {
 	BloomFilterKeys *bloom.BloomFilter
 }
 
-func HashKey[k comparable, v any](ops ...*DataOption) *CtxHash[k, v] {
+func Hash[k comparable, v any](ops ...*DataOption) *CtxHash[k, v] {
 	ctx := &CtxHash[k, v]{}
 	if err := ctx.LoadDataOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
