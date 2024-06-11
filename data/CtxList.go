@@ -11,7 +11,7 @@ type CtxList[k comparable, v any] struct {
 	Ctx[k, v]
 }
 
-func RdsList[k comparable, v any](ops ...*DataOption) *CtxList[k, v] {
+func ListKey[k comparable, v any](ops ...*DataOption) *CtxList[k, v] {
 	ctx := &CtxList[k, v]{}
 	if err := ctx.LoadDataOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")

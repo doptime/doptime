@@ -6,7 +6,6 @@ import (
 
 	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/doptime/doptime/dlog"
-	"github.com/redis/go-redis/v9"
 )
 
 type CtxString[k comparable, v any] struct {
@@ -14,7 +13,7 @@ type CtxString[k comparable, v any] struct {
 	BloomFilterKeys *bloom.BloomFilter
 }
 
-func RdsString[k comparable, v any](ops ...*DataOption) *CtxString[k, v] {
+func StringKey[k comparable, v any](ops ...*DataOption) *CtxString[k, v] {
 	ctx := &CtxString[k, v]{}
 	if err := ctx.LoadDataOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
@@ -23,24 +22,6 @@ func RdsString[k comparable, v any](ops ...*DataOption) *CtxString[k, v] {
 	return ctx
 }
 
-func (ctx *Ctx[k, v]) Get(key k) (value v, err error) {
-	var (
-		keyStr string
-		cmd    *redis.StringCmd
-		data   []byte
-	)
-	if keyStr, err = ctx.toKeyStr(key); err != nil {
-		return value, err
-	}
-
-	if cmd = ctx.Rds.Get(ctx.Context, ctx.Key+":"+keyStr); cmd.Err() != nil {
-		return value, cmd.Err()
-	}
-	if data, err = cmd.Bytes(); err != nil {
-		return value, err
-	}
-	return ctx.toValue(data)
-}
 func (ctx *CtxString[k, v]) Get(Field k) (value v, err error) {
 	FieldStr, err := ctx.toKeyStr(Field)
 	if err != nil {

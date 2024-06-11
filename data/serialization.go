@@ -33,17 +33,6 @@ func (ctx *Ctx[k, v]) toValueStr(value v) (valueStr string, err error) {
 		return string(bytes), nil
 	}
 }
-
-func (ctx *Ctx[k, v]) toValueStrs(values []v) (valueStrs []string, err error) {
-	var bytes []byte
-	for _, value := range values {
-		if bytes, err = msgpack.Marshal(value); err != nil {
-			return nil, err
-		}
-		valueStrs = append(valueStrs, string(bytes))
-	}
-	return valueStrs, nil
-}
 func (ctx *Ctx[k, v]) toKeyStrs(keys ...k) (KeyStrs []string, err error) {
 	var keyStr string
 	for _, key := range keys {
@@ -55,16 +44,6 @@ func (ctx *Ctx[k, v]) toKeyStrs(keys ...k) (KeyStrs []string, err error) {
 	return KeyStrs, nil
 }
 
-func (ctx *Ctx[k, v]) keyToInterfaceSlice(keys ...v) (KeyStrs []interface{}, err error) {
-	var keyStr string
-	for _, key := range keys {
-		if keyStr, err = ctx.toValueStr(key); err != nil {
-			return nil, err
-		}
-		KeyStrs = append(KeyStrs, keyStr)
-	}
-	return KeyStrs, nil
-}
 func (ctx *Ctx[k, v]) valueToInterfaceSlice(values ...v) (ValueStrs []interface{}, err error) {
 	var valueStr string
 	for _, value := range values {

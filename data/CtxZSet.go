@@ -12,7 +12,7 @@ type CtxZSet[k comparable, v any] struct {
 	Ctx[k, v]
 }
 
-func RdsZSet[k comparable, v any](ops ...*DataOption) *CtxZSet[k, v] {
+func ZSetKey[k comparable, v any](ops ...*DataOption) *CtxZSet[k, v] {
 	ctx := &CtxZSet[k, v]{}
 	if err := ctx.LoadDataOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
