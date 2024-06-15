@@ -1,4 +1,4 @@
-package redisdata
+package rdsdb
 
 import (
 	"strings"

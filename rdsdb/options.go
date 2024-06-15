@@ -1,5 +1,5 @@
 // package do stands for data options
-package redisdata
+package rdsdb
 
 // DataOption is parameter to create an API, RPC, or CallAt
 type DataOption struct {

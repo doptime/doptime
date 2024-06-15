@@ -13,7 +13,7 @@ import (
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/permission"
-	data "github.com/doptime/doptime/redisdata"
+	"github.com/doptime/doptime/rdsdb"
 	"github.com/redis/go-redis/v9"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -190,25 +190,25 @@ func httpStart(path string, port int64) {
 				}
 
 			case "GET":
-				db := data.StringKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.StringKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.Get(svcCtx.Field)
 			case "HGET":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HGet(svcCtx.Field)
 			case "HGETALL":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HGetAll()
 			case "HMGET":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HMGET(strings.Split(svcCtx.Field, ",")...)
 			case "HKEYS":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HKeys()
 			case "HEXISTS":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HExists(svcCtx.Field)
 			case "HRANDFIELD":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var count int
 				if count, err = strconv.Atoi(svcCtx.Req.FormValue("Count")); err != nil {
 					result, err = "", errors.New("parse count error:"+err.Error())
@@ -216,19 +216,19 @@ func httpStart(path string, port int64) {
 					result, err = db.HRandField(count)
 				}
 			case "HVALS":
-				db := data.HashKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.HVals()
 			case "SISMEMBER":
-				db := data.SetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.SetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.SIsMember(svcCtx.Req.FormValue("Member"))
 			case "TIME":
-				db := data.Rds[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.Rds[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result = ""
 				if tm, err := db.Time(); err == nil {
 					result = tm.UnixMilli()
 				}
 			case "ZRANGE":
-				db := data.ZSetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var (
 					start, stop int64 = 0, -1
 				)
@@ -246,7 +246,7 @@ func httpStart(path string, port int64) {
 					result, err = db.ZRange(start, stop)
 				}
 			case "ZRANGEBYSCORE":
-				db := data.ZSetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var (
 					offset, count int64 = 0, -1
 					scores        []float64
@@ -270,7 +270,7 @@ func httpStart(path string, port int64) {
 					result, err = db.ZRangeByScore(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
 				}
 			case "ZREVRANGE":
-				db := data.ZSetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var (
 					start, stop int64 = 0, -1
 				)
@@ -293,7 +293,7 @@ func httpStart(path string, port int64) {
 					result, err = db.ZRevRange(start, stop)
 				}
 			case "ZREVRANGEBYSCORE":
-				db := data.ZSetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var (
 					offset, count int64 = 0, -1
 				)
@@ -318,16 +318,16 @@ func httpStart(path string, port int64) {
 					result, err = db.ZRevRangeByScore(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
 				}
 			case "ZRANK":
-				db := data.ZSetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.ZRank(svcCtx.Req.FormValue("Member"))
 			case "ZCOUNT":
-				db := data.ZSetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.ZCount(svcCtx.Req.FormValue("Min"), svcCtx.Req.FormValue("Max"))
 			case "ZSCORE":
-				db := data.ZSetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.ZScore(svcCtx.Req.FormValue("Member"))
 			case "SCAN":
-				db := data.Rds[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.Rds[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var (
 					cursor uint64
 					count  int64
@@ -343,7 +343,7 @@ func httpStart(path string, port int64) {
 					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
 				}
 			case "LINDEX":
-				db := data.ListKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ListKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var index int64
 				if index, err = strconv.ParseInt(svcCtx.Req.FormValue("Index"), 10, 64); err != nil {
 					result, err = "", errors.New("parse index error:"+err.Error())
@@ -351,7 +351,7 @@ func httpStart(path string, port int64) {
 					result, err = db.LIndex(index)
 				}
 			case "LPOP":
-				db := data.ListKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ListKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.LPop()
 			case "LPUSH":
 				result = "false"
@@ -386,7 +386,7 @@ func httpStart(path string, port int64) {
 					result = "true"
 				}
 			case "RPOP":
-				db := data.ListKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ListKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.RPop()
 			case "RPUSH":
 				result = "false"
@@ -403,7 +403,7 @@ func httpStart(path string, port int64) {
 				}
 
 			case "ZADD":
-				db := data.ZSetKey[string, interface{}](data.Option.WithKey(svcCtx.Key), data.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var Score float64
 				var obj interface{}
 				if Score, err = strconv.ParseFloat(svcCtx.Req.FormValue("Score"), 64); err != nil {

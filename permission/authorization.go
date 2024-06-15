@@ -5,11 +5,11 @@ import (
 
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/dlog"
-	data "github.com/doptime/doptime/redisdata"
+	"github.com/doptime/doptime/rdsdb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-var rdsPermit = data.HashKey[string, string](data.Option.WithKey("_permissions"))
+var rdsPermit = rdsdb.HashKey[string, string](rdsdb.Option.WithKey("_permissions"))
 var permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 
 // this version of IsPermitted is design for fast searching & modifying
