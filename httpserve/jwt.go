@@ -11,13 +11,9 @@ import (
 )
 
 func (svc *HttpContext) ParseJwtToken() (err error) {
-	var (
-		jwtStr string
-	)
-	if svc.jwtToken != nil {
-		return nil
-	}
-	if jwtStr = svc.Req.Header.Get("Authorization"); len(jwtStr) == 0 {
+	jwtStr := svc.Req.Header.Get("Authorization")
+	jwtStr = strings.TrimPrefix(jwtStr, "Bearer ")
+	if len(jwtStr) == 0 {
 		return errors.New("no JWT token")
 	}
 	//decode jwt string to map[string] interface{} with jwtSrcrets as jwt secret
