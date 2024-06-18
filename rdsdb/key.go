@@ -6,52 +6,37 @@ import (
 	"time"
 )
 
-func (ctx *Ctx[k, v]) YMD(tm time.Time) *Ctx[k, v] {
+func CatYearMonthDay(tm time.Time) string {
 	//year is 4 digits, month is 2 digits, day is 2 digits
-	return &Ctx[k, v]{ctx.Context, ctx.Rds, fmt.Sprintf("%s:YMD_%04v%02v%02v", ctx.Key, tm.Year(), int(tm.Month()), tm.Day()), ctx.BloomFilterKeys}
+	return fmt.Sprintf("YMD_%04v%02v%02v", tm.Year(), int(tm.Month()), tm.Day())
 }
-func (ctx *Ctx[k, v]) YM(tm time.Time) *Ctx[k, v] {
+func CatYearMonth(tm time.Time) string {
 	//year is 4 digits, month is 2 digits
-	return &Ctx[k, v]{ctx.Context, ctx.Rds, fmt.Sprintf("%s:YM_%04v%02v", ctx.Key, tm.Year(), int(tm.Month())), ctx.BloomFilterKeys}
+	return fmt.Sprintf("YM_%04v%02v", tm.Year(), int(tm.Month()))
 }
-func (ctx *Ctx[k, v]) Y(tm time.Time) *Ctx[k, v] {
+func CatYear(tm time.Time) string {
 	//year is 4 digits
-	return &Ctx[k, v]{ctx.Context, ctx.Rds, fmt.Sprintf("%s:Y_%04v", ctx.Key, tm.Year()), ctx.BloomFilterKeys}
+	return fmt.Sprintf("Y_%04v", tm.Year())
 }
-func (ctx *Ctx[k, v]) YW(tm time.Time) *Ctx[k, v] {
+func CatYearWeek(tm time.Time) string {
 	tm = tm.UTC()
 	isoYear, isoWeek := tm.ISOWeek()
 	//year is 4 digits, week is 2 digits
-	return &Ctx[k, v]{ctx.Context, ctx.Rds, fmt.Sprintf("%s:YW_%04v%02v", ctx.Key, isoYear, isoWeek), ctx.BloomFilterKeys}
+	return fmt.Sprintf("YW_%04v%02v", isoYear, isoWeek)
 }
 func ConcatedKeys(fields ...interface{}) string {
-	//	concacate all fields with ':'
-	var key string
-	for _, field := range fields {
-		key += fmt.Sprintf("%v:", field)
-	}
-	//	remove the last ':'
-	if len(key) == 0 {
-		return ""
-	}
-	return key[:len(key)-1]
-}
+	results := make([]string, 0, len(fields)+1)
 
-func (ctx *Ctx[k, v]) Concat(fields ...interface{}) *Ctx[k, v] {
 	//for each field ,it it's type if float64 or float32,but it's value is integer,then convert it to int
 	for i, field := range fields {
 		if f64, ok := field.(float64); ok && f64 == float64(int64(f64)) {
-			fields[i] = int64(field.(float64))
+			results = append(results, fmt.Sprintf("%v", int64(field.(float64))))
 		} else if f32, ok := field.(float32); ok && f32 == float32(int32(f32)) {
+			results = append(results, fmt.Sprintf("%v", int32(field.(float32))))
 			fields[i] = int32(field.(float32))
+		} else {
+			results = append(results, fmt.Sprintf("%v", field))
 		}
 	}
-	//implete logic of  return &Ctx{ctx.Ctx, ctx.Rds, fmt.Sprintf("%s:%v", ctx.Key, ConcatedKeys(fields...))}
-	//but ,do not use recursion
-	results := make([]string, 0, len(fields)+1)
-	results = append(results, ctx.Key)
-	for _, field := range fields {
-		results = append(results, fmt.Sprintf("%v", field))
-	}
-	return &Ctx[k, v]{ctx.Context, ctx.Rds, strings.Join(results, ":"), ctx.BloomFilterKeys}
+	return strings.Join(results, ":")
 }

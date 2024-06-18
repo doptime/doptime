@@ -21,6 +21,11 @@ func ZSetKey[k comparable, v any](ops ...*DataOption) *CtxZSet[k, v] {
 	return ctx
 }
 
+func (ctx *CtxZSet[k, v]) ConcatKey(fields ...interface{}) *CtxZSet[k, v] {
+	keyparts := append(append(make([]interface{}, 0, len(fields)+1), ctx.Key), fields...)
+	return &CtxZSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(keyparts)}}
+}
+
 func (ctx *CtxZSet[k, v]) ZAdd(members ...redis.Z) (err error) {
 	//MarshalRedisZ
 	for i := range members {

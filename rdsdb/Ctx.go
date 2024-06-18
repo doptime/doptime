@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
@@ -14,10 +13,9 @@ import (
 )
 
 type Ctx[k comparable, v any] struct {
-	Context         context.Context
-	Rds             *redis.Client
-	Key             string
-	BloomFilterKeys *bloom.BloomFilter
+	Context context.Context
+	Rds     *redis.Client
+	Key     string
 }
 
 func Rds[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {

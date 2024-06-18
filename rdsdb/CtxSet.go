@@ -17,6 +17,11 @@ func SetKey[k comparable, v any](ops ...*DataOption) *CtxSet[k, v] {
 	return ctx
 }
 
+func (ctx *CtxSet[k, v]) ConcatKey(fields ...interface{}) *CtxSet[k, v] {
+	keyparts := append(append(make([]interface{}, 0, len(fields)+1), ctx.Key), fields...)
+	return &CtxSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(keyparts)}}
+}
+
 // append to Set
 func (ctx *CtxSet[k, v]) SAdd(param v) (err error) {
 	valStr, err := ctx.toValueStr(param)

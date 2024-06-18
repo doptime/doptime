@@ -25,6 +25,10 @@ func HashKey[k comparable, v any](ops ...*DataOption) *CtxHash[k, v] {
 	return ctx
 }
 
+func (ctx *CtxHash[k, v]) ConcatKey(fields ...interface{}) *CtxHash[k, v] {
+	keyparts := append(append(make([]interface{}, 0, len(fields)+1), ctx.Key), fields...)
+	return &CtxHash[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(keyparts)}, ctx.BloomFilterKeys}
+}
 func (ctx *CtxHash[k, v]) HGet(field k) (value v, err error) {
 	fieldStr, err := ctx.toKeyStr(field)
 	if err != nil {
