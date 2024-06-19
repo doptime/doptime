@@ -2,6 +2,7 @@ package rdsdb
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -27,17 +28,17 @@ func CatYearWeek(tm time.Time) string {
 func ConcatedKeys(fields ...interface{}) string {
 	var results strings.Builder
 	//for each field ,it it's type if float64 or float32,but it's value is integer,then convert it to int
-	for i, field := range fields {
-		field_value := field
+	for _, field := range fields {
+		results.WriteString(":")
 		if f64, ok := field.(float64); ok && f64 == float64(int64(f64)) {
-			field_value = int64(f64)
+			results.WriteString(strconv.FormatInt(int64(f64), 10))
 		} else if f32, ok := field.(float32); ok && f32 == float32(int32(f32)) {
-			field_value = int32(f32)
+			results.WriteString(strconv.FormatInt(int64(f32), 10))
+		} else if s, ok := field.(string); ok {
+			results.WriteString(s)
+		} else {
+			results.WriteString(fmt.Sprintf("%v", field))
 		}
-		if i > 0 {
-			results.WriteString(":")
-		}
-		results.WriteString(fmt.Sprintf("%v", field_value))
 	}
-	return results.String()
+	return results.String()[1:]
 }

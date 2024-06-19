@@ -21,8 +21,8 @@ func ListKey[k comparable, v any](ops ...*DataOption) *CtxList[k, v] {
 }
 
 func (ctx *CtxList[k, v]) ConcatKey(fields ...interface{}) *CtxList[k, v] {
-	keyparts := append(append(make([]interface{}, 0, len(fields)+1), ctx.Key), fields...)
-	return &CtxList[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(keyparts)}}
+	keyparts := append([]interface{}{ctx.Key}, fields...)
+	return &CtxList[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(keyparts...)}}
 }
 
 func (ctx *CtxList[k, v]) RPush(param ...v) error {
