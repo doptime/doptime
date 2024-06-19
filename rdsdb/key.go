@@ -25,18 +25,16 @@ func CatYearWeek(tm time.Time) string {
 	return fmt.Sprintf("YW_%04v%02v", isoYear, isoWeek)
 }
 func ConcatedKeys(fields ...interface{}) string {
-	results := make([]string, 0, len(fields)+1)
-
+	results := make([]string, len(fields)+1)
 	//for each field ,it it's type if float64 or float32,but it's value is integer,then convert it to int
 	for i, field := range fields {
+		field_value := field
 		if f64, ok := field.(float64); ok && f64 == float64(int64(f64)) {
-			results = append(results, fmt.Sprintf("%v", int64(field.(float64))))
+			field_value = int64(f64)
 		} else if f32, ok := field.(float32); ok && f32 == float32(int32(f32)) {
-			results = append(results, fmt.Sprintf("%v", int32(field.(float32))))
-			fields[i] = int32(field.(float32))
-		} else {
-			results = append(results, fmt.Sprintf("%v", field))
+			field_value = int32(f32)
 		}
+		results[i] = fmt.Sprintf("%v", field_value)
 	}
 	return strings.Join(results, ":")
 }
