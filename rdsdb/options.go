@@ -26,7 +26,7 @@ func (o *DataOption) WithRds(dataSource string) (out *DataOption) {
 	return out
 }
 
-func (o *DataOption) WithWebDataSchema() (out *DataOption) {
+func (o *DataOption) WithRegisterWebDataSchema() (out *DataOption) {
 	if out = o; o == Option {
 		out = &DataOption{DataSource: "default"}
 	}
