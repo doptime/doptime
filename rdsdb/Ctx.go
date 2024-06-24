@@ -18,7 +18,7 @@ type Ctx[k comparable, v any] struct {
 	Key     string
 }
 
-func Rds[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
+func NonKey[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
 	ctx := &Ctx[k, v]{}
 	if err := ctx.LoadDataOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
@@ -68,5 +68,6 @@ func (ctx *Ctx[k, v]) LoadDataOption(ops ...*DataOption) error {
 		return fmt.Errorf("Rds item unconfigured: " + rdsName)
 	}
 	ctx.Context = context.Background()
+
 	return nil
 }

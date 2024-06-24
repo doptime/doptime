@@ -18,6 +18,9 @@ func ZSetKey[k comparable, v any](ops ...*DataOption) *CtxZSet[k, v] {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
+	if len(ops) > 0 && ops[0].RegisterWebDataSchema {
+		ctx.RegisterWebDataSchema("zset")
+	}
 	return ctx
 }
 

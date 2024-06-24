@@ -222,7 +222,7 @@ func httpStart(path string, port int64) {
 				db := rdsdb.SetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.SIsMember(svcCtx.Req.FormValue("Member"))
 			case "TIME":
-				db := rdsdb.Rds[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.NonKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result = ""
 				if tm, err := db.Time(); err == nil {
 					result = tm.UnixMilli()
@@ -327,7 +327,7 @@ func httpStart(path string, port int64) {
 				db := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result, err = db.ZScore(svcCtx.Req.FormValue("Member"))
 			case "SCAN":
-				db := rdsdb.Rds[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
+				db := rdsdb.NonKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				var (
 					cursor uint64
 					count  int64
