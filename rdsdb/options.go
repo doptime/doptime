@@ -3,9 +3,9 @@ package rdsdb
 
 // DataOption is parameter to create an API, RPC, or CallAt
 type DataOption struct {
-	Key                   string
-	DataSource            string
-	RegisterWebDataSchema bool
+	Key             string
+	DataSource      string
+	RegisterWebData bool
 }
 
 var Option *DataOption = nil
@@ -26,10 +26,11 @@ func (o *DataOption) WithRds(dataSource string) (out *DataOption) {
 	return out
 }
 
+// when WithRegisterWebDataSchema, query schema via: http://baseurl/api-datadocs
 func (o *DataOption) WithRegisterWebDataSchema() (out *DataOption) {
 	if out = o; o == Option {
 		out = &DataOption{DataSource: "default"}
 	}
-	out.RegisterWebDataSchema = true
+	out.RegisterWebData = true
 	return out
 }

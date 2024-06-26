@@ -22,8 +22,8 @@ func HashKey[k comparable, v any](ops ...*DataOption) *CtxHash[k, v] {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
-	if len(ops) > 0 && ops[0].RegisterWebDataSchema {
-		ctx.RegisterWebDataSchema("hash")
+	if len(ops) > 0 && ops[0].RegisterWebData {
+		ctx.RegisterWebData("hash")
 	}
 
 	return ctx

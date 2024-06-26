@@ -12,7 +12,7 @@ type DataDocsIn struct {
 }
 
 var ApiDataDocs = api.Api(func(req *DataDocsIn) (ret map[string]string, err error) {
-	result, err := rdsdb.KeyWebDataSchema.HGetAll()
+	result, err := rdsdb.KeyWebDataDocs.HGetAll()
 	if err != nil {
 		return nil, err
 	}

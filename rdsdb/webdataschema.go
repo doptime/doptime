@@ -1,16 +1,18 @@
 package rdsdb
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-var mapWebDataSchema cmap.ConcurrentMap[string, *WebDataSchema] = cmap.New[*WebDataSchema]()
+var mapWebDataDocs cmap.ConcurrentMap[string, *WebDataDocs] = cmap.New[*WebDataDocs]()
 
-var NextSaveWebDataSchemaTime int64 = 0
-var KeyWebDataSchema = HashKey[string, *WebDataSchema](Option.WithKey("WebDataSchema"))
+var NextSaveWebDataDocTime int64 = 0
+var KeyWebDataDocs = HashKey[string, *WebDataDocs](Option.WithKey("WebDataDocs"))
 
 func initializeFields(value reflect.Value) {
 	if value.Kind() == reflect.Ptr {
@@ -36,14 +38,14 @@ func initializeFields(value reflect.Value) {
 	}
 }
 
-type WebDataSchema struct {
+type WebDataDocs struct {
 	KeyName string
 	// string, hash, list, set, zset, stream
 	KeyType  string
 	Instance interface{}
 }
 
-func (ctx *Ctx[k, v]) RegisterWebDataSchema(keyType string) {
+func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
 	var validRdsKeyTypes = map[string]bool{"string": true, "list": true, "set": true, "hash": true, "zset": true, "stream": true}
 	if _, ok := validRdsKeyTypes[keyType]; !ok {
 		return
@@ -53,6 +55,7 @@ func (ctx *Ctx[k, v]) RegisterWebDataSchema(keyType string) {
 
 	// 检查 vType 是否可以实例化
 	if vType.Kind() == reflect.Interface || vType.Kind() == reflect.Ptr || vType.Kind() == reflect.Invalid {
+		fmt.Println("vType is not valid, vType: ", vType)
 		return
 	}
 
@@ -65,32 +68,30 @@ func (ctx *Ctx[k, v]) RegisterWebDataSchema(keyType string) {
 		return
 	}
 	initializeFields(valueElem)
-	dataSchema := &WebDataSchema{
-		KeyName:  ctx.Key,
-		KeyType:  "string",
-		Instance: value,
-	}
-	mapWebDataSchema.Set(ctx.Key, dataSchema)
-	SyncStructuresWithRedis := func() {
-		now := time.Now().Unix()
-		NextSaveWebDataSchemaTime = now
-		time.Sleep(time.Second * 3)
-		//another thread is trying to save DataSchema to redis
-		if now != NextSaveWebDataSchemaTime {
-			return
-		}
-		var localStructuredDataMap = make(map[string]*WebDataSchema)
-		mapWebDataSchema.IterCb(func(key string, value *WebDataSchema) {
-			localStructuredDataMap[key] = value
-		})
+	rootKey := strings.Split(ctx.Key, ":")[0]
+	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: keyType, Instance: value}
+	mapWebDataDocs.Set(ctx.Key, dataSchema)
+	SyncWebDataWithRedis()
+}
 
-		KeyWebDataSchema.HSet(localStructuredDataMap)
+func SyncWebDataWithRedis() {
+	now := time.Now().Unix()
+	NextSaveWebDataDocTime = now
+	time.Sleep(time.Second * 3)
+	//another thread is trying to save DataSchema to redis
+	if now != NextSaveWebDataDocTime {
+		return
+	}
+	var localStructuredDataMap = make(map[string]*WebDataDocs)
+	mapWebDataDocs.IterCb(func(key string, value *WebDataDocs) {
+		localStructuredDataMap[key] = value
+	})
 
-		if vals, err := KeyWebDataSchema.HGetAll(); err == nil {
-			for k, v := range vals {
-				mapWebDataSchema.Set(k, v)
-			}
+	KeyWebDataDocs.HSet(localStructuredDataMap)
+
+	if vals, err := KeyWebDataDocs.HGetAll(); err == nil {
+		for k, v := range vals {
+			mapWebDataDocs.Set(k, v)
 		}
 	}
-	SyncStructuresWithRedis()
 }

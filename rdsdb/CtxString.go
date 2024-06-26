@@ -19,8 +19,8 @@ func StringKey[k comparable, v any](ops ...*DataOption) *CtxString[k, v] {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
-	if len(ops) > 0 && ops[0].RegisterWebDataSchema {
-		ctx.RegisterWebDataSchema("string")
+	if len(ops) > 0 && ops[0].RegisterWebData {
+		ctx.RegisterWebData("string")
 	}
 	return ctx
 }
