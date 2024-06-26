@@ -66,6 +66,7 @@ func initializeFields(value reflect.Value) {
 				elemType := fieldType.Elem()
 				switch elemType.Kind() {
 				case reflect.String:
+					field.Set(reflect.MakeSlice(fieldType, 1, 1))
 					field.Index(0).Set(reflect.ValueOf(""))
 				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 					field.Set(reflect.MakeSlice(fieldType, 1, 1))
