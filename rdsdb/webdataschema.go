@@ -61,9 +61,12 @@ func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
 
 	// 创建 v 的实例
 	valueElem := reflect.New(vType).Elem()
+	//if vType is pointer, we need to create a new instance of the valueElem
+	if vType.Kind() == reflect.Ptr {
+		valueElem.Set(reflect.New(vType.Elem()))
+	}
 	value := valueElem.Interface()
 
-	// 确认实例化是否成功
 	if reflect.ValueOf(value).IsNil() {
 		return
 	}
