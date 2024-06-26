@@ -54,7 +54,7 @@ func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
 	vType := reflect.TypeOf((*v)(nil)).Elem()
 
 	// 检查 vType 是否可以实例化
-	if vType.Kind() == reflect.Interface || vType.Kind() == reflect.Ptr || vType.Kind() == reflect.Invalid {
+	if vType.Kind() == reflect.Interface || vType.Kind() == reflect.Invalid {
 		fmt.Println("vType is not valid, vType: ", vType)
 		return
 	}
