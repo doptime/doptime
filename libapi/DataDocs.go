@@ -25,17 +25,17 @@ var ApiDataDocs = api.Api(func(req *DataDocsIn) (r string, err error) {
 		ret.WriteString("keyType: " + v.KeyType + "\n")
 		jsBytes, _ := json.Marshal(v.Instance)
 		if v.KeyType == "hash" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new hashKey(\"" + k + "\"" + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new hashKey(\"" + k + "\", " + string(jsBytes) + ")")
 		} else if v.KeyType == "string" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new stringKey(\"" + k + "\"" + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new stringKey(\"" + k + "\", " + string(jsBytes) + ")")
 		} else if v.KeyType == "list" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new listKey(\"" + k + "\"" + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new listKey(\"" + k + "\", " + string(jsBytes) + ")")
 		} else if v.KeyType == "set" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new setKey(\"" + k + "\"" + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new setKey(\"" + k + "\", " + string(jsBytes) + ")")
 		} else if v.KeyType == "zset" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new zsetKey(\"" + k + "\"" + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new zsetKey(\"" + k + "\", " + string(jsBytes) + ")")
 		} else if v.KeyType == "stream" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new streamKey(\"" + k + "\"" + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new streamKey(\"" + k + "\", " + string(jsBytes) + ")")
 		}
 	}
 	// convert to toml string, do
