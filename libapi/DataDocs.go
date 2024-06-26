@@ -20,9 +20,10 @@ var ApiDataDocs = api.Api(func(req *DataDocsIn) (r string, err error) {
 	for k, v := range result {
 		keyWithFirstCharUpper := strings.ToUpper(v.KeyName[0:1]) + v.KeyName[1:]
 		keyWithFirstCharUpper = strings.Split(keyWithFirstCharUpper, ":")[0]
-		jsBytes, _ := json.Marshal(v)
-
-		ret.WriteString(k + " :\n")
+		ret.WriteString("\n")
+		ret.WriteString("keyname: " + k + "\n")
+		ret.WriteString("keyType: " + v.KeyType + "\n")
+		jsBytes, _ := json.Marshal(v.Instance)
 		if v.KeyType == "hash" {
 			ret.WriteString("var key" + keyWithFirstCharUpper + " = new hashKey(" + string(jsBytes) + ")")
 		} else if v.KeyType == "string" {
