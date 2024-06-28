@@ -21,8 +21,7 @@ func SetKey[k comparable, v any](ops ...*DataOption) *CtxSet[k, v] {
 }
 
 func (ctx *CtxSet[k, v]) ConcatKey(fields ...interface{}) *CtxSet[k, v] {
-	keyparts := append([]interface{}{ctx.Key}, fields...)
-	return &CtxSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(keyparts...)}}
+	return &CtxSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...)}}
 }
 
 // append to Set
