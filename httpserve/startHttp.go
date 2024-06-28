@@ -431,6 +431,7 @@ func httpStart(path string, port int64) {
 				if svcCtx.Key == "" || svcCtx.Field == "" {
 					err = ErrEmptyKeyOrField
 				} else if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if err = rds.HSet(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, bs).Err(); err == nil {
 					result = "true"
 				}

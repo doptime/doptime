@@ -8,12 +8,46 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
-var localWebDataDocs cmap.ConcurrentMap[string, *WebDataDocs] = cmap.New[*WebDataDocs]()
+var WebDataDocsMap cmap.ConcurrentMap[string, *WebDataDocs] = cmap.New[*WebDataDocs]()
 
 var SynWebDataDocMutex = sync.Mutex{}
 var KeyWebDataDocs = HashKey[string, *WebDataDocs](Option.WithKey("WebDataDocs"))
+
+func CheckDataSchema(key string, msgpackBytes []byte) error {
+	webdata, ok := WebDataDocsMap.Get(key)
+	if !ok {
+		return nil
+	}
+	if webdata.Instance == nil {
+		return fmt.Errorf("webdata.Instance is nil")
+	}
+	if len(msgpackBytes) == 0 {
+		return fmt.Errorf("msgpackBytes is empty")
+	}
+	//check if the msgpackBytes is the same type as the schema.Instance
+	//if not, return false
+	if reflect.TypeOf(webdata.Instance).Kind() == reflect.Ptr {
+		elemType := reflect.TypeOf(webdata.Instance).Elem()
+		if elemType.Kind() == reflect.Struct {
+			elem := reflect.New(elemType).Interface()
+			if err := msgpack.Unmarshal(msgpackBytes, elem); err != nil {
+				return err
+			}
+		}
+	} else {
+		elemType := reflect.TypeOf(webdata.Instance)
+		if elemType.Kind() == reflect.Struct {
+			elem := reflect.New(elemType).Interface()
+			if err := msgpack.Unmarshal(msgpackBytes, elem); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
 
 func initializeFields(value reflect.Value) {
 	if value.Kind() == reflect.Ptr {
@@ -130,7 +164,7 @@ func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
 	initializeFields(valueElem)
 	rootKey := strings.Split(ctx.Key, ":")[0]
 	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: keyType, Instance: value, UpdateAt: time.Now().Unix(), CreateFromLocal: true}
-	localWebDataDocs.Set(ctx.Key, dataSchema)
+	WebDataDocsMap.Set(ctx.Key, dataSchema)
 	if SynWebDataDocMutex.TryLock() {
 		//after 1 second, to allow other schema save to localWebDataDocs
 		time.Sleep(time.Second)
@@ -142,7 +176,7 @@ func SyncWebDataWithRedis() {
 	now := time.Now().Unix()
 	//only update local defined data to redis
 	var localStructuredDataMap = make(map[string]*WebDataDocs)
-	localWebDataDocs.IterCb(func(key string, value *WebDataDocs) {
+	WebDataDocsMap.IterCb(func(key string, value *WebDataDocs) {
 		if value.CreateFromLocal {
 			localStructuredDataMap[key] = &WebDataDocs{KeyName: value.KeyName, KeyType: value.KeyType, UpdateAt: now, Instance: value.Instance}
 		}
@@ -159,7 +193,7 @@ func SyncWebDataWithRedis() {
 			if v, ok := localStructuredDataMap[k]; ok && v.CreateFromLocal {
 				continue
 			}
-			localWebDataDocs.Set(k, v)
+			WebDataDocsMap.Set(k, v)
 		}
 	}
 	//sleep 10 min to save next time
