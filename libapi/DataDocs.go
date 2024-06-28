@@ -26,7 +26,6 @@ var ApiDataDocs = api.Api(func(req *DataDocsIn) (r string, err error) {
 		}
 		keyWithFirstCharUpper := strings.ToUpper(v.KeyName[0:1]) + v.KeyName[1:]
 		keyWithFirstCharUpper = strings.Split(keyWithFirstCharUpper, ":")[0]
-		ret.WriteString("key: " + v.KeyType + ", " + k + "\n")
 		jsBytes, _ := json.Marshal(v.Instance)
 		if v.KeyType == "hash" {
 			ret.WriteString("var key" + keyWithFirstCharUpper + " = new hashKey(\"" + k + "\", " + string(jsBytes) + ")")
