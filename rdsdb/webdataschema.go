@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -11,7 +12,7 @@ import (
 
 var localWebDataDocs cmap.ConcurrentMap[string, *WebDataDocs] = cmap.New[*WebDataDocs]()
 
-var LastSaveWebDataDocTime int64 = 0
+var SynWebDataDocMutex = sync.Mutex{}
 var KeyWebDataDocs = HashKey[string, *WebDataDocs](Option.WithKey("WebDataDocs"))
 
 func initializeFields(value reflect.Value) {
@@ -95,10 +96,10 @@ func initializeFields(value reflect.Value) {
 type WebDataDocs struct {
 	KeyName string
 	// string, hash, list, set, zset, stream
-	KeyType  string
-	UpdateAt int64
-	IsLocal  bool `msgpack:"-"`
-	Instance interface{}
+	KeyType         string
+	UpdateAt        int64
+	CreateFromLocal bool `msgpack:"-"`
+	Instance        interface{}
 }
 
 func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
@@ -128,22 +129,22 @@ func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
 	}
 	initializeFields(valueElem)
 	rootKey := strings.Split(ctx.Key, ":")[0]
-	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: keyType, Instance: value, UpdateAt: time.Now().Unix(), IsLocal: true}
+	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: keyType, Instance: value, UpdateAt: time.Now().Unix(), CreateFromLocal: true}
 	localWebDataDocs.Set(ctx.Key, dataSchema)
-	SyncWebDataWithRedis()
+	if SynWebDataDocMutex.TryLock() {
+		//after 1 second, to allow other schema save to localWebDataDocs
+		time.Sleep(time.Second)
+		go SyncWebDataWithRedis()
+	}
 }
 
 func SyncWebDataWithRedis() {
 	now := time.Now().Unix()
-	if toContinue := now-LastSaveWebDataDocTime > int64(time.Second); !toContinue {
-		return
-	}
-	LastSaveWebDataDocTime = now
 	//only update local defined data to redis
 	var localStructuredDataMap = make(map[string]*WebDataDocs)
 	localWebDataDocs.IterCb(func(key string, value *WebDataDocs) {
-		if value.IsLocal {
-			localStructuredDataMap[key] = &WebDataDocs{KeyName: value.KeyName, KeyType: value.KeyType, UpdateAt: now, IsLocal: false, Instance: value.Instance}
+		if value.CreateFromLocal {
+			localStructuredDataMap[key] = &WebDataDocs{KeyName: value.KeyName, KeyType: value.KeyType, UpdateAt: now, Instance: value.Instance}
 		}
 	})
 	if len(localStructuredDataMap) > 0 {
@@ -153,7 +154,9 @@ func SyncWebDataWithRedis() {
 	//copy all data schema to local ,but do not cover the local data
 	if vals, err := KeyWebDataDocs.HGetAll(); err == nil {
 		for k, v := range vals {
-			if _, ok := localStructuredDataMap[k]; ok {
+			//if defined in non local, allow to cover the definition
+			//that is ,only local defined data schema can not be covered
+			if v, ok := localStructuredDataMap[k]; ok && v.CreateFromLocal {
 				continue
 			}
 			localWebDataDocs.Set(k, v)
