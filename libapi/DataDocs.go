@@ -3,6 +3,7 @@ package libapi
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/doptime/doptime/api"
 	"github.com/doptime/doptime/rdsdb"
@@ -17,12 +18,15 @@ var ApiDataDocs = api.Api(func(req *DataDocsIn) (r string, err error) {
 		return "", err
 	}
 	var ret strings.Builder
+	var now = time.Now().Unix()
 	for k, v := range result {
+		// if not updated in latest 20min, ignore it
+		if v.UpdateAt < now-20*60 {
+			continue
+		}
 		keyWithFirstCharUpper := strings.ToUpper(v.KeyName[0:1]) + v.KeyName[1:]
 		keyWithFirstCharUpper = strings.Split(keyWithFirstCharUpper, ":")[0]
-		ret.WriteString("\n")
-		ret.WriteString("keyname: " + k + "\n")
-		ret.WriteString("keyType: " + v.KeyType + "\n")
+		ret.WriteString("key: " + v.KeyType + ", " + k + "\n")
 		jsBytes, _ := json.Marshal(v.Instance)
 		if v.KeyType == "hash" {
 			ret.WriteString("var key" + keyWithFirstCharUpper + " = new hashKey(\"" + k + "\", " + string(jsBytes) + ")")
@@ -37,6 +41,7 @@ var ApiDataDocs = api.Api(func(req *DataDocsIn) (r string, err error) {
 		} else if v.KeyType == "stream" {
 			ret.WriteString("var key" + keyWithFirstCharUpper + " = new streamKey(\"" + k + "\", " + string(jsBytes) + ")")
 		}
+		ret.WriteString("\n\n")
 	}
 	// convert to toml string, do
 	return ret.String(), nil

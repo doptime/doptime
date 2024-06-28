@@ -9,9 +9,9 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-var mapWebDataDocs cmap.ConcurrentMap[string, *WebDataDocs] = cmap.New[*WebDataDocs]()
+var localWebDataDocs cmap.ConcurrentMap[string, *WebDataDocs] = cmap.New[*WebDataDocs]()
 
-var NextSaveWebDataDocTime int64 = 0
+var LastSaveWebDataDocTime int64 = 0
 var KeyWebDataDocs = HashKey[string, *WebDataDocs](Option.WithKey("WebDataDocs"))
 
 func initializeFields(value reflect.Value) {
@@ -96,6 +96,8 @@ type WebDataDocs struct {
 	KeyName string
 	// string, hash, list, set, zset, stream
 	KeyType  string
+	UpdateAt int64
+	IsLocal  bool `msgpack:"-"`
 	Instance interface{}
 }
 
@@ -126,29 +128,38 @@ func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
 	}
 	initializeFields(valueElem)
 	rootKey := strings.Split(ctx.Key, ":")[0]
-	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: keyType, Instance: value}
-	mapWebDataDocs.Set(ctx.Key, dataSchema)
+	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: keyType, Instance: value, UpdateAt: time.Now().Unix(), IsLocal: true}
+	localWebDataDocs.Set(ctx.Key, dataSchema)
 	SyncWebDataWithRedis()
 }
 
 func SyncWebDataWithRedis() {
 	now := time.Now().Unix()
-	NextSaveWebDataDocTime = now
-	time.Sleep(time.Second * 3)
-	//another thread is trying to save DataSchema to redis
-	if now != NextSaveWebDataDocTime {
+	if toContinue := now-LastSaveWebDataDocTime > int64(time.Second); !toContinue {
 		return
 	}
+	LastSaveWebDataDocTime = now
+	//only update local defined data to redis
 	var localStructuredDataMap = make(map[string]*WebDataDocs)
-	mapWebDataDocs.IterCb(func(key string, value *WebDataDocs) {
-		localStructuredDataMap[key] = value
+	localWebDataDocs.IterCb(func(key string, value *WebDataDocs) {
+		if value.IsLocal {
+			localStructuredDataMap[key] = &WebDataDocs{KeyName: value.KeyName, KeyType: value.KeyType, UpdateAt: now, IsLocal: false, Instance: value.Instance}
+		}
 	})
+	if len(localStructuredDataMap) > 0 {
+		KeyWebDataDocs.HSet(localStructuredDataMap)
+	}
 
-	KeyWebDataDocs.HSet(localStructuredDataMap)
-
+	//copy all data schema to local ,but do not cover the local data
 	if vals, err := KeyWebDataDocs.HGetAll(); err == nil {
 		for k, v := range vals {
-			mapWebDataDocs.Set(k, v)
+			if _, ok := localStructuredDataMap[k]; ok {
+				continue
+			}
+			localWebDataDocs.Set(k, v)
 		}
 	}
+	//sleep 10 min to save next time
+	time.Sleep(time.Minute * 10)
+	go SyncWebDataWithRedis()
 }
