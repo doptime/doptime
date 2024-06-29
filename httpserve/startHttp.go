@@ -356,6 +356,7 @@ func httpStart(path string, port int64) {
 			case "LPUSH":
 				result = "false"
 				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if err = rds.LPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
 					result = "true"
 				}
@@ -391,6 +392,7 @@ func httpStart(path string, port int64) {
 			case "RPUSH":
 				result = "false"
 				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if err = rds.RPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
 					result = "true"
 				}
@@ -398,6 +400,7 @@ func httpStart(path string, port int64) {
 			case "RPUSHX":
 				result = "false"
 				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if err = rds.RPushX(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
 					result = "true"
 				}
@@ -421,6 +424,7 @@ func httpStart(path string, port int64) {
 				if svcCtx.Key == "" || svcCtx.Field == "" {
 					err = ErrEmptyKeyOrField
 				} else if bytes, err := svcCtx.MsgpackBody(); err != nil {
+				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if rds.Set(svcCtx.Ctx, svcCtx.Key+":"+svcCtx.Field, bytes, 0).Err() == nil {
 					result = "true"
 				}
