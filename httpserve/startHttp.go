@@ -89,15 +89,20 @@ func httpStart(path string, port int64) {
 				}
 			case "HSCAN":
 				var (
-					cursor uint64
-					count  int64
-					keys   []string
-					match  string
+					cursor  uint64
+					count   int64
+					keys    []string
+					match   string
+					novalue bool
 				)
 				result = ""
 				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if novalue, err = strconv.ParseBool(svcCtx.Req.FormValue("NOVALUE")); err == nil && !novalue {
+					if keys, cursor, err = rds.HScanNoValues(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
+						result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursor}
+					}
 				} else if keys, cursor, err = rds.HScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
 					result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursor}
 				}
