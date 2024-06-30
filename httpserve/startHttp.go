@@ -101,13 +101,13 @@ func httpStart(path string, port int64) {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if novalue, err = strconv.ParseBool(svcCtx.Req.FormValue("NOVALUE")); !novalue {
-					if keys, cursor, err = rds.HScanNoValues(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-						result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursor}
+					if keys, cursor, err = hKey.HScanNoValues(cursor, match, count); err == nil {
+						result = map[string]interface{}{"data": keys, "cursor": cursor}
 					}
 				} else {
-					keys, values, cursorRet, err := hKey.HScan(cursor, match, count)
+					kvmap, cursorRet, err := hKey.HScan(cursor, match, count)
 					if err == nil {
-						result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursorRet, "values": values}
+						result = map[string]interface{}{"data": kvmap, "cursor": cursorRet}
 					}
 				}
 			case "ZSCAN":

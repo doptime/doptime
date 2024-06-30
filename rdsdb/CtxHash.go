@@ -253,22 +253,25 @@ func (ctx *CtxHash[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []
 	}
 	return keyValStrs, nil
 }
-func (ctx *CtxHash[k, v]) HScan(cursor uint64, match string, count int64) (keys []k, values []v, cursorRet uint64, err error) {
+func (ctx *CtxHash[k, v]) HScan(cursor uint64, match string, count int64) (ret map[k]v, cursorRet uint64, err error) {
 	var (
-		cmd      *redis.ScanCmd
-		keysStrs []string
+		cmd          *redis.ScanCmd
+		keyValueStrs []string
 	)
 	if cmd = ctx.Rds.HScan(ctx.Context, ctx.Key, cursor, match, count); cmd.Err() != nil {
-		return nil, nil, 0, cmd.Err()
+		return nil, 0, cmd.Err()
 	}
-	keysStrs, cursorRet, err = cmd.Result()
-	for i := 0; i < len(keys); i += 2 {
-		k, _ := ctx.toKey([]byte(keysStrs[i]))
-		v, _ := ctx.toValue([]byte(keysStrs[i+1]))
-		keys = append(keys, k)
-		values = append(values, v)
+	ret = make(map[k]v)
+	keyValueStrs, cursorRet, err = cmd.Result()
+	for i := 0; i < len(keyValueStrs); i += 2 {
+		k, err := ctx.toKey([]byte(keyValueStrs[i]))
+		v, err1 := ctx.toValue([]byte(keyValueStrs[i+1]))
+		if err != nil || err1 != nil {
+			continue
+		}
+		ret[k] = v
 	}
-	return keys, values, cursorRet, err
+	return ret, cursorRet, err
 }
 func (ctx *CtxHash[k, v]) HScanNoValues(cursor uint64, match string, count int64) (keys []k, cursorRet uint64, err error) {
 	var (
