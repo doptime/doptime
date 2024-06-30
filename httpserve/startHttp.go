@@ -100,7 +100,7 @@ func httpStart(path string, port int64) {
 				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
-				} else if novalue, err = strconv.ParseBool(svcCtx.Req.FormValue("NOVALUE")); !novalue {
+				} else if novalue, err = strconv.ParseBool(svcCtx.Req.FormValue("NOVALUE")); novalue {
 					if keys, cursor, err = hKey.HScanNoValues(cursor, match, count); err == nil {
 						result = map[string]interface{}{"data": keys, "cursor": cursor}
 					}
