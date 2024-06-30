@@ -101,12 +101,12 @@ func httpStart(path string, port int64) {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
 				} else if novalue := svcCtx.Req.FormValue("NOVALUE"); novalue == "true" {
 					if keys, cursor, err = hKey.HScanNoValues(cursor, match, count); err == nil {
-						result = map[string]interface{}{"data": keys, "cursor": cursor}
+						result = map[string]interface{}{"keys": keys, "cursor": cursor}
 					}
 				} else {
-					kvmap, cursorRet, err := hKey.HScan(cursor, match, count)
+					keys, values, cursorRet, err := hKey.HScan(cursor, match, count)
 					if err == nil {
-						result = map[string]interface{}{"data": kvmap, "cursor": cursorRet}
+						result = map[string]interface{}{"keys": keys, "values": values, "cursor": cursorRet}
 					}
 				}
 			case "ZSCAN":
