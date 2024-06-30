@@ -261,6 +261,8 @@ func (ctx *CtxHash[k, v]) HScan(cursor uint64, match string, count int64) (keys 
 	if cmd = ctx.Rds.HScan(ctx.Context, ctx.Key, cursor, match, count); cmd.Err() != nil {
 		return nil, nil, 0, cmd.Err()
 	}
+	keys = make([]k, 0)
+	values = make([]v, 0)
 	keyValueStrs, cursorRet, err = cmd.Result()
 	for i := 0; i < len(keyValueStrs); i += 2 {
 		k, err := ctx.toKey([]byte(keyValueStrs[i]))
