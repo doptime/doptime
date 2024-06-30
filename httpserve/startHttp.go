@@ -89,18 +89,17 @@ func httpStart(path string, port int64) {
 				}
 			case "HSCAN":
 				var (
-					cursor  uint64
-					count   int64
-					keys    []string
-					match   string
-					novalue bool
+					cursor uint64
+					count  int64
+					keys   []string
+					match  string
 				)
 				hKey := rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result = ""
 				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
-				} else if novalue, err = strconv.ParseBool(svcCtx.Req.FormValue("NOVALUE")); novalue {
+				} else if novalue := svcCtx.Req.FormValue("NOVALUE"); novalue == "true" {
 					if keys, cursor, err = hKey.HScanNoValues(cursor, match, count); err == nil {
 						result = map[string]interface{}{"data": keys, "cursor": cursor}
 					}
