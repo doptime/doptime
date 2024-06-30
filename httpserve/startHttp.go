@@ -77,15 +77,16 @@ func httpStart(path string, port int64) {
 				var (
 					cursor uint64
 					count  int64
-					keys   []string
+					values []interface{}
 					match  string
 				)
 				result = ""
+				keySet := rdsdb.SetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
-				} else if keys, cursor, err = rds.SScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursor}
+				} else if values, cursor, err = keySet.SScan(cursor, match, count); err == nil {
+					result = map[string]interface{}{"values": values, "cursor": cursor}
 				}
 			case "HSCAN":
 				var (
@@ -113,15 +114,16 @@ func httpStart(path string, port int64) {
 				var (
 					cursor uint64
 					count  int64
-					keys   []string
+					values []interface{}
 					match  string
 				)
+				zKey := rdsdb.ZSetKey[string, interface{}](rdsdb.Option.WithKey(svcCtx.Key), rdsdb.Option.WithRds(svcCtx.RedisDataSource))
 				result = ""
 				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
 				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
 				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
-				} else if keys, cursor, err = rds.ZScan(context.Background(), svcCtx.Key, cursor, match, count).Result(); err == nil {
-					result = map[string]interface{}{"keys": convertKeysToStringBytes(keys), "cursor": cursor}
+				} else if values, cursor, err = zKey.ZScan(cursor, match, count); err == nil {
+					result = map[string]interface{}{"values": values, "cursor": cursor}
 				}
 			case "LRANGE":
 				var (

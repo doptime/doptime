@@ -175,8 +175,16 @@ func (ctx *CtxZSet[k, v]) ZLexCount(min, max string) (int64, error) {
 	return ctx.Rds.ZLexCount(ctx.Context, ctx.Key, min, max).Result()
 }
 
-func (ctx *CtxZSet[k, v]) ZScan(cursor uint64, match string, count int64) ([]string, uint64, error) {
-	return ctx.Rds.ZScan(ctx.Context, ctx.Key, cursor, match, count).Result()
+func (ctx *CtxZSet[k, v]) ZScan(cursor uint64, match string, count int64) (values []v, rcursor uint64, err error) {
+	var strs []string
+	strs, rcursor, err = ctx.Rds.ZScan(ctx.Context, ctx.Key, cursor, match, count).Result()
+	values = make([]v, 0, len(strs))
+	for _, s := range strs {
+		if _v, err := ctx.toValue([]byte(s)); err == nil {
+			values = append(values, _v)
+		}
+	}
+	return values, rcursor, err
 }
 
 func (ctx *CtxZSet[k, v]) UnmarshalToSlice(members []string) (out []v, err error) {

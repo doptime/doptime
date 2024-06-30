@@ -59,3 +59,18 @@ func (ctx *CtxSet[k, v]) SMembers() ([]v, error) {
 	}
 	return ctx.toValues(cmd.Val()...)
 }
+func (ctx *CtxSet[k, v]) SScan(cursor uint64, match string, count int64) ([]v, uint64, error) {
+	cmd := ctx.Rds.SScan(ctx.Context, ctx.Key, cursor, match, count)
+	if err := cmd.Err(); err != nil {
+		return nil, 0, err
+	}
+	Strs, cursor, err := cmd.Result()
+	if err != nil {
+		return nil, 0, err
+	}
+	values, err := ctx.toValues(Strs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	return values, cursor, nil
+}
