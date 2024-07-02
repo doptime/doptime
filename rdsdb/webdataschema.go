@@ -166,11 +166,11 @@ func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
 	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: keyType, Instance: value, UpdateAt: time.Now().Unix(), CreateFromLocal: true}
 	WebDataDocsMap.Set(ctx.Key, dataSchema)
 	if SynWebDataRunOnce.TryLock() {
-		go SyncWebDataWithRedis()
+		go syncWebDataToRedis()
 	}
 }
 
-func SyncWebDataWithRedis() {
+func syncWebDataToRedis() {
 	//wait arrival of other schema to be store in map
 	time.Sleep(time.Second)
 	for {
@@ -186,6 +186,7 @@ func SyncWebDataWithRedis() {
 			KeyWebDataDocs.HSet(localStructuredDataMap)
 		}
 
+		//for the purpose of checking the data schema
 		//copy all data schema to local ,but do not cover the local data
 		if vals, err := KeyWebDataDocs.HGetAll(); err == nil {
 			for k, v := range vals {

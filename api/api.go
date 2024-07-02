@@ -43,6 +43,7 @@ func Api[i any, o any](
 	apis = append(apis, out.Name)
 	APIGroupByRdsToReceiveJob.Set(out.ApiSourceRds, apis)
 
+	out.RegisterApiDoc()
 	dlog.Debug().Str("ApiNamed service created completed!", out.Name).Send()
 	return out
 }
