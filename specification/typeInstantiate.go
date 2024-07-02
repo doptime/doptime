@@ -17,15 +17,12 @@ func InstantiateType(vType reflect.Type) (value interface{}, err error) {
 	valueElem := reflect.New(vType).Elem()
 	//if vType is pointer, we need to create a new instance of the valueElem
 	if vType.Kind() == reflect.Ptr {
+		//ensure !reflect.ValueOf(value).IsNil()
 		valueElem.Set(reflect.New(vType.Elem()))
 	}
-	value = valueElem.Interface()
 
-	if reflect.ValueOf(value).IsNil() {
-		return nil, fmt.Errorf(" value is nil in instantiatetype")
-	}
 	InstantiateFields(valueElem)
-	return value, nil
+	return valueElem.Interface(), nil
 }
 func InstantiateFields(value reflect.Value) {
 	if value.Kind() == reflect.Ptr {
