@@ -9,10 +9,47 @@ import (
 	"github.com/doptime/doptime/rdsdb"
 )
 
-type DataDocsIn struct {
+type DocsIn struct {
+	// type of "api" or "data"
+	t string
 }
 
-var ApiDataDocs = api.Api(func(req *DataDocsIn) (r string, err error) {
+var ApiDocs = api.Api(func(req *DocsIn) (r string, err error) {
+	if req.t == "api" {
+		return GetApiDocs()
+	} else if req.t == "data" {
+		return GetDataDocs()
+	}
+	return "you should specify a type in your url '?t=api' or '?t=data'", nil
+}).Func
+
+var keyApiDataDocs = rdsdb.HashKey[string, *api.DocsOfApi]()
+
+func GetApiDocs() (string, error) {
+	result, err := keyApiDataDocs.HGetAll()
+	if err != nil {
+		return "", err
+	}
+	var ret strings.Builder
+	var now = time.Now().Unix()
+	for _, v := range result {
+		// if not updated in latest 20min, ignore it
+		if v.UpdateAt < now-20*60 {
+			continue
+		}
+		apiName := strings.ReplaceAll(v.KeyName, "api:", "") + " "
+		apiNameFirstCharUpper := strings.ToUpper(apiName) + apiName[1:]
+		jsParamIn, _ := json.Marshal(v.ParamIn)
+		jsParamOut, _ := json.Marshal(v.ParamOut)
+		//var apiGetProjectArchitectureInfo = newApi("getProjectArchitectureInfo", { "ProjectDir": "", "SkipFiles": [], "SkipDirs": [] },)
+		ret.WriteString("var api" + apiNameFirstCharUpper + " = newApi( paramIn=" + string(jsParamIn) + ", paramOut=" + string(jsParamOut) + ")")
+		ret.WriteString("\n\n")
+	}
+	// convert to toml string, do
+	return ret.String(), nil
+}
+
+func GetDataDocs() (string, error) {
 	result, err := rdsdb.KeyWebDataDocs.HGetAll()
 	if err != nil {
 		return "", err
@@ -44,4 +81,4 @@ var ApiDataDocs = api.Api(func(req *DataDocsIn) (r string, err error) {
 	}
 	// convert to toml string, do
 	return ret.String(), nil
-}).Func
+}

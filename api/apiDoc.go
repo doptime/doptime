@@ -12,14 +12,14 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type ApiDocs struct {
+type DocsOfApi struct {
 	KeyName  string
 	UpdateAt int64
 	ParamIn  interface{}
 	ParamOut interface{}
 }
 
-var ApiDocsMap cmap.ConcurrentMap[string, *ApiDocs] = cmap.New[*ApiDocs]()
+var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
 
 var SynWebDataRunOnce = sync.Mutex{}
 
@@ -28,7 +28,7 @@ func (a *Context[i, o]) RegisterApiDoc() (err error) {
 	if ok {
 		return nil
 	}
-	webdata := &ApiDocs{
+	webdata := &DocsOfApi{
 		KeyName:  a.Name,
 		UpdateAt: time.Now().Unix(),
 	}
@@ -55,14 +55,14 @@ func syncWithRedis() {
 		now := time.Now().Unix()
 		//only update local defined data to redis
 		var localStructuredDataMap = make(map[string][]byte)
-		ApiDocsMap.IterCb(func(key string, value *ApiDocs) {
+		ApiDocsMap.IterCb(func(key string, value *DocsOfApi) {
 			value.UpdateAt = now
 			localStructuredDataMap[key], _ = msgpack.Marshal(value)
 		})
 		if len(localStructuredDataMap) > 0 {
 			client, ok := config.Rds["default"]
 			if ok {
-				client.HSet(context.Background(), "ApiDocs", localStructuredDataMap)
+				client.HSet(context.Background(), "Docs:Api", localStructuredDataMap)
 			}
 		}
 		//sleep 10 min to save next time
