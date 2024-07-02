@@ -176,14 +176,13 @@ func syncWebDataToRedis() {
 	for {
 		now := time.Now().Unix()
 		//only update local defined data to redis
-		var localStructuredDataMap = make(map[string]*WebDataDocs)
 		WebDataDocsMap.IterCb(func(key string, value *WebDataDocs) {
 			if value.CreateFromLocal {
-				localStructuredDataMap[key] = &WebDataDocs{KeyName: value.KeyName, KeyType: value.KeyType, UpdateAt: now, Instance: value.Instance}
+				value.UpdateAt = now
 			}
 		})
-		if len(localStructuredDataMap) > 0 {
-			KeyWebDataDocs.HSet(localStructuredDataMap)
+		if WebDataDocsMap.Count() > 0 {
+			KeyWebDataDocs.HSet(WebDataDocsMap.Items())
 		}
 
 		//for the purpose of checking the data schema

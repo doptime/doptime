@@ -53,19 +53,17 @@ func syncWithRedis() {
 	time.Sleep(time.Second)
 	for {
 		now := time.Now().Unix()
-		//only update local defined data to redis
-		var localStructuredDataMap = make(map[string][]byte)
-		ApiDocsMap.IterCb(func(key string, value *DocsOfApi) {
-			value.UpdateAt = now
-			localStructuredDataMap[key], _ = msgpack.Marshal(value)
-		})
-		if len(localStructuredDataMap) > 0 {
-			client, ok := config.Rds["default"]
-			if ok {
-				client.HSet(context.Background(), "Docs:Api", localStructuredDataMap)
-			}
+		client, ok := config.Rds["default"]
+		if ok && ApiDocsMap.Count() > 0 {
+			clientpiepie := client.Pipeline()
+			ApiDocsMap.IterCb(func(key string, value *DocsOfApi) {
+				value.UpdateAt = now
+				if bs, err := msgpack.Marshal(value); err == nil {
+					clientpiepie.HSet(context.Background(), "Docs:Api", value.KeyName, string(bs)).Err()
+				}
+				clientpiepie.Exec(context.Background())
+			})
 		}
-		//sleep 10 min to save next time
 		time.Sleep(time.Minute * 10)
 	}
 }
