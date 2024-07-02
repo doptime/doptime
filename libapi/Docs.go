@@ -11,13 +11,13 @@ import (
 
 type DocsIn struct {
 	// type of "api" or "data"
-	t string
+	T string `msgpack:"t"`
 }
 
 var ApiDocs = api.Api(func(req *DocsIn) (r string, err error) {
-	if req.t == "api" {
+	if req.T == "api" {
 		return GetApiDocs()
-	} else if req.t == "data" {
+	} else if req.T == "data" {
 		return GetDataDocs()
 	}
 	return "you should specify a type in your url '?t=api' or '?t=data'", nil
