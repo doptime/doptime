@@ -122,8 +122,8 @@ type GetProjectArchitectureInfoIn struct {
 	IncludedFileExts []string
 }
 type GetProjectArchitectureInfoOut struct {
-	BasePath     string
-	RelName2Arch map[string]string
+	AbsPath      string
+	RelFile2Arch map[string]string
 }
 
 var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectureInfoIn) (architectures GetProjectArchitectureInfoOut, err error) {
@@ -139,11 +139,11 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 	}
 
 	architectures = GetProjectArchitectureInfoOut{
-		BasePath:     dirOfDefaultProject,
-		RelName2Arch: make(map[string]string),
+		AbsPath:      dirOfDefaultProject,
+		RelFile2Arch: make(map[string]string),
 	}
 	if len(packInfo.ProjectDir) > 0 {
-		architectures.BasePath = packInfo.ProjectDir
+		architectures.AbsPath = packInfo.ProjectDir
 	}
 	var skipDirs = map[string]bool{".vscode": true, "node_modules": true}
 	for _, skippedDir := range packInfo.SkipDirs {
@@ -154,7 +154,7 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		skipFiles[skipFile] = true
 	}
 	// walkDir recursively walks through a directory and processes all .go files
-	filepath.WalkDir(architectures.BasePath+"/.", func(path string, info os.DirEntry, err error) error {
+	filepath.WalkDir(architectures.AbsPath+"/.", func(path string, info os.DirEntry, err error) error {
 		if err == filepath.SkipDir {
 			return nil
 		}
@@ -179,10 +179,10 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 			_, err = parser.ParseFile(token.NewFileSet(), "", page, parser.ParseComments)
 			corrupted = err != nil
 		}
-		RelName := path[len(architectures.BasePath):]
-		architectures.RelName2Arch[RelName] = page
+		RelName := path[len(architectures.AbsPath):]
+		architectures.RelFile2Arch[RelName] = page
 		if (doctype == "go" || doctype == "js") && !corrupted {
-			architectures.RelName2Arch[RelName], _ = SourceCodeToArchitecture(page)
+			architectures.RelFile2Arch[RelName], _ = SourceCodeToArchitecture(page)
 		}
 		return nil
 	})
