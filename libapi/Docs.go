@@ -45,7 +45,7 @@ func GetApiDocs() (string, error) {
 		jsParamIn, _ := json.Marshal(v.ParamIn)
 		jsParamOut, _ := json.Marshal(v.ParamOut)
 		//var apiGetProjectArchitectureInfo = newApi("getProjectArchitectureInfo", { "ProjectDir": "", "SkipFiles": [], "SkipDirs": [] },)
-		ret.WriteString("var api" + apiNameFirstCharUpper + " = newApi(\"" + apiName + "\", paramIn=" + string(jsParamIn) + ", paramOut=" + string(jsParamOut) + ")")
+		ret.WriteString("var api" + apiNameFirstCharUpper + " = newApi(\"" + apiName + "\", { in: " + string(jsParamIn) + ", out: " + string(jsParamOut) + "})")
 		ret.WriteString("\n\n")
 	}
 	// convert to toml string, do
