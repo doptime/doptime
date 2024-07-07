@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"time"
+	"unicode"
 
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/dlog"
@@ -25,6 +26,44 @@ func NonKey[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
 		return nil
 	}
 	return ctx
+}
+func (ctx *Ctx[k, v]) setKeyTypeIdentifier() {
+	var ValueIdentifier string
+	typeOfV := reflect.TypeOf((*v)(nil)).Elem()
+	switch typeOfV.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		ValueIdentifier = "i"
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		ValueIdentifier = "u"
+	case reflect.String:
+		ValueIdentifier = "s"
+	case reflect.Float32, reflect.Float64:
+		ValueIdentifier = "f"
+	case reflect.Bool:
+		ValueIdentifier = "b"
+	default:
+		ValueIdentifier = ""
+	}
+	//convert to upper case with the first character
+	if ValueIdentifier != "" {
+		ctx.Key = ValueIdentifier + ctx.Key
+		if len(ctx.Key) > 1 && unicode.IsLower(rune(ctx.Key[1])) {
+			runes := []rune(ctx.Key)
+			runes[1] = unicode.ToUpper(runes[1])
+			ctx.Key = string(runes)
+		}
+	}
+}
+func (ctx *Ctx[k, v]) getKeyTypeIdentifier() (t rune) {
+	if len(ctx.Key) < 2 {
+		return 0
+	}
+	t = rune(ctx.Key[0])
+	switch t {
+	case 'i', 'u', 's', 'f', 'b':
+		return t
+	}
+	return 0
 }
 func (ctx *Ctx[k, v]) Time() (tm time.Time, err error) {
 	cmd := ctx.Rds.Time(ctx.Context)
