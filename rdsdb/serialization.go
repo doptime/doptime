@@ -26,55 +26,46 @@ func (ctx *Ctx[k, v]) toKeyStr(key k) (keyStr string, err error) {
 	}
 }
 func (ctx *Ctx[k, v]) toValueStr(value v) (valueStr string, err error) {
-	keyTypeId := ctx.getKeyTypeIdentifier()
-	typeOfV := reflect.TypeOf(value)
-	if keyTypeId == 's' {
-		switch typeOfV.Kind() {
-		case reflect.String:
-			return interface{}(value).(string), nil
-		}
-		return valueStr, vars.ErrInvalidField
-	} else if keyTypeId == 'i' {
-		switch typeOfV.Kind() {
-		case reflect.Int:
-			return strconv.FormatInt(int64(interface{}(value).(int)), 10), nil
-		case reflect.Int8:
-			return strconv.FormatInt(int64(interface{}(value).(int8)), 10), nil
-		case reflect.Int16:
-			return strconv.FormatInt(int64(interface{}(value).(int16)), 10), nil
-		case reflect.Int32:
-			return strconv.FormatInt(int64(interface{}(value).(int32)), 10), nil
-		case reflect.Int64:
-			return strconv.FormatInt(interface{}(value).(int64), 10), nil
-		}
-		return valueStr, vars.ErrInvalidField
-	} else if keyTypeId == 'u' {
-		switch typeOfV.Kind() {
-		case reflect.Uint:
-			return strconv.FormatUint(uint64(interface{}(value).(uint)), 10), nil
-		case reflect.Uint8:
-			return strconv.FormatUint(uint64(interface{}(value).(uint8)), 10), nil
-		case reflect.Uint16:
-			return strconv.FormatUint(uint64(interface{}(value).(uint16)), 10), nil
-		case reflect.Uint32:
-			return strconv.FormatUint(uint64(interface{}(value).(uint32)), 10), nil
-		case reflect.Uint64:
-			return strconv.FormatUint(interface{}(value).(uint64), 10), nil
-		}
-		return valueStr, vars.ErrInvalidField
-	} else if keyTypeId == 'f' {
-		switch typeOfV.Kind() {
-		case reflect.Float32:
-			return strconv.FormatFloat(float64(interface{}(value).(float32)), 'f', -1, 32), nil
-		case reflect.Float64:
-			return strconv.FormatFloat(interface{}(value).(float64), 'f', -1, 64), nil
-		}
-		return valueStr, vars.ErrInvalidField
-	} else if keyTypeId == 'b' {
+	switch typeOfV := reflect.TypeOf(value); typeOfV.Kind() {
+	//type string
+	case reflect.String:
+		return interface{}(value).(string), nil
+		//type int
+	case reflect.Int:
+		return strconv.FormatInt(int64(interface{}(value).(int)), 10), nil
+	case reflect.Int8:
+		return strconv.FormatInt(int64(interface{}(value).(int8)), 10), nil
+	case reflect.Int16:
+		return strconv.FormatInt(int64(interface{}(value).(int16)), 10), nil
+	case reflect.Int32:
+		return strconv.FormatInt(int64(interface{}(value).(int32)), 10), nil
+	case reflect.Int64:
+		return strconv.FormatInt(interface{}(value).(int64), 10), nil
+
+		//case uint
+	case reflect.Uint:
+		return strconv.FormatUint(uint64(interface{}(value).(uint)), 10), nil
+	case reflect.Uint8:
+		return strconv.FormatUint(uint64(interface{}(value).(uint8)), 10), nil
+	case reflect.Uint16:
+		return strconv.FormatUint(uint64(interface{}(value).(uint16)), 10), nil
+	case reflect.Uint32:
+		return strconv.FormatUint(uint64(interface{}(value).(uint32)), 10), nil
+	case reflect.Uint64:
+		return strconv.FormatUint(interface{}(value).(uint64), 10), nil
+
+		//case float
+	case reflect.Float32:
+		return strconv.FormatFloat(float64(interface{}(value).(float32)), 'f', -1, 32), nil
+	case reflect.Float64:
+		return strconv.FormatFloat(interface{}(value).(float64), 'f', -1, 64), nil
+	case reflect.Bool:
 		return strconv.FormatBool(interface{}(value).(bool)), nil
-	} else if bytes, err := msgpack.Marshal(value); err != nil {
-		return valueStr, err
-	} else {
+	default:
+		bytes, err := msgpack.Marshal(value)
+		if err != nil {
+			return valueStr, err
+		}
 		return string(bytes), nil
 	}
 }
