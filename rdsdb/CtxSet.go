@@ -14,7 +14,6 @@ func SetKey[k comparable, v any](ops ...*DataOption) *CtxSet[k, v] {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
-	ctx.setKeyTypeIdentifier()
 	if len(ops) > 0 && ops[0].RegisterWebData {
 		ctx.RegisterWebData("set")
 	}

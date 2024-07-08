@@ -20,7 +20,6 @@ func ListKey[k comparable, v any](ops ...*DataOption) *CtxList[k, v] {
 	if len(ops) > 0 && ops[0].RegisterWebData {
 		ctx.RegisterWebData("list")
 	}
-	ctx.setKeyTypeIdentifier()
 	return ctx
 }
 
