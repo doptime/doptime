@@ -43,12 +43,11 @@ func (ctx *Ctx[k, v]) toKeys(valStr []string) (keys []k, err error) {
 
 // unmarhsal using msgpack
 func (ctx *Ctx[k, v]) toValuesFunc() func(valStrs []string) (value []v, err error) {
-	var _v v
-	kindOfv := reflect.TypeOf(_v).Kind()
 	valueStruct := reflect.TypeOf((*v)(nil)).Elem()
+	var typeofv = valueStruct.Kind()
 	isElemPtr := valueStruct.Kind() == reflect.Ptr
 
-	switch kindOfv {
+	switch typeofv {
 	case reflect.Uint64:
 		return func(valStrs []string) (values []v, err error) {
 			values = make([]v, len(valStrs))
