@@ -98,9 +98,6 @@ func (ctx *Ctx[k, v]) toValueStrFun() func(value v) (valueStr string, err error)
 		return func(value v) (valueStr string, err error) {
 			bytes, err := msgpack.Marshal(value)
 			if err == nil {
-				return valueStr, nil
-			}
-			if typeofv == reflect.Interface {
 				return string(bytes), nil
 			}
 			return valueStr, err
