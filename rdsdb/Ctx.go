@@ -13,9 +13,12 @@ import (
 )
 
 type Ctx[k comparable, v any] struct {
-	Context context.Context
-	Rds     *redis.Client
-	Key     string
+	Context    context.Context
+	Rds        *redis.Client
+	Key        string
+	toValueStr func(value v) (valueStr string, err error)
+	toValue    func(valbytes []byte) (value v, err error)
+	toValues   func(valStrs []string) (values []v, err error)
 }
 
 func NonKey[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
@@ -68,6 +71,9 @@ func (ctx *Ctx[k, v]) LoadDataOption(ops ...*DataOption) error {
 		return fmt.Errorf("Rds item unconfigured: " + rdsName)
 	}
 	ctx.Context = context.Background()
+	ctx.toValueStr = ctx.toValueStrFun()
+	ctx.toValue = ctx.toValueFunc()
+	ctx.toValues = ctx.toValuesFunc()
 
 	return nil
 }

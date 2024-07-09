@@ -26,7 +26,7 @@ func StringKey[k comparable, v any](ops ...*DataOption) *CtxString[k, v] {
 }
 
 func (ctx *CtxString[k, v]) ConcatKey(fields ...interface{}) *CtxString[k, v] {
-	return &CtxString[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...)}, ctx.BloomFilterKeys}
+	return &CtxString[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}, ctx.BloomFilterKeys}
 }
 
 func (ctx *CtxString[k, v]) Get(Field k) (value v, err error) {

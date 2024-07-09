@@ -24,11 +24,11 @@ func ListKey[k comparable, v any](ops ...*DataOption) *CtxList[k, v] {
 }
 
 func (ctx *CtxList[k, v]) ConcatKey(fields ...interface{}) *CtxList[k, v] {
-	return &CtxList[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...)}}
+	return &CtxList[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}}
 }
 
 func (ctx *CtxList[k, v]) RPush(param ...v) error {
-	vals, err := ctx.valueToInterfaceSlice(param...)
+	vals, err := ctx.toValueStrsSlice(param...)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (ctx *CtxList[k, v]) RPush(param ...v) error {
 }
 
 func (ctx *CtxList[k, v]) LPush(param ...v) error {
-	vals, err := ctx.valueToInterfaceSlice(param...)
+	vals, err := ctx.toValueStrsSlice(param...)
 	if err != nil {
 		return err
 	}

@@ -21,7 +21,7 @@ func SetKey[k comparable, v any](ops ...*DataOption) *CtxSet[k, v] {
 }
 
 func (ctx *CtxSet[k, v]) ConcatKey(fields ...interface{}) *CtxSet[k, v] {
-	return &CtxSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...)}}
+	return &CtxSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}}
 }
 
 // append to Set
@@ -57,7 +57,7 @@ func (ctx *CtxSet[k, v]) SMembers() ([]v, error) {
 	if err := cmd.Err(); err != nil {
 		return nil, err
 	}
-	return ctx.toValues(cmd.Val()...)
+	return ctx.toValues(cmd.Val())
 }
 func (ctx *CtxSet[k, v]) SScan(cursor uint64, match string, count int64) ([]v, uint64, error) {
 	cmd := ctx.Rds.SScan(ctx.Context, ctx.Key, cursor, match, count)
@@ -68,7 +68,7 @@ func (ctx *CtxSet[k, v]) SScan(cursor uint64, match string, count int64) ([]v, u
 	if err != nil {
 		return nil, 0, err
 	}
-	values, err := ctx.toValues(Strs...)
+	values, err := ctx.toValues(Strs)
 	if err != nil {
 		return nil, 0, err
 	}

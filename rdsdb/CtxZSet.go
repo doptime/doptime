@@ -25,7 +25,7 @@ func ZSetKey[k comparable, v any](ops ...*DataOption) *CtxZSet[k, v] {
 }
 
 func (ctx *CtxZSet[k, v]) ConcatKey(fields ...interface{}) *CtxZSet[k, v] {
-	return &CtxZSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...)}}
+	return &CtxZSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}}
 }
 
 func (ctx *CtxZSet[k, v]) ZAdd(members ...redis.Z) (err error) {

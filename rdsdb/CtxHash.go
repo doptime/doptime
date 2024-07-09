@@ -30,7 +30,7 @@ func HashKey[k comparable, v any](ops ...*DataOption) *CtxHash[k, v] {
 }
 
 func (ctx *CtxHash[k, v]) ConcatKey(fields ...interface{}) *CtxHash[k, v] {
-	return &CtxHash[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...)}, ctx.BloomFilterKeys}
+	return &CtxHash[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}, ctx.BloomFilterKeys}
 }
 func (ctx *CtxHash[k, v]) HGet(field k) (value v, err error) {
 	fieldStr, err := ctx.toKeyStr(field)
@@ -116,7 +116,7 @@ func (ctx *CtxHash[k, v]) HMGET(fields ...k) (values []v, err error) {
 		}
 		rawValues[i] = val.(string)
 	}
-	return ctx.toValues(rawValues...)
+	return ctx.toValues(rawValues)
 }
 func (ctx *CtxHash[k, v]) HLen() (length int64, err error) {
 	cmd := ctx.Rds.HLen(ctx.Context, ctx.Key)
