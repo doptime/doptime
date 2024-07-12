@@ -13,7 +13,7 @@ type CtxList[k comparable, v any] struct {
 
 func ListKey[k comparable, v any](ops ...*DataOption) *CtxList[k, v] {
 	ctx := &CtxList[k, v]{}
-	if err := ctx.LoadDataOption(ops...); err != nil {
+	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
@@ -24,7 +24,7 @@ func ListKey[k comparable, v any](ops ...*DataOption) *CtxList[k, v] {
 }
 
 func (ctx *CtxList[k, v]) ConcatKey(fields ...interface{}) *CtxList[k, v] {
-	return &CtxList[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}}
+	return &CtxList[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...))}
 }
 
 func (ctx *CtxList[k, v]) RPush(param ...v) error {
@@ -52,7 +52,7 @@ func (ctx *CtxList[k, v]) RPop() (ret v, err error) {
 	if err != nil {
 		return ret, err
 	}
-	return ctx.toValue(data)
+	return ctx.UnmarshalValue(data)
 }
 
 func (ctx *CtxList[k, v]) LPop() (ret v, err error) {
@@ -64,7 +64,7 @@ func (ctx *CtxList[k, v]) LPop() (ret v, err error) {
 	if err != nil {
 		return ret, err
 	}
-	return ctx.toValue(data)
+	return ctx.UnmarshalValue(data)
 }
 
 func (ctx *CtxList[k, v]) LRange(start, stop int64) ([]v, error) {
@@ -74,7 +74,7 @@ func (ctx *CtxList[k, v]) LRange(start, stop int64) ([]v, error) {
 	}
 	values := make([]v, len(cmd.Val()))
 	for i, v := range cmd.Val() {
-		value, err := ctx.toValue([]byte(v))
+		value, err := ctx.UnmarshalValue([]byte(v))
 		if err != nil {
 			return nil, err
 		}
@@ -84,7 +84,7 @@ func (ctx *CtxList[k, v]) LRange(start, stop int64) ([]v, error) {
 }
 
 func (ctx *CtxList[k, v]) LRem(count int64, param v) error {
-	val, err := ctx.toValueStr(param)
+	val, err := ctx.MarshalValue(param)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (ctx *CtxList[k, v]) LRem(count int64, param v) error {
 }
 
 func (ctx *CtxList[k, v]) LSet(index int64, param v) error {
-	val, err := ctx.toValueStr(param)
+	val, err := ctx.MarshalValue(param)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (ctx *CtxList[k, v]) BLPop(timeout time.Duration) (ret v, err error) {
 	if err != nil {
 		return ret, err
 	}
-	return ctx.toValue([]byte(data[1]))
+	return ctx.UnmarshalValue([]byte(data[1]))
 }
 
 func (ctx *CtxList[k, v]) BRPop(timeout time.Duration) (ret v, err error) {
@@ -120,7 +120,7 @@ func (ctx *CtxList[k, v]) BRPop(timeout time.Duration) (ret v, err error) {
 	if err != nil {
 		return ret, err
 	}
-	return ctx.toValue([]byte(data[1]))
+	return ctx.UnmarshalValue([]byte(data[1]))
 }
 
 func (ctx *CtxList[k, v]) BRPopLPush(destination string, timeout time.Duration) (ret v, err error) {
@@ -132,15 +132,15 @@ func (ctx *CtxList[k, v]) BRPopLPush(destination string, timeout time.Duration) 
 	if err != nil {
 		return ret, err
 	}
-	return ctx.toValue(data)
+	return ctx.UnmarshalValue(data)
 }
 
 func (ctx *CtxList[k, v]) LInsertBefore(pivot, param v) error {
-	pivotStr, err := ctx.toValueStr(pivot)
+	pivotStr, err := ctx.MarshalValue(pivot)
 	if err != nil {
 		return err
 	}
-	valStr, err := ctx.toValueStr(param)
+	valStr, err := ctx.MarshalValue(param)
 	if err != nil {
 		return err
 	}
@@ -148,11 +148,11 @@ func (ctx *CtxList[k, v]) LInsertBefore(pivot, param v) error {
 }
 
 func (ctx *CtxList[k, v]) LInsertAfter(pivot, param v) error {
-	pivotStr, err := ctx.toValueStr(pivot)
+	pivotStr, err := ctx.MarshalValue(pivot)
 	if err != nil {
 		return err
 	}
-	valStr, err := ctx.toValueStr(param)
+	valStr, err := ctx.MarshalValue(param)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (ctx *CtxList[k, v]) Sort(sort *redis.Sort) ([]v, error) {
 	}
 	values := make([]v, len(cmd.Val()))
 	for i, v := range cmd.Val() {
-		value, err := ctx.toValue([]byte(v))
+		value, err := ctx.UnmarshalValue([]byte(v))
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +187,7 @@ func (ctx *CtxList[k, v]) LIndex(index int64) (ret v, err error) {
 	if err != nil {
 		return ret, err
 	}
-	return ctx.toValue(data)
+	return ctx.UnmarshalValue(data)
 }
 
 func (ctx *CtxList[k, v]) LLen() (int64, error) {

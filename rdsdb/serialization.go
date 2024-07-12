@@ -119,7 +119,7 @@ func (ctx *Ctx[k, v]) toKeyStrs(keys ...k) (KeyStrs []string, err error) {
 func (ctx *Ctx[k, v]) toValueStrsSlice(values ...v) (ValueStrs []interface{}, err error) {
 	var valueStr string
 	for _, value := range values {
-		if valueStr, err = ctx.toValueStr(value); err != nil {
+		if valueStr, err = ctx.MarshalValue(value); err != nil {
 			return nil, err
 		}
 		ValueStrs = append(ValueStrs, valueStr)

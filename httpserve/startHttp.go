@@ -22,6 +22,8 @@ func Debug() {
 
 }
 
+// var hashKey = rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey("_"), rdsdb.Option.WithRds("default"))
+
 // listten to a port and start http server
 func httpStart(path string, port int64) {
 	//get item

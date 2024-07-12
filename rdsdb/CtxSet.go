@@ -10,7 +10,7 @@ type CtxSet[k comparable, v any] struct {
 
 func SetKey[k comparable, v any](ops ...*DataOption) *CtxSet[k, v] {
 	ctx := &CtxSet[k, v]{}
-	if err := ctx.LoadDataOption(ops...); err != nil {
+	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
@@ -21,12 +21,12 @@ func SetKey[k comparable, v any](ops ...*DataOption) *CtxSet[k, v] {
 }
 
 func (ctx *CtxSet[k, v]) ConcatKey(fields ...interface{}) *CtxSet[k, v] {
-	return &CtxSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}}
+	return &CtxSet[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...))}
 }
 
 // append to Set
 func (ctx *CtxSet[k, v]) SAdd(param v) (err error) {
-	valStr, err := ctx.toValueStr(param)
+	valStr, err := ctx.MarshalValue(param)
 	if err != nil {
 		return err
 	}
@@ -38,14 +38,14 @@ func (ctx *CtxSet[k, v]) SCard() (int64, error) {
 }
 
 func (ctx *CtxSet[k, v]) SRem(param v) error {
-	valStr, err := ctx.toValueStr(param)
+	valStr, err := ctx.MarshalValue(param)
 	if err != nil {
 		return err
 	}
 	return ctx.Rds.SRem(ctx.Context, ctx.Key, valStr).Err()
 }
 func (ctx *CtxSet[k, v]) SIsMember(param v) (bool, error) {
-	valStr, err := ctx.toValueStr(param)
+	valStr, err := ctx.MarshalValue(param)
 	if err != nil {
 		return false, err
 	}
@@ -57,7 +57,7 @@ func (ctx *CtxSet[k, v]) SMembers() ([]v, error) {
 	if err := cmd.Err(); err != nil {
 		return nil, err
 	}
-	return ctx.toValues(cmd.Val())
+	return ctx.UnmarshalValues(cmd.Val())
 }
 func (ctx *CtxSet[k, v]) SScan(cursor uint64, match string, count int64) ([]v, uint64, error) {
 	cmd := ctx.Rds.SScan(ctx.Context, ctx.Key, cursor, match, count)
@@ -68,7 +68,7 @@ func (ctx *CtxSet[k, v]) SScan(cursor uint64, match string, count int64) ([]v, u
 	if err != nil {
 		return nil, 0, err
 	}
-	values, err := ctx.toValues(Strs)
+	values, err := ctx.UnmarshalValues(Strs)
 	if err != nil {
 		return nil, 0, err
 	}

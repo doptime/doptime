@@ -27,7 +27,7 @@ func (ctx *Ctx[k, v]) Set(key k, param v, expiration time.Duration) (err error) 
 	if keyStr, err = ctx.toKeyStr(key); err != nil {
 		return err
 	}
-	if valStr, err = ctx.toValueStr(param); err != nil {
+	if valStr, err = ctx.MarshalValue(param); err != nil {
 		return err
 	} else {
 		status := ctx.Rds.Set(ctx.Context, ctx.Key+":"+keyStr, valStr, expiration)

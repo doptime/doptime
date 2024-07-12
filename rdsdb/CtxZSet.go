@@ -14,7 +14,7 @@ type CtxZSet[k comparable, v any] struct {
 
 func ZSetKey[k comparable, v any](ops ...*DataOption) *CtxZSet[k, v] {
 	ctx := &CtxZSet[k, v]{}
-	if err := ctx.LoadDataOption(ops...); err != nil {
+	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
@@ -25,7 +25,7 @@ func ZSetKey[k comparable, v any](ops ...*DataOption) *CtxZSet[k, v] {
 }
 
 func (ctx *CtxZSet[k, v]) ConcatKey(fields ...interface{}) *CtxZSet[k, v] {
-	return &CtxZSet[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}}
+	return &CtxZSet[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...))}
 }
 
 func (ctx *CtxZSet[k, v]) ZAdd(members ...redis.Z) (err error) {
@@ -150,7 +150,7 @@ func (ctx *CtxZSet[k, v]) ZRemRangeByScore(min, max string) error {
 }
 
 func (ctx *CtxZSet[k, v]) ZIncrBy(increment float64, member v) error {
-	memberBytes, err := ctx.toValueStr(member)
+	memberBytes, err := ctx.MarshalValue(member)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (ctx *CtxZSet[k, v]) ZScan(cursor uint64, match string, count int64) (value
 	strs, rcursor, err = ctx.Rds.ZScan(ctx.Context, ctx.Key, cursor, match, count).Result()
 	values = make([]v, 0, len(strs))
 	for _, s := range strs {
-		if _v, err := ctx.toValue([]byte(s)); err == nil {
+		if _v, err := ctx.UnmarshalValue([]byte(s)); err == nil {
 			values = append(values, _v)
 		}
 	}

@@ -15,7 +15,7 @@ type CtxString[k comparable, v any] struct {
 
 func StringKey[k comparable, v any](ops ...*DataOption) *CtxString[k, v] {
 	ctx := &CtxString[k, v]{}
-	if err := ctx.LoadDataOption(ops...); err != nil {
+	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
@@ -26,7 +26,7 @@ func StringKey[k comparable, v any](ops ...*DataOption) *CtxString[k, v] {
 }
 
 func (ctx *CtxString[k, v]) ConcatKey(fields ...interface{}) *CtxString[k, v] {
-	return &CtxString[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}, ctx.BloomFilterKeys}
+	return &CtxString[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...)), ctx.BloomFilterKeys}
 }
 
 func (ctx *CtxString[k, v]) Get(Field k) (value v, err error) {
@@ -50,7 +50,7 @@ func (ctx *CtxString[k, v]) Get(Field k) (value v, err error) {
 	if err != nil {
 		return value, err
 	}
-	return ctx.toValue(data)
+	return ctx.UnmarshalValue(data)
 }
 
 func (ctx *CtxString[k, v]) Set(key k, value v, expiration time.Duration) error {
@@ -58,7 +58,7 @@ func (ctx *CtxString[k, v]) Set(key k, value v, expiration time.Duration) error 
 	if err != nil {
 		return err
 	}
-	valStr, err := ctx.toValueStr(value)
+	valStr, err := ctx.MarshalValue(value)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (ctx *CtxString[k, v]) GetAll(match string) (mapOut map[k]v, err error) {
 			dlog.Info().AnErr("GetAll: key unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
 		}
-		v, err := ctx.toValue(val)
+		v, err := ctx.UnmarshalValue(val)
 		if err != nil {
 			dlog.Info().AnErr("GetAll: value unmarshal error:", err).Msgf("Key: %s", ctx.Key)
 			continue
@@ -119,7 +119,7 @@ func (ctx *CtxString[k, v]) SetAll(_map map[k]v) (err error) {
 		if err != nil {
 			return err
 		}
-		valStr, err := ctx.toValueStr(v)
+		valStr, err := ctx.MarshalValue(v)
 		if err != nil {
 			return err
 		}

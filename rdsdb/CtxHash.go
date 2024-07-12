@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/bits-and-blooms/bloom/v3"
+	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/vars"
 	"github.com/redis/go-redis/v9"
@@ -18,7 +19,7 @@ type CtxHash[k comparable, v any] struct {
 
 func HashKey[k comparable, v any](ops ...*DataOption) *CtxHash[k, v] {
 	ctx := &CtxHash[k, v]{}
-	if err := ctx.LoadDataOption(ops...); err != nil {
+	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
@@ -30,8 +31,22 @@ func HashKey[k comparable, v any](ops ...*DataOption) *CtxHash[k, v] {
 }
 
 func (ctx *CtxHash[k, v]) ConcatKey(fields ...interface{}) *CtxHash[k, v] {
-	return &CtxHash[k, v]{Ctx[k, v]{ctx.Context, ctx.Rds, ConcatedKeys(ctx.Key, fields...), ctx.toValueStr, ctx.toValue, ctx.toValues}, ctx.BloomFilterKeys}
+	return &CtxHash[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...)), ctx.BloomFilterKeys}
 }
+func (ctx *CtxHash[k, v]) Clone(Key string, RdsSourceName string) (newCtx *CtxHash[k, v], err error) {
+	newCtx = &CtxHash[k, v]{ctx.clone(Key), ctx.BloomFilterKeys}
+	//skip if RdsSourceName is unchanged
+	if RdsSourceName == ctx.RdsName {
+		return newCtx, nil
+	}
+	ctx.RdsName = RdsSourceName
+	var exists bool
+	if ctx.Rds, exists = config.Rds[RdsSourceName]; !exists {
+		return nil, fmt.Errorf("clone fail, rds item unconfigured: " + ctx.RdsName)
+	}
+	return newCtx, nil
+}
+
 func (ctx *CtxHash[k, v]) HGet(field k) (value v, err error) {
 	fieldStr, err := ctx.toKeyStr(field)
 	if err != nil {
@@ -45,7 +60,7 @@ func (ctx *CtxHash[k, v]) HGet(field k) (value v, err error) {
 	if err != nil {
 		return value, err
 	}
-	return ctx.toValue(data)
+	return ctx.UnmarshalValue(data)
 }
 
 // HSet accepts values in following formats:
@@ -79,7 +94,7 @@ func (ctx *CtxHash[k, v]) HGetAll() (map[k]v, error) {
 		if err != nil {
 			continue
 		}
-		value, err := ctx.toValue([]byte(v))
+		value, err := ctx.UnmarshalValue([]byte(v))
 		if err != nil {
 			continue
 		}
@@ -116,7 +131,7 @@ func (ctx *CtxHash[k, v]) HMGET(fields ...k) (values []v, err error) {
 		}
 		rawValues[i] = val.(string)
 	}
-	return ctx.toValues(rawValues)
+	return ctx.UnmarshalValues(rawValues)
 }
 func (ctx *CtxHash[k, v]) HLen() (length int64, err error) {
 	cmd := ctx.Rds.HLen(ctx.Context, ctx.Key)
@@ -172,7 +187,7 @@ func (ctx *CtxHash[k, v]) HVals() ([]v, error) {
 	}
 	values := make([]v, len(result))
 	for i, v := range result {
-		value, err := ctx.toValue([]byte(v))
+		value, err := ctx.UnmarshalValue([]byte(v))
 		if err != nil {
 			continue
 		}
@@ -201,7 +216,7 @@ func (ctx *CtxHash[k, v]) HSetNX(field k, value v) error {
 	if err != nil {
 		return err
 	}
-	valStr, err := ctx.toValueStr(value)
+	valStr, err := ctx.MarshalValue(value)
 	if err != nil {
 		return err
 	}
@@ -223,7 +238,7 @@ func (ctx *CtxHash[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []
 			if strkey, err = ctx.toKeyStr(key); err != nil {
 				return nil, err
 			}
-			if strvalue, err = ctx.toValueStr(value); err != nil {
+			if strvalue, err = ctx.MarshalValue(value); err != nil {
 				return nil, err
 			}
 			keyValStrs = append(keyValStrs, strkey, strvalue)
@@ -242,7 +257,7 @@ func (ctx *CtxHash[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []
 			if strkey, err = ctx.toKeyStr(key); err != nil {
 				return nil, err
 			}
-			if strvalue, err = ctx.toValueStr(value); err != nil {
+			if strvalue, err = ctx.MarshalValue(value); err != nil {
 				return nil, err
 			}
 
@@ -266,7 +281,7 @@ func (ctx *CtxHash[k, v]) HScan(cursor uint64, match string, count int64) (keys 
 	keyValueStrs, cursorRet, err = cmd.Result()
 	for i := 0; i < len(keyValueStrs); i += 2 {
 		k, err := ctx.toKey([]byte(keyValueStrs[i]))
-		v, err1 := ctx.toValue([]byte(keyValueStrs[i+1]))
+		v, err1 := ctx.UnmarshalValue([]byte(keyValueStrs[i+1]))
 		if err != nil || err1 != nil {
 			continue
 		}
