@@ -4,6 +4,7 @@ package api
 type ApiOption struct {
 	ApiSourceRds  string
 	ApiSourceHttp string
+	VendorInfo    *VendorInfo
 }
 
 var Option *ApiOption
@@ -26,12 +27,16 @@ func mergeNewOptions(o *ApiOption, options ...*ApiOption) (out *ApiOption) {
 	if len(options) == 0 {
 		return o
 	}
-	var newOption *ApiOption = options[0]
-	if len(newOption.ApiSourceRds) > 0 {
-		o.ApiSourceRds = newOption.ApiSourceRds
-	}
-	if len(newOption.ApiSourceHttp) > 0 {
-		o.ApiSourceHttp = newOption.ApiSourceHttp
+	for _, option := range options {
+		if len(option.ApiSourceRds) > 0 {
+			o.ApiSourceRds = option.ApiSourceRds
+		}
+		if len(option.ApiSourceHttp) > 0 {
+			o.ApiSourceHttp = option.ApiSourceHttp
+		}
+		if option.VendorInfo != nil {
+			o.VendorInfo = option.VendorInfo
+		}
 	}
 	return o
 }

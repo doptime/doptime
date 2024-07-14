@@ -14,23 +14,26 @@ import (
 
 type DocsOfApi struct {
 	KeyName  string
-	UpdateAt int64
 	ParamIn  interface{}
 	ParamOut interface{}
+	UpdateAt int64
+
+	VendorInfo *VendorInfo
 }
 
 var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
 
 var SynWebDataRunOnce = sync.Mutex{}
 
-func (a *Context[i, o]) RegisterApiDoc() (err error) {
+func (a *Context[i, o]) RegisterApiDoc(vendorinfo *VendorInfo) (err error) {
 	_, ok := ApiDocsMap.Get(a.Name)
 	if ok {
 		return nil
 	}
 	webdata := &DocsOfApi{
-		KeyName:  a.Name,
-		UpdateAt: time.Now().Unix(),
+		KeyName:    a.Name,
+		UpdateAt:   time.Now().Unix(),
+		VendorInfo: vendorinfo,
 	}
 
 	vType := reflect.TypeOf((*i)(nil)).Elem()
