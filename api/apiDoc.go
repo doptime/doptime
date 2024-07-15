@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,23 +18,24 @@ type DocsOfApi struct {
 	ParamIn  interface{}
 	ParamOut interface{}
 	UpdateAt int64
-
-	VendorInfo *VendorInfo
 }
 
 var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
 
+var ApiVendorMap cmap.ConcurrentMap[string, *VendorOption] = cmap.New[*VendorOption]()
 var SynWebDataRunOnce = sync.Mutex{}
 
-func (a *Context[i, o]) RegisterApiDoc(vendorinfo *VendorInfo) (err error) {
+func (a *Context[i, o]) RegisterApiDoc(vendorinfo *VendorOption) (err error) {
 	_, ok := ApiDocsMap.Get(a.Name)
 	if ok {
 		return nil
 	}
 	webdata := &DocsOfApi{
-		KeyName:    a.Name,
-		UpdateAt:   time.Now().Unix(),
-		VendorInfo: vendorinfo,
+		KeyName:  a.Name,
+		UpdateAt: time.Now().Unix(),
+	}
+	if vendorinfo != nil {
+		webdata.KeyName = webdata.KeyName + strings.Split(vendorinfo.VendorAccountEmail, "@")[0]
 	}
 
 	vType := reflect.TypeOf((*i)(nil)).Elem()
@@ -45,6 +47,9 @@ func (a *Context[i, o]) RegisterApiDoc(vendorinfo *VendorInfo) (err error) {
 		return err
 	}
 	ApiDocsMap.Set(a.Name, webdata)
+	if vendorinfo != nil {
+		ApiVendorMap.Set(a.Name+"_"+vendorinfo.VendorAccountEmail, vendorinfo)
+	}
 	if SynWebDataRunOnce.TryLock() {
 		go syncWithRedis()
 	}
@@ -57,16 +62,28 @@ func syncWithRedis() {
 	for {
 		now := time.Now().Unix()
 		client, ok := config.Rds["default"]
+		if !ok || (ApiDocsMap.Count() == 0 && ApiVendorMap.Count() == 0) {
+			time.Sleep(time.Minute)
+			continue
+		}
+		clientpiepie := client.Pipeline()
 		if ok && ApiDocsMap.Count() > 0 {
-			clientpiepie := client.Pipeline()
 			ApiDocsMap.IterCb(func(key string, value *DocsOfApi) {
 				value.UpdateAt = now
 				if bs, err := msgpack.Marshal(value); err == nil {
 					clientpiepie.HSet(context.Background(), "Docs:Api", value.KeyName, string(bs)).Err()
 				}
-				clientpiepie.Exec(context.Background())
 			})
 		}
+		if ok && ApiVendorMap.Count() > 0 {
+			ApiVendorMap.IterCb(func(key string, value *VendorOption) {
+				value.ActiveAt = now
+				if bs, err := msgpack.Marshal(value); err == nil {
+					clientpiepie.HSet(context.Background(), "Docs:ApiVendor", key, string(bs)).Err()
+				}
+			})
+		}
+		clientpiepie.Exec(context.Background())
 		time.Sleep(time.Minute * 10)
 	}
 }

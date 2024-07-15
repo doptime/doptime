@@ -4,7 +4,7 @@ package api
 type ApiOption struct {
 	ApiSourceRds  string
 	ApiSourceHttp string
-	VendorInfo    *VendorInfo
+	VendorInfo    *VendorOption
 }
 
 var Option *ApiOption
