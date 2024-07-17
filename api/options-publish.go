@@ -9,14 +9,14 @@ type PricingByKB struct {
 	PricePerResponseKB float64
 }
 
-// should allow pay to api VendorAccountEmail ˝
-type VendorOption struct {
+// should allow pay to api ProviderAccountEmail ˝
+type PublishOptions struct {
 	PricingByCall  float64
 	PricingByToken *PricingByToken
 	PricingByKB    *PricingByKB
 
 	ActiveAt int64
 
-	VendorAccountEmail string `json:"-"`
-	VendorIMs          string
+	ProviderAccountEmail string `json:"-"`
+	ProviderIMs          string
 }

@@ -4,7 +4,7 @@ package api
 type ApiOption struct {
 	ApiSourceRds  string
 	ApiSourceHttp string
-	VendorInfo    *VendorOption
+	PublishInfo   *PublishOptions
 }
 
 var Option *ApiOption
@@ -23,6 +23,13 @@ func (o *ApiOption) WithSourceHttp(ApiSourceHttp string) (out *ApiOption) {
 	out.ApiSourceHttp = ApiSourceHttp
 	return out
 }
+func (o *ApiOption) Publish(publishInfo *PublishOptions) (out *ApiOption) {
+	if out = o; o == Option {
+		out = &ApiOption{}
+	}
+	out.PublishInfo = publishInfo
+	return out
+}
 func mergeNewOptions(o *ApiOption, options ...*ApiOption) (out *ApiOption) {
 	if len(options) == 0 {
 		return o
@@ -34,8 +41,8 @@ func mergeNewOptions(o *ApiOption, options ...*ApiOption) (out *ApiOption) {
 		if len(option.ApiSourceHttp) > 0 {
 			o.ApiSourceHttp = option.ApiSourceHttp
 		}
-		if option.VendorInfo != nil {
-			o.VendorInfo = option.VendorInfo
+		if option.PublishInfo != nil {
+			o.PublishInfo = option.PublishInfo
 		}
 	}
 	return o

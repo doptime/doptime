@@ -22,10 +22,9 @@ type DocsOfApi struct {
 
 var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
 
-var ApiVendorMap cmap.ConcurrentMap[string, *VendorOption] = cmap.New[*VendorOption]()
 var SynWebDataRunOnce = sync.Mutex{}
 
-func (a *Context[i, o]) RegisterApiDoc(vendorinfo *VendorOption) (err error) {
+func (a *Context[i, o]) RegisterApi(providerinfo *PublishOptions) (err error) {
 	_, ok := ApiDocsMap.Get(a.Name)
 	if ok {
 		return nil
@@ -34,8 +33,8 @@ func (a *Context[i, o]) RegisterApiDoc(vendorinfo *VendorOption) (err error) {
 		KeyName:  a.Name,
 		UpdateAt: time.Now().Unix(),
 	}
-	if vendorinfo != nil {
-		webdata.KeyName = webdata.KeyName + strings.Split(vendorinfo.VendorAccountEmail, "@")[0]
+	if providerinfo != nil {
+		webdata.KeyName = webdata.KeyName + strings.Split(providerinfo.ProviderAccountEmail, "@")[0]
 	}
 
 	vType := reflect.TypeOf((*i)(nil)).Elem()
@@ -47,22 +46,22 @@ func (a *Context[i, o]) RegisterApiDoc(vendorinfo *VendorOption) (err error) {
 		return err
 	}
 	ApiDocsMap.Set(a.Name, webdata)
-	if vendorinfo != nil {
-		ApiVendorMap.Set(a.Name+"_"+vendorinfo.VendorAccountEmail, vendorinfo)
+	if providerinfo != nil {
+		ApiProviderMap.Set(a.Name+"_"+providerinfo.ProviderAccountEmail, providerinfo)
 	}
 	if SynWebDataRunOnce.TryLock() {
-		go syncWithRedis()
+		go a.syncWithRedis()
 	}
 	return nil
 }
 
-func syncWithRedis() {
+func (a *Context[i, o]) syncWithRedis() {
 	//wait arrival of other schema to be store in map
 	time.Sleep(time.Second)
 	for {
 		now := time.Now().Unix()
 		client, ok := config.Rds["default"]
-		if !ok || (ApiDocsMap.Count() == 0 && ApiVendorMap.Count() == 0) {
+		if !ok || (ApiDocsMap.Count() == 0 && ApiProviderMap.Count() == 0) {
 			time.Sleep(time.Minute)
 			continue
 		}
@@ -75,11 +74,11 @@ func syncWithRedis() {
 				}
 			})
 		}
-		if ok && ApiVendorMap.Count() > 0 {
-			ApiVendorMap.IterCb(func(key string, value *VendorOption) {
+		if ok && ApiProviderMap.Count() > 0 {
+			ApiProviderMap.IterCb(func(key string, value *PublishOptions) {
 				value.ActiveAt = now
 				if bs, err := msgpack.Marshal(value); err == nil {
-					clientpiepie.HSet(context.Background(), "Docs:ApiVendor", key, string(bs)).Err()
+					clientpiepie.HSet(context.Background(), "Docs:ApiProvider", key, string(bs)).Err()
 				}
 			})
 		}
