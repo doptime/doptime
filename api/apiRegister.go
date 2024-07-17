@@ -21,6 +21,7 @@ type DocsOfApi struct {
 }
 
 var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
+var ApiProviderMap cmap.ConcurrentMap[string, *PublishOptions] = cmap.New[*PublishOptions]()
 
 var SynWebDataRunOnce = sync.Mutex{}
 
@@ -60,7 +61,8 @@ func (a *Context[i, o]) syncWithRedis() {
 	time.Sleep(time.Second)
 	for {
 		now := time.Now().Unix()
-		client, ok := config.Rds["default"]
+
+		client, ok := config.Rds[a.ApiSourceRds]
 		if !ok || (ApiDocsMap.Count() == 0 && ApiProviderMap.Count() == 0) {
 			time.Sleep(time.Minute)
 			continue
