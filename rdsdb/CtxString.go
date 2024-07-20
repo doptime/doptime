@@ -13,7 +13,7 @@ type CtxString[k comparable, v any] struct {
 	BloomFilterKeys *bloom.BloomFilter
 }
 
-func StringKey[k comparable, v any](ops ...*DataOption) *CtxString[k, v] {
+func StringKey[k comparable, v any](ops ...*Option) *CtxString[k, v] {
 	ctx := &CtxString[k, v]{}
 	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")

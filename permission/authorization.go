@@ -9,7 +9,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-var rdsPermit = rdsdb.HashKey[string, string](rdsdb.Option.WithKey("_permissions"))
+var rdsPermit = rdsdb.HashKey[string, string](&rdsdb.Option{Key: "_permissions"})
 var permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 
 // this version of IsPermitted is design for fast searching & modifying

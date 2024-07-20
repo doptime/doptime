@@ -23,7 +23,7 @@ var ApiDocs = api.Api(func(req *DocsIn) (r string, err error) {
 	return "you should specify a type in your url '?t=api' or '?t=data'", nil
 }).Func
 
-var keyApiDataDocs = rdsdb.HashKey[string, *api.DocsOfApi](rdsdb.Option.WithKey("Docs:Api"))
+var keyApiDataDocs = rdsdb.HashKey[string, *api.DocsOfApi](&rdsdb.Option{Key: "Docs:Api"})
 
 func GetApiDocs() (string, error) {
 	result, err := keyApiDataDocs.HGetAll()

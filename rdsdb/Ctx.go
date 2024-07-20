@@ -29,7 +29,7 @@ func (ctx *Ctx[k, v]) clone(newKey string) (newCtx Ctx[k, v]) {
 	return Ctx[k, v]{ctx.Context, ctx.RdsName, ctx.Rds, newKey, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
 }
 
-func NonKey[k comparable, v any](ops ...*DataOption) *Ctx[k, v] {
+func NonKey[k comparable, v any](ops ...*Option) *Ctx[k, v] {
 	ctx := &Ctx[k, v]{}
 	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
@@ -65,7 +65,7 @@ func (ctx *Ctx[k, v]) Scan(cursorOld uint64, match string, count int64) (keys []
 	return keys, cursorNew, nil
 }
 
-func (ctx *Ctx[k, v]) useOption(ops ...*DataOption) error {
+func (ctx *Ctx[k, v]) useOption(ops ...*Option) error {
 	if len(ops) > 0 {
 		ctx.Key = ops[0].Key
 		ctx.RdsName = ops[0].DataSource

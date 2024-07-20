@@ -46,8 +46,8 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 }
 
 // this is designed to be used for point to point RPC. without dispatching parameter using redis
-func RpcOverHttp[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
-	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceHttp: "doptime"}, options...)
+func RpcOverHttp[i any, o any](options ...*Option) (rpc *Context[i, o]) {
+	var option *Option = mergeNewOptions(&Option{ApiSourceHttp: "doptime"}, options...)
 
 	httpServer, exists := config.HttpRpc[option.ApiSourceHttp]
 	if !exists {

@@ -1,36 +1,13 @@
 package api
 
-// ApiOption is parameter to create an API, RPC, or CallAt
-type ApiOption struct {
+// Option is parameter to create an API, RPC, or CallAt
+type Option struct {
 	ApiSourceRds  string
 	ApiSourceHttp string
 	PublishInfo   *PublishOptions
 }
 
-var Option *ApiOption
-
-func (o *ApiOption) WithSourceRds(ApiSourceRds string) (out *ApiOption) {
-	if out = o; o == Option {
-		out = &ApiOption{}
-	}
-	out.ApiSourceRds = ApiSourceRds
-	return out
-}
-func (o *ApiOption) WithSourceHttp(ApiSourceHttp string) (out *ApiOption) {
-	if out = o; o == Option {
-		out = &ApiOption{}
-	}
-	out.ApiSourceHttp = ApiSourceHttp
-	return out
-}
-func (o *ApiOption) Publish(publishInfo *PublishOptions) (out *ApiOption) {
-	if out = o; o == Option {
-		out = &ApiOption{}
-	}
-	out.PublishInfo = publishInfo
-	return out
-}
-func mergeNewOptions(o *ApiOption, options ...*ApiOption) (out *ApiOption) {
+func mergeNewOptions(o *Option, options ...*Option) (out *Option) {
 	if len(options) == 0 {
 		return o
 	}

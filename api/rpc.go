@@ -16,9 +16,9 @@ import (
 // create Api context.
 // This New function is for the case the API is defined outside of this package.
 // If the API is defined in this package, use Api() instead.
-func Rpc[i any, o any](options ...*ApiOption) (rpc *Context[i, o]) {
+func Rpc[i any, o any](options ...*Option) (rpc *Context[i, o]) {
 
-	var option *ApiOption = mergeNewOptions(&ApiOption{ApiSourceRds: "default"}, options...)
+	var option *Option = mergeNewOptions(&Option{ApiSourceRds: "default"}, options...)
 
 	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),

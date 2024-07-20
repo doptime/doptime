@@ -8,7 +8,7 @@ type CtxSet[k comparable, v any] struct {
 	Ctx[k, v]
 }
 
-func SetKey[k comparable, v any](ops ...*DataOption) *CtxSet[k, v] {
+func SetKey[k comparable, v any](ops ...*Option) *CtxSet[k, v] {
 	ctx := &CtxSet[k, v]{}
 	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")

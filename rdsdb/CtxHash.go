@@ -17,7 +17,7 @@ type CtxHash[k comparable, v any] struct {
 	BloomFilterKeys *bloom.BloomFilter
 }
 
-func HashKey[k comparable, v any](ops ...*DataOption) *CtxHash[k, v] {
+func HashKey[k comparable, v any](ops ...*Option) *CtxHash[k, v] {
 	ctx := &CtxHash[k, v]{}
 	if err := ctx.useOption(ops...); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
