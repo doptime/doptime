@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"reflect"
-	"strings"
 	"sync"
 	"time"
 
@@ -34,9 +33,6 @@ func (a *Context[i, o]) RegisterApi(providerinfo *PublishOptions) (err error) {
 		KeyName:  a.Name,
 		UpdateAt: time.Now().Unix(),
 	}
-	if providerinfo != nil {
-		webdata.KeyName = webdata.KeyName + strings.Split(providerinfo.ProviderAccountEmail, "@")[0]
-	}
 
 	vType := reflect.TypeOf((*i)(nil)).Elem()
 	if webdata.ParamIn, err = specification.InstantiateType(vType); err != nil {
@@ -47,9 +43,6 @@ func (a *Context[i, o]) RegisterApi(providerinfo *PublishOptions) (err error) {
 		return err
 	}
 	ApiDocsMap.Set(a.Name, webdata)
-	if providerinfo != nil {
-		ApiProviderMap.Set(a.Name+"_"+providerinfo.ProviderAccountEmail, providerinfo)
-	}
 	if SynWebDataRunOnce.TryLock() {
 		go a.syncWithRedis()
 	}

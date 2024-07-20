@@ -1,22 +1,22 @@
 package api
 
-type PricingByToken struct {
-	PricePerRequestToken  float64
-	PricePerResponseToken float64
+type TokenBasedPricing struct {
+	RatePerRequestToken  float64
+	RatePerResponseToken float64
 }
-type PricingByKB struct {
-	PricePerRequestKB  float64
-	PricePerResponseKB float64
+type TrafficBasedPricing struct {
+	RatePerRequestMB  float64
+	RatePerResponseMB float64
+}
+type CallBasedPricing struct {
+	RatePerCall float64
 }
 
 // should allow pay to api ProviderAccountEmail ˝
 type PublishOptions struct {
-	PricingByCall  float64
-	PricingByToken *PricingByToken
-	PricingByKB    *PricingByKB
-
-	ActiveAt int64
-
-	ProviderAccountEmail string `json:"-"`
-	ProviderIMs          string
+	PricingByCall  *CallBasedPricing
+	PricingByToken *TokenBasedPricing
+	PricingByKB    *TrafficBasedPricing
+	ActiveAt       int64
+	ProviderToken  string
 }
