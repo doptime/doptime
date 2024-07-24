@@ -3,6 +3,7 @@ package httpserve
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/doptime/doptime/config"
@@ -10,34 +11,39 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func (svc *HttpContext) ParseJwtToken() (err error) {
-	jwtStr := svc.Req.Header.Get("Authorization")
+func Jwt2ClaimMap(jwtStr string, secret string) (mpclaims jwt.MapClaims, err error) {
+	//decode jwt string to map[string] interface{} with jwtSrcrets as jwt secret
+	keyFunction := func(token *jwt.Token) (value interface{}, err error) {
+		return []byte(secret), nil
+	}
+	jwtToken, err := jwt.ParseWithClaims(jwtStr, jwt.MapClaims{}, keyFunction)
+	if err != nil {
+		return nil, err
+	}
+	var ok bool
+	if mpclaims, ok = jwtToken.Claims.(jwt.MapClaims); !ok {
+		return nil, errors.New("invalid JWT token")
+	}
+	for k, v := range mpclaims {
+		if f64, ok := v.(float64); ok && f64 == float64(int64(f64)) {
+			mpclaims[k] = int64(f64)
+		}
+	}
+	return mpclaims, nil
+}
+
+func (svc *DoptimeReqCtx) ParseJwtToken(r *http.Request) (err error) {
+	jwtStr := r.Header.Get("Authorization")
 	jwtStr = strings.TrimPrefix(jwtStr, "Bearer ")
 	if len(jwtStr) == 0 {
 		return errors.New("no JWT token")
 	}
-	//decode jwt string to map[string] interface{} with jwtSrcrets as jwt secret
-	keyFunction := func(token *jwt.Token) (value interface{}, err error) {
-		_, ok := token.Method.(*jwt.SigningMethodHMAC)
-		if !ok {
-			return nil, errors.New("invalid signing method")
-		}
-		return []byte(config.Cfg.Http.JwtSecret), nil
-	}
-	if svc.jwtToken, err = jwt.ParseWithClaims(jwtStr, jwt.MapClaims{}, keyFunction); err != nil {
+	if svc.Claims, err = Jwt2ClaimMap(jwtStr, config.Cfg.Http.JwtSecret); err != nil {
 		return fmt.Errorf("invalid JWT token: %v", err)
-	}
-	//for each element of svc.jwtToken ,if it's type if flaot64, convert it to int64, it it's
-	if mpclaims, ok := svc.jwtToken.Claims.(jwt.MapClaims); ok {
-		for k, v := range mpclaims {
-			if f64, ok := v.(float64); ok && f64 == float64(int64(f64)) {
-				mpclaims[k] = int64(f64)
-			}
-		}
 	}
 	return nil
 }
-func (svc *HttpContext) MergeJwtField(paramIn map[string]interface{}) {
+func (svc *DoptimeReqCtx) MergeJwtField(r *http.Request, paramIn map[string]interface{}) {
 	//remove nay field that starts with "Jwt" in paramIn
 	//prevent forged jwt field
 	for k := range paramIn {
@@ -46,15 +52,14 @@ func (svc *HttpContext) MergeJwtField(paramIn map[string]interface{}) {
 		}
 	}
 
-	if err := svc.ParseJwtToken(); err != nil {
+	if err := svc.ParseJwtToken(r); err != nil {
 		return
 	}
 	//save every field in svc.Jwt.Claims to in
-	mpclaims, ok := svc.jwtToken.Claims.(jwt.MapClaims)
-	if !ok {
+	if svc.Claims == nil {
 		return
 	}
-	for k, v := range mpclaims {
+	for k, v := range svc.Claims {
 		//convert first letter of k to upper case
 		k = strings.ToUpper(k[:1]) + k[1:]
 		paramIn["Jwt"+k] = v

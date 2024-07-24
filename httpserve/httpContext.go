@@ -14,11 +14,9 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type HttpContext struct {
-	Req             *http.Request
-	Rsb             http.ResponseWriter
-	jwtToken        *jwt.Token
+type DoptimeReqCtx struct {
 	Ctx             context.Context
+	Claims          jwt.MapClaims
 	RedisDataSource string
 	// case get
 	Cmd     string
@@ -31,12 +29,12 @@ type HttpContext struct {
 
 var ErrIncompleteRequest = errors.New("incomplete request")
 
-func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter) (httpCtx *HttpContext, err error) {
+func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter) (httpCtx *DoptimeReqCtx, err error) {
 	var (
 		CmdKeyFields                                  []string
 		param, CmdKeyFieldsStr, pathStr, pathLastPart string
 	)
-	svcContext := &HttpContext{Req: r, Rsb: w, Ctx: ctx}
+	svcContext := &DoptimeReqCtx{Ctx: ctx}
 
 	//i.g. https://url.com/rSvc/HGET-UserAvatar=fa4Y3oyQk2swURaJ?Queries=*&RspType=image/jpeg
 	if pathStr = r.URL.Path; r.URL.RawPath != "" {
@@ -72,52 +70,21 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 	return svcContext, nil
 }
 
-func (svc *HttpContext) MsgpackBodyBytes() (data []byte) {
-	var (
-		err error
-	)
-	if svc.Req.ContentLength == 0 {
-		return nil
-	}
-	if !strings.HasPrefix(svc.Req.Header.Get("Content-Type"), "application/octet-stream") {
-		return nil
-	}
-	if data, err = io.ReadAll(svc.Req.Body); err != nil {
-		return nil
-	}
-	return data
-}
-func (svc *HttpContext) JsonBodyBytes() (data []byte) {
-	var (
-		err error
-	)
-	if svc.Req.ContentLength == 0 {
-		return nil
-	}
-	if !strings.HasPrefix(svc.Req.Header.Get("Content-Type"), "application/json") {
-		return nil
-	}
-	if data, err = io.ReadAll(svc.Req.Body); err != nil {
-		return nil
-	}
-	return data
-}
-
 // Ensure the body is msgpack format
-func (svc *HttpContext) MsgpackBody() (bytes []byte, err error) {
+func (svc *DoptimeReqCtx) MsgpackBody(r *http.Request, checkContentType bool, validateMsgpackFormat bool) (MsgPack []byte, err error) {
 	var (
 		data interface{}
 	)
-	if bytes = svc.MsgpackBodyBytes(); len(bytes) == 0 {
+	if MsgPack, err = io.ReadAll(r.Body); len(MsgPack) == 0 || err != nil {
 		return nil, fmt.Errorf("empty msgpack body")
 	}
 	//should make sure the data is msgpack format
-	if err = msgpack.Unmarshal(bytes, &data); err != nil {
+	if err = msgpack.Unmarshal(MsgPack, &data); err != nil {
 		return nil, err
 	}
-	if bytes, err = msgpack.Marshal(data); err != nil {
+	if MsgPack, err = msgpack.Marshal(data); err != nil {
 		return nil, err
 	}
-	//return remarshaled bytes, because golang msgpack is better fullfill than javascript msgpack
-	return bytes, nil
+	//return remarshaled MsgPack, because golang MsgPack is better fullfill than javascript MsgPack
+	return MsgPack, nil
 }

@@ -36,7 +36,7 @@ func httpStart(path string, port int64) {
 			ok         bool
 			err        error
 			httpStatus int = http.StatusOK
-			svcCtx     *HttpContext
+			svcCtx     *DoptimeReqCtx
 			rds        *redis.Client
 			operation  string
 		)
@@ -49,7 +49,7 @@ func httpStart(path string, port int64) {
 			httpStatus = http.StatusBadRequest
 		} else if rds, ok = config.Rds[svcCtx.RedisDataSource]; !ok {
 			httpStatus = http.StatusInternalServerError
-		} else if operation, err = svcCtx.KeyFieldAtJwt(); err != nil {
+		} else if operation, err = svcCtx.KeyFieldAtJwt(r); err != nil {
 			httpStatus = http.StatusInternalServerError
 		} else if svcCtx.SUToken != "" && config.Cfg.Settings.SUToken != svcCtx.SUToken {
 			httpStatus = http.StatusForbidden
@@ -58,7 +58,7 @@ func httpStart(path string, port int64) {
 			httpStatus = http.StatusForbidden
 			err = ErrOperationNotPermited
 		} else if svcCtx.Cmd == "API" {
-			result, err = svcCtx.APiHandler()
+			result, err = svcCtx.APiHandler(r)
 		} else {
 
 			switch svcCtx.Cmd {
@@ -84,9 +84,9 @@ func httpStart(path string, port int64) {
 				)
 				result = ""
 				keySet := rdsdb.SetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
-				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
-				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = r.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 				} else if values, cursor, err = keySet.SScan(cursor, match, count); err == nil {
 					result = map[string]interface{}{"values": values, "cursor": cursor}
 				}
@@ -99,10 +99,10 @@ func httpStart(path string, port int64) {
 				)
 				hKey := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 				result = ""
-				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
-				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
-				} else if novalue := svcCtx.Req.FormValue("NOVALUE"); novalue == "true" {
+				if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = r.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
+				} else if novalue := r.FormValue("NOVALUE"); novalue == "true" {
 					if keys, cursor, err = hKey.HScanNoValues(cursor, match, count); err == nil {
 						result = map[string]interface{}{"keys": keys, "cursor": cursor}
 					}
@@ -121,9 +121,9 @@ func httpStart(path string, port int64) {
 				)
 				zKey := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 				result = ""
-				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
-				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = r.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 				} else if values, cursor, err = zKey.ZScan(cursor, match, count); err == nil {
 					result = map[string]interface{}{"values": values, "cursor": cursor}
 				}
@@ -131,9 +131,9 @@ func httpStart(path string, port int64) {
 				var (
 					start, stop int64 = 0, -1
 				)
-				if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
+				if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 					result, err = "", errors.New("parse start error:"+err.Error())
-				} else if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
+				} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 					result, err = "", errors.New("parse stop error:"+err.Error())
 				} else if result, err = rds.LRange(context.Background(), svcCtx.Key, start, stop).Result(); err == nil {
 					result = convertKeysToBytes(result.([]string))
@@ -142,9 +142,9 @@ func httpStart(path string, port int64) {
 				var (
 					start, stop string
 				)
-				if start = svcCtx.Req.FormValue("Start"); start == "" {
+				if start = r.FormValue("Start"); start == "" {
 					result, err = "false", errors.New("no Start")
-				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+				} else if stop = r.FormValue("Stop"); stop == "" {
 					result, err = "false", errors.New("no Stop")
 				} else {
 					result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
@@ -154,11 +154,11 @@ func httpStart(path string, port int64) {
 					start, stop string
 					count       int64
 				)
-				if start = svcCtx.Req.FormValue("Start"); start == "" {
+				if start = r.FormValue("Start"); start == "" {
 					result, err = "false", errors.New("no Start")
-				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+				} else if stop = r.FormValue("Stop"); stop == "" {
 					result, err = "false", errors.New("no Stop")
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse N error:"+err.Error())
 				} else {
 					result, err = rds.XRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, count).Result()
@@ -167,9 +167,9 @@ func httpStart(path string, port int64) {
 				var (
 					start, stop string
 				)
-				if start = svcCtx.Req.FormValue("Start"); start == "" {
+				if start = r.FormValue("Start"); start == "" {
 					result, err = "false", errors.New("no Start")
-				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+				} else if stop = r.FormValue("Stop"); stop == "" {
 					result, err = "false", errors.New("no Stop")
 				} else {
 					result, err = rds.XRevRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
@@ -179,11 +179,11 @@ func httpStart(path string, port int64) {
 					start, stop string
 					count       int64
 				)
-				if start = svcCtx.Req.FormValue("Start"); start == "" {
+				if start = r.FormValue("Start"); start == "" {
 					result, err = "false", errors.New("no Start")
-				} else if stop = svcCtx.Req.FormValue("Stop"); stop == "" {
+				} else if stop = r.FormValue("Stop"); stop == "" {
 					result, err = "false", errors.New("no Stop")
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse N error:"+err.Error())
 				} else {
 					result, err = rds.XRevRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, count).Result()
@@ -193,12 +193,12 @@ func httpStart(path string, port int64) {
 					count int64
 					block time.Duration
 				)
-				if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse count error:"+err.Error())
-				} else if block, err = time.ParseDuration(svcCtx.Req.FormValue("Block")); err != nil {
+				} else if block, err = time.ParseDuration(r.FormValue("Block")); err != nil {
 					result, err = "false", errors.New("parse block error:"+err.Error())
 				} else {
-					result, err = rds.XRead(svcCtx.Ctx, &redis.XReadArgs{Streams: []string{svcCtx.Key, svcCtx.Req.FormValue("ID")}, Count: count, Block: block}).Result()
+					result, err = rds.XRead(svcCtx.Ctx, &redis.XReadArgs{Streams: []string{svcCtx.Key, r.FormValue("ID")}, Count: count, Block: block}).Result()
 				}
 
 			case "GET":
@@ -222,7 +222,7 @@ func httpStart(path string, port int64) {
 			case "HRANDFIELD":
 				db := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 				var count int
-				if count, err = strconv.Atoi(svcCtx.Req.FormValue("Count")); err != nil {
+				if count, err = strconv.Atoi(r.FormValue("Count")); err != nil {
 					result, err = "", errors.New("parse count error:"+err.Error())
 				} else {
 					result, err = db.HRandField(count)
@@ -232,7 +232,7 @@ func httpStart(path string, port int64) {
 				result, err = db.HVals()
 			case "SISMEMBER":
 				db := rdsdb.SetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
-				result, err = db.SIsMember(svcCtx.Req.FormValue("Member"))
+				result, err = db.SIsMember(r.FormValue("Member"))
 			case "TIME":
 				db := rdsdb.NonKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 				result = ""
@@ -245,9 +245,9 @@ func httpStart(path string, port int64) {
 					start, stop int64 = 0, -1
 				)
 				result = ""
-				if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
-				} else if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
-				} else if svcCtx.Req.FormValue("WITHSCORES") == "true" {
+				if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
+				} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
+				} else if r.FormValue("WITHSCORES") == "true" {
 					// ZRANGE key start stop [WITHSCORES==true]
 					var scores []float64
 					if result, scores, err = db.ZRangeWithScores(start, stop); err == nil {
@@ -264,15 +264,15 @@ func httpStart(path string, port int64) {
 					scores        []float64
 				)
 				result = ""
-				if Min := svcCtx.Req.FormValue("Min"); Min == "" {
+				if Min := r.FormValue("Min"); Min == "" {
 					result, err = "false", errors.New("no Min")
-				} else if Max := svcCtx.Req.FormValue("Max"); Max == "" {
+				} else if Max := r.FormValue("Max"); Max == "" {
 					result, err = "false", errors.New("no Max")
-				} else if offset, err = strconv.ParseInt(svcCtx.Req.FormValue("Offset"), 10, 64); err != nil {
+				} else if offset, err = strconv.ParseInt(r.FormValue("Offset"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse offset error:"+err.Error())
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse count error:"+err.Error())
-				} else if svcCtx.Req.FormValue("WITHSCORES") == "true" {
+				} else if r.FormValue("WITHSCORES") == "true" {
 					//ZRANGEBYSCORE key min max [WITHSCORES==true]
 					if result, scores, err = db.ZRangeByScoreWithScores(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count}); err == nil {
 						result = map[string]interface{}{"members": result, "scores": scores}
@@ -287,9 +287,9 @@ func httpStart(path string, port int64) {
 					start, stop int64 = 0, -1
 				)
 				result = ""
-				if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
-				} else if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
-				} else if svcCtx.Req.FormValue("WITHSCORES") == "true" {
+				if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
+				} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
+				} else if r.FormValue("WITHSCORES") == "true" {
 					// ZREVRANGE key start stop [WITHSCORES==true]
 					cmd := db.Rds.ZRevRangeWithScores(context.Background(), db.Key, start, stop)
 					if rlts, err := cmd.Result(); err == nil {
@@ -309,13 +309,13 @@ func httpStart(path string, port int64) {
 				var (
 					offset, count int64 = 0, -1
 				)
-				if Min, Max := svcCtx.Req.FormValue("Min"), svcCtx.Req.FormValue("Max"); Min == "" || Max == "" {
+				if Min, Max := r.FormValue("Min"), r.FormValue("Max"); Min == "" || Max == "" {
 					result, err = "", errors.New("no Min or Max")
-				} else if offset, err = strconv.ParseInt(svcCtx.Req.FormValue("Offset"), 10, 64); err != nil {
+				} else if offset, err = strconv.ParseInt(r.FormValue("Offset"), 10, 64); err != nil {
 					result, err = "", errors.New("parse offset error:"+err.Error())
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 					result, err = "", errors.New("parse count error:"+err.Error())
-				} else if svcCtx.Req.FormValue("WITHSCORES") == "true" {
+				} else if r.FormValue("WITHSCORES") == "true" {
 					cmd := db.Rds.ZRevRangeByScoreWithScores(context.Background(), db.Key, &redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
 					if rlts, err := cmd.Result(); err == nil {
 						var memberScoreSlice []interface{}
@@ -331,13 +331,13 @@ func httpStart(path string, port int64) {
 				}
 			case "ZRANK":
 				db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
-				result, err = db.ZRank(svcCtx.Req.FormValue("Member"))
+				result, err = db.ZRank(r.FormValue("Member"))
 			case "ZCOUNT":
 				db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
-				result, err = db.ZCount(svcCtx.Req.FormValue("Min"), svcCtx.Req.FormValue("Max"))
+				result, err = db.ZCount(r.FormValue("Min"), r.FormValue("Max"))
 			case "ZSCORE":
 				db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
-				result, err = db.ZScore(svcCtx.Req.FormValue("Member"))
+				result, err = db.ZScore(r.FormValue("Member"))
 			case "SCAN":
 				db := rdsdb.NonKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 				var (
@@ -347,9 +347,9 @@ func httpStart(path string, port int64) {
 					match  string
 				)
 				result = ""
-				if cursor, err = strconv.ParseUint(svcCtx.Req.FormValue("Cursor"), 10, 64); err != nil {
-				} else if match = svcCtx.Req.FormValue("Match"); match == "" {
-				} else if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = r.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 				} else if keys, cursor, err = db.Scan(cursor, match, count); err != nil {
 				} else {
 					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
@@ -357,7 +357,7 @@ func httpStart(path string, port int64) {
 			case "LINDEX":
 				db := rdsdb.ListKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 				var index int64
-				if index, err = strconv.ParseInt(svcCtx.Req.FormValue("Index"), 10, 64); err != nil {
+				if index, err = strconv.ParseInt(r.FormValue("Index"), 10, 64); err != nil {
 					result, err = "", errors.New("parse index error:"+err.Error())
 				} else {
 					result, err = db.LIndex(index)
@@ -367,33 +367,33 @@ func httpStart(path string, port int64) {
 				result, err = db.LPop()
 			case "LPUSH":
 				result = "false"
-				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
 				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if err = rds.LPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
 					result = "true"
 				}
 			case "LREM":
 				var count int64
-				if count, err = strconv.ParseInt(svcCtx.Req.FormValue("Count"), 10, 64); err != nil {
+				if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse count error:"+err.Error())
-				} else if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
 				} else if err = rds.LRem(svcCtx.Ctx, svcCtx.Key, count, bs).Err(); err == nil {
 					result = "true"
 				}
 			case "LSET":
 				result = "false"
 				var index int64
-				if index, err = strconv.ParseInt(svcCtx.Req.FormValue("Index"), 10, 64); err != nil {
+				if index, err = strconv.ParseInt(r.FormValue("Index"), 10, 64); err != nil {
 					err = errors.New("parse index error:" + err.Error())
-				} else if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
 				} else if err = rds.LSet(svcCtx.Ctx, svcCtx.Key, index, bs).Err(); err == nil {
 					result = "true"
 				}
 			case "LTRIM":
 				var start, stop int64
-				if start, err = strconv.ParseInt(svcCtx.Req.FormValue("Start"), 10, 64); err != nil {
+				if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse start error:"+err.Error())
-				} else if stop, err = strconv.ParseInt(svcCtx.Req.FormValue("Stop"), 10, 64); err != nil {
+				} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse stop error:"+err.Error())
 				} else if err = rds.LTrim(svcCtx.Ctx, svcCtx.Key, start, stop).Err(); err == nil {
 					result = "true"
@@ -403,7 +403,7 @@ func httpStart(path string, port int64) {
 				result, err = db.RPop()
 			case "RPUSH":
 				result = "false"
-				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
 				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if err = rds.RPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
 					result = "true"
@@ -411,7 +411,7 @@ func httpStart(path string, port int64) {
 
 			case "RPUSHX":
 				result = "false"
-				if bs, err = svcCtx.MsgpackBody(); err != nil {
+				if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
 				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if err = rds.RPushX(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
 					result = "true"
@@ -421,11 +421,11 @@ func httpStart(path string, port int64) {
 				db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: svcCtx.RedisDataSource})
 				var Score float64
 				var obj interface{}
-				if Score, err = strconv.ParseFloat(svcCtx.Req.FormValue("Score"), 64); err != nil {
+				if Score, err = strconv.ParseFloat(r.FormValue("Score"), 64); err != nil {
 					result, err = "false", errors.New("parameter Score shoule be float")
-				} else if MsgPack := svcCtx.MsgpackBodyBytes(); len(MsgPack) == 0 {
+				} else if bs, err = svcCtx.MsgpackBody(r, true, true); len(bs) == 0 || err != nil {
 					result, err = "false", errors.New("missing MsgPack content")
-				} else if result, err = "true", msgpack.Unmarshal(MsgPack, &obj); err != nil {
+				} else if result, err = "true", msgpack.Unmarshal(bs, &obj); err != nil {
 					result = "false"
 				} else if err = db.ZAdd(redis.Z{Score: Score, Member: obj}); err != nil {
 					result = "false"
@@ -435,9 +435,9 @@ func httpStart(path string, port int64) {
 				result = "false"
 				if svcCtx.Key == "" || svcCtx.Field == "" {
 					err = ErrEmptyKeyOrField
-				} else if bytes, err := svcCtx.MsgpackBody(); err != nil {
+				} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
 				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
-				} else if rds.Set(svcCtx.Ctx, svcCtx.Key+":"+svcCtx.Field, bytes, 0).Err() == nil {
+				} else if rds.Set(svcCtx.Ctx, svcCtx.Key+":"+svcCtx.Field, bs, 0).Err() == nil {
 					result = "true"
 				}
 
@@ -446,7 +446,7 @@ func httpStart(path string, port int64) {
 				//error if empty Key or Field
 				if svcCtx.Key == "" || svcCtx.Field == "" {
 					err = ErrEmptyKeyOrField
-				} else if bs, err = svcCtx.MsgpackBody(); err != nil {
+				} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
 				} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 				} else if err = rds.HSet(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, bs).Err(); err == nil {
 					result = "true"
@@ -466,7 +466,7 @@ func httpStart(path string, port int64) {
 				}
 			case "ZREM":
 				result = "false"
-				var MemberStr = strings.Split(svcCtx.Req.FormValue("Member"), ",")
+				var MemberStr = strings.Split(r.FormValue("Member"), ",")
 				//convert Member to []interface{}
 				var Member = make([]interface{}, len(MemberStr))
 				for i, v := range MemberStr {
@@ -481,7 +481,7 @@ func httpStart(path string, port int64) {
 
 			case "ZREMRANGEBYSCORE":
 				result = "false"
-				var Min, Max = svcCtx.Req.FormValue("Min"), svcCtx.Req.FormValue("Max")
+				var Min, Max = r.FormValue("Min"), r.FormValue("Max")
 				if Min == "" || Max == "" {
 					err = errors.New("no Min or Max")
 				} else if err = rds.ZRemRangeByScore(svcCtx.Ctx, svcCtx.Key, Min, Max).Err(); err == nil {
@@ -491,14 +491,14 @@ func httpStart(path string, port int64) {
 				result, err = rds.Type(svcCtx.Ctx, svcCtx.Key).Result()
 			case "EXPIRE":
 				var seconds int64
-				if seconds, err = strconv.ParseInt(svcCtx.Req.FormValue("Seconds"), 10, 64); err != nil {
+				if seconds, err = strconv.ParseInt(r.FormValue("Seconds"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse seconds error:"+err.Error())
 				} else if err = rds.Expire(svcCtx.Ctx, svcCtx.Key, time.Duration(seconds)*time.Second).Err(); err == nil {
 					result = "true"
 				}
 			case "EXPIREAT":
 				var timestamp int64
-				if timestamp, err = strconv.ParseInt(svcCtx.Req.FormValue("Timestamp"), 10, 64); err != nil {
+				if timestamp, err = strconv.ParseInt(r.FormValue("Timestamp"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse seconds error:"+err.Error())
 				} else if err = rds.ExpireAt(svcCtx.Ctx, svcCtx.Key, time.Unix(timestamp, 0)).Err(); err == nil {
 					result = "true"
@@ -512,13 +512,13 @@ func httpStart(path string, port int64) {
 			case "PTTL":
 				result, err = rds.PTTL(svcCtx.Ctx, svcCtx.Key).Result()
 			case "RENAME":
-				if newKey := svcCtx.Req.FormValue("NewKey"); newKey == "" {
+				if newKey := r.FormValue("NewKey"); newKey == "" {
 					result, err = "false", errors.New("no NewKey")
 				} else if err = rds.Rename(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
 					result = "true"
 				}
 			case "RENAMEX":
-				if newKey := svcCtx.Req.FormValue("NewKey"); newKey == "" {
+				if newKey := r.FormValue("NewKey"); newKey == "" {
 					result, err = "false", errors.New("no NewKey")
 				} else if err = rds.RenameNX(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
 					result = "true"
@@ -532,9 +532,9 @@ func httpStart(path string, port int64) {
 					incr   float64
 					member string
 				)
-				if member = svcCtx.Req.FormValue("Member"); member == "" {
+				if member = r.FormValue("Member"); member == "" {
 					result, err = "false", errors.New("no Member")
-				} else if incr, err = strconv.ParseFloat(svcCtx.Req.FormValue("Incr"), 64); err != nil {
+				} else if incr, err = strconv.ParseFloat(r.FormValue("Incr"), 64); err != nil {
 					result, err = "false", errors.New("parse Incr error:"+err.Error())
 				} else if err = rds.ZIncrBy(svcCtx.Ctx, svcCtx.Key, incr, member).Err(); err == nil {
 					result = "true"
@@ -543,7 +543,7 @@ func httpStart(path string, port int64) {
 				var (
 					incr int64
 				)
-				if incr, err = strconv.ParseInt(svcCtx.Req.FormValue("Incr"), 10, 64); err != nil {
+				if incr, err = strconv.ParseInt(r.FormValue("Incr"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse Incr error:"+err.Error())
 				} else if err = rds.HIncrBy(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
 					result = "true"
@@ -552,7 +552,7 @@ func httpStart(path string, port int64) {
 				var (
 					incr float64
 				)
-				if incr, err = strconv.ParseFloat(svcCtx.Req.FormValue("Incr"), 64); err != nil {
+				if incr, err = strconv.ParseFloat(r.FormValue("Incr"), 64); err != nil {
 					result, err = "false", errors.New("parse Incr error:"+err.Error())
 				} else if err = rds.HIncrByFloat(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
 					result = "true"
@@ -562,11 +562,11 @@ func httpStart(path string, port int64) {
 					id  string
 					obj interface{}
 				)
-				if id = svcCtx.Req.FormValue("ID"); id == "" {
+				if id = r.FormValue("ID"); id == "" {
 					result, err = "false", errors.New("no ID")
-				} else if MsgPack := svcCtx.MsgpackBodyBytes(); len(MsgPack) == 0 {
-					result, err = "false", errors.New("missing MsgPack content")
-				} else if result, err = "true", msgpack.Unmarshal(MsgPack, &obj); err != nil {
+				} else if bs, err = svcCtx.MsgpackBody(r, true, true); len(bs) == 0 && err != nil {
+					result, err = "false", errors.New("msgPack content err:"+err.Error())
+				} else if result, err = "true", msgpack.Unmarshal(bs, &obj); err != nil {
 					result = "false"
 				} else if err = rds.XAdd(svcCtx.Ctx, &redis.XAddArgs{Stream: svcCtx.Key, Values: map[string]interface{}{id: obj}}).Err(); err != nil {
 					result = "false"
@@ -575,7 +575,7 @@ func httpStart(path string, port int64) {
 				var (
 					id string
 				)
-				if id = svcCtx.Req.FormValue("ID"); id == "" {
+				if id = r.FormValue("ID"); id == "" {
 					result, err = "false", errors.New("no ID")
 				} else if err = rds.XDel(svcCtx.Ctx, svcCtx.Key, id).Err(); err != nil {
 					result = "false"
@@ -623,11 +623,12 @@ func httpStart(path string, port int64) {
 
 		//set Content-Type
 		if svcCtx != nil && len(svcCtx.ResponseContentType) > 0 {
-			svcCtx.Rsb.Header().Set("Content-Type", svcCtx.ResponseContentType)
+			w.Header().Set("Content-Type", svcCtx.ResponseContentType)
 		}
 		w.WriteHeader(httpStatus)
 		w.Write(bs)
 	})
+	router.HandleFunc("/wsapi", websocketAPI)
 
 	server := &http.Server{
 		Addr:              ":" + strconv.FormatInt(port, 10),

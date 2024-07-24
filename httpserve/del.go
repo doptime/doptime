@@ -1,12 +1,13 @@
 package httpserve
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/redis/go-redis/v9"
 )
 
-func (svcCtx *HttpContext) DelHandler(rds *redis.Client) (result interface{}, err error) {
+func (svcCtx *DoptimeReqCtx) DelHandler(r *http.Request, rds *redis.Client) (result interface{}, err error) {
 	switch svcCtx.Cmd {
 	case "HDEL":
 		//error if empty Key or Field
@@ -25,7 +26,7 @@ func (svcCtx *HttpContext) DelHandler(rds *redis.Client) (result interface{}, er
 		}
 		return "false", err
 	case "ZREM":
-		var MemberStr = strings.Split(svcCtx.Req.FormValue("Member"), ",")
+		var MemberStr = strings.Split(r.FormValue("Member"), ",")
 		//convert Member to []interface{}
 		var Member = make([]interface{}, len(MemberStr))
 		for i, v := range MemberStr {
@@ -36,8 +37,8 @@ func (svcCtx *HttpContext) DelHandler(rds *redis.Client) (result interface{}, er
 		}
 		return "false", err
 	case "ZREMRANGEBYSCORE":
-		var Min = svcCtx.Req.FormValue("Min")
-		var Max = svcCtx.Req.FormValue("Max")
+		var Min = r.FormValue("Min")
+		var Max = r.FormValue("Max")
 		if err = rds.ZRemRangeByScore(svcCtx.Ctx, svcCtx.Key, Min, Max).Err(); err == nil {
 			return "true", nil
 		}
