@@ -45,7 +45,7 @@ type ApiSourceHttp struct {
 type ConfigSettings struct {
 	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
 	LogLevel int8
-	//super user token, this is used to bypass the security check
+	//super user token, this is used to bypass the security check in data access
 	//SUToken is designed to allow debugging in production environment without  change the permission table permanently
 	SUToken string
 }

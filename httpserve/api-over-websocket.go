@@ -63,11 +63,11 @@ func websocketAPI(w http.ResponseWriter, r *http.Request) {
 		}
 		if mt == websocket.BinaryMessage {
 			var doptimeReqCtx DoptimeReqCtx
-			doptimeReqCtx.Claims = claims
 			if err = msgpack.Unmarshal(message, &doptimeReqCtx); err != nil {
 				log.Println("msgpack.Unmarshal:", err)
-				break
+				continue
 			}
+			doptimeReqCtx.Claims = claims
 
 		}
 	}

@@ -15,14 +15,12 @@ import (
 )
 
 type DoptimeReqCtx struct {
-	Ctx             context.Context
-	Claims          jwt.MapClaims
-	RedisDataSource string
+	Ctx    context.Context
+	Claims jwt.MapClaims
 	// case get
-	Cmd     string
-	Key     string
-	Field   string
-	SUToken string
+	Cmd   string
+	Key   string
+	Field string
 
 	ResponseContentType string
 }
@@ -61,12 +59,7 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 	if svcContext.ResponseContentType, param = "application/json", r.FormValue("rt"); param != "" {
 		svcContext.ResponseContentType = param
 	}
-	if svcContext.RedisDataSource, param = "default", r.FormValue("ds"); param != "" {
-		svcContext.RedisDataSource = param
-	}
-	if svcContext.SUToken, param = "", r.FormValue("su"); param != "" {
-		svcContext.SUToken = param
-	}
+
 	return svcContext, nil
 }
 
@@ -75,15 +68,20 @@ func (svc *DoptimeReqCtx) MsgpackBody(r *http.Request, checkContentType bool, va
 	var (
 		data interface{}
 	)
+	if checkContentType && r.Header.Get("Content-Type") != "application/octet-stream" {
+		return nil, fmt.Errorf("invalid content type")
+	}
 	if MsgPack, err = io.ReadAll(r.Body); len(MsgPack) == 0 || err != nil {
 		return nil, fmt.Errorf("empty msgpack body")
 	}
-	//should make sure the data is msgpack format
-	if err = msgpack.Unmarshal(MsgPack, &data); err != nil {
-		return nil, err
-	}
-	if MsgPack, err = msgpack.Marshal(data); err != nil {
-		return nil, err
+	if validateMsgpackFormat {
+		//should make sure the data is msgpack format
+		if err = msgpack.Unmarshal(MsgPack, &data); err != nil {
+			return nil, err
+		}
+		if MsgPack, err = msgpack.Marshal(data); err != nil {
+			return nil, err
+		}
 	}
 	//return remarshaled MsgPack, because golang MsgPack is better fullfill than javascript MsgPack
 	return MsgPack, nil

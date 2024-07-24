@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func (svc *DoptimeReqCtx) KeyFieldAtJwt(r *http.Request) (operation string, err error) {
+func (svc *DoptimeReqCtx) UpdateKeyFieldWithJwtClaims(r *http.Request) (operation string, err error) {
 	var (
 		ok     bool
 		obj    interface{}
