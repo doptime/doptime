@@ -92,13 +92,6 @@ func httpStart(path string, port int64) {
 				_api        api.ApiInterface
 				ok          bool
 			)
-			//convert query fields to JsonPack. but ignore K field(api name )
-			r.ParseForm()
-			for key, value := range r.Form {
-				if paramIn[key] = value[0]; len(value) > 1 {
-					paramIn[key] = value // Assign the single value directly
-				}
-			}
 
 			bs, err = io.ReadAll(r.Body)
 			//marshal body to map[string]interface{}
@@ -117,6 +110,10 @@ func httpStart(path string, port int64) {
 				result, err = nil, fmt.Errorf("err no such api")
 				goto responseHttp
 			}
+			//convert query fields to JsonPack. but ignore K field(api name )
+			r.ParseForm()
+			svcCtx.MergeFormParam(r.Form, paramIn)
+
 			_api.MergeHeaderParam(r, paramIn)
 
 			//prevent forged jwt field: remove nay field that starts with "Jwt" in paramIn
@@ -691,7 +688,7 @@ func httpStart(path string, port int64) {
 		w.Write(bs)
 
 	})
-	router.HandleFunc("/wsapi", websocketAPI)
+	router.HandleFunc("/wsapi", websocketAPICallback)
 
 	server := &http.Server{
 		Addr:              ":" + strconv.FormatInt(port, 10),

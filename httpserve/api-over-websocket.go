@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
+	"github.com/doptime/doptime/api"
 	"github.com/doptime/doptime/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
@@ -23,10 +25,25 @@ type WsParam struct {
 	Api   string
 	Param []byte
 }
+type DoptimeRespCtx struct {
+	Data  []byte
+	ReqID string
+}
+
+func (ctx *DoptimeRespCtx) Response(ws *websocket.Conn, mu *sync.Mutex, result interface{}) (err error) {
+	ctx.Data, err = msgpack.Marshal(result)
+	if err != nil {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	ws.WriteMessage(websocket.BinaryMessage, ctx.Data)
+	return
+}
 
 var Token2ClaimMap map[string]jwt.MapClaims = make(map[string]jwt.MapClaims)
 
-func websocketAPI(w http.ResponseWriter, r *http.Request) {
+func websocketAPICallback(w http.ResponseWriter, r *http.Request) {
 	var claims jwt.MapClaims
 	var ok bool
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -54,7 +71,7 @@ func websocketAPI(w http.ResponseWriter, r *http.Request) {
 	pongWait := 60 * time.Second
 	ws.SetReadDeadline(time.Now().Add(pongWait))
 	ws.SetPongHandler(func(string) error { ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-
+	var mu sync.Mutex
 	for {
 		mt, message, err := ws.ReadMessage()
 		if err != nil {
@@ -62,13 +79,41 @@ func websocketAPI(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if mt == websocket.BinaryMessage {
-			var doptimeReqCtx DoptimeReqCtx
-			doptimeReqCtx.UpdateKeyFieldWithJwtClaims()
-			if err = msgpack.Unmarshal(message, &doptimeReqCtx); err != nil {
+			var reqCtx DoptimeReqCtx
+			var _api api.ApiInterface
+			var result interface{}
+			reqCtx.UpdateKeyFieldWithJwtClaims()
+			if err = msgpack.Unmarshal(message, &reqCtx); err != nil {
 				log.Println("msgpack.Unmarshal:", err)
 				continue
 			}
-			doptimeReqCtx.Claims = claims
+			reqCtx.Claims = claims
+			var paramIn map[string]interface{} = make(map[string]interface{})
+			reqCtx.MergeJwtParam(paramIn)
+			rsp := DoptimeRespCtx{ReqID: reqCtx.ReqID}
+			if !reqCtx.isValid() {
+				rsp.Response(ws, &mu, "err invalid request")
+				continue
+			}
+
+			err = msgpack.Unmarshal(reqCtx.Data, &paramIn)
+			if err != nil {
+				rsp.Response(ws, &mu, err)
+				continue
+			}
+			//always response with msgpack format
+
+			if _api, ok = api.GetApiByName(reqCtx.Key); !ok {
+				rsp.Response(ws, &mu, "err no such api")
+			}
+			_api.MergeHeaderParam(r, paramIn)
+
+			result, err = _api.CallByMap(paramIn)
+			if err != nil {
+				rsp.Response(ws, &mu, err)
+				continue
+			}
+			rsp.Response(ws, &mu, result)
 
 		}
 	}

@@ -21,6 +21,10 @@ type DoptimeReqCtx struct {
 	Cmd   string
 	Key   string
 	Field string
+
+	//belongs to api over websocket
+	Data  []byte
+	ReqID string
 }
 
 var ErrIncompleteRequest = errors.New("incomplete request")
@@ -73,6 +77,14 @@ func (svc *DoptimeReqCtx) MergeJwtParam(paramIn map[string]interface{}) {
 		//convert first letter of k to upper case
 		k = strings.ToUpper(k[:1]) + k[1:]
 		paramIn["Jwt"+k] = v
+	}
+
+}
+func (svc *DoptimeReqCtx) MergeFormParam(Form url.Values, paramIn map[string]interface{}) {
+	for key, value := range Form {
+		if paramIn[key] = value[0]; len(value) > 1 {
+			paramIn[key] = value // Assign the single value directly
+		}
 	}
 
 }
