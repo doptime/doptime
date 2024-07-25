@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/doptime/doptime/api"
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/permission"
@@ -46,88 +49,91 @@ func httpStart(path string, port int64) {
 		if rt := r.FormValue("rt"); rt != "" {
 			ResponseContentType = rt
 		}
-
-		HTTPResponse := func() {
-			if len(config.Cfg.Http.CORES) > 0 {
-				w.Header().Set("Access-Control-Allow-Origin", config.Cfg.Http.CORES)
-			}
-
-			if err == nil {
-				if ResponseContentType == "application/msgpack" {
-					if bs, err = msgpack.Marshal(result); err != nil {
-						httpStatus = http.StatusInternalServerError
-					}
-				} else if bs, ok = result.([]byte); ok {
-				} else if s, ok = result.(string); ok {
-					bs = []byte(s)
-				} else {
-					if bs, err = json.Marshal(result); err == nil {
-						//json Compact b
-						var dst *bytes.Buffer = bytes.NewBuffer([]byte{})
-						if err = json.Compact(dst, bs); err == nil {
-							bs = dst.Bytes()
-						}
-					}
-				}
-			}
-			//this err may be from json.marshal, so don't move it to the above else if
-			if err != nil {
-				if bs = []byte(err.Error()); bytes.Contains(bs, []byte("JWT")) {
-					httpStatus = http.StatusUnauthorized
-				} else if httpStatus == http.StatusOK {
-					// this if is needed, because  httpStatus may have already setted as StatusBadRequest
-					httpStatus = http.StatusInternalServerError
-				}
-			}
-			//set Content-Type
-			if svcCtx != nil && len(ResponseContentType) > 0 {
-				w.Header().Set("Content-Type", ResponseContentType)
-			}
-
-			w.WriteHeader(httpStatus)
-			w.Write(bs)
-		}
-
-		defer HTTPResponse()
-
-		if CorsChecked(r, w) {
-			return
-		}
-
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*12000)
 		defer cancel()
+
+		if CorsChecked(r, w) {
+			goto responseHttp
+		}
+
 		//should be valid http request. either data operation or api operation
 		if svcCtx, err = NewHttpContext(ctx, r, w); err != nil || svcCtx == nil {
 			httpStatus = http.StatusBadRequest
-			return
+			goto responseHttp
 		}
 
 		//RedisDataSource should be valid
 		if rds, ok = config.Rds[RedisDataSource]; !ok {
 			httpStatus = http.StatusInternalServerError
-			return
+			goto responseHttp
 		}
 
 		//@Tag in key or field should be replaced by value in Jwt
 		if operation, err = svcCtx.UpdateKeyFieldWithJwtClaims(); err != nil {
 			httpStatus = http.StatusInternalServerError
-			return
+			goto responseHttp
 		}
 		//auth check
 		if DataOpSuperUserToken := r.FormValue("su"); DataOpSuperUserToken != "" && config.Cfg.Settings.SUToken != DataOpSuperUserToken {
 			httpStatus = http.StatusForbidden
 			err = ErrSUNotMatch
-			return
+			goto responseHttp
 		} else if DataOpSuperUserToken == "" && !permission.IsPermitted(svcCtx.Key, operation) {
 			httpStatus = http.StatusForbidden
 			err = ErrOperationNotPermited
-			return
+			goto responseHttp
 		}
 
 		// call api
 		if svcCtx.Cmd == "API" {
-			result, err = svcCtx.APiHandler(r)
-			return
+			var (
+				paramIn     map[string]interface{} = map[string]interface{}{}
+				ServiceName string                 = svcCtx.Key
+				_api        api.ApiInterface
+				ok          bool
+			)
+			//convert query fields to JsonPack. but ignore K field(api name )
+			r.ParseForm()
+			for key, value := range r.Form {
+				if paramIn[key] = value[0]; len(value) > 1 {
+					paramIn[key] = value // Assign the single value directly
+				}
+			}
+
+			bs, err = io.ReadAll(r.Body)
+			//marshal body to map[string]interface{}
+			if contentType := r.Header.Get("Content-Type"); len(bs) > 0 && len(contentType) > 0 && err == nil {
+				if contentType == "application/octet-stream" {
+					err = msgpack.Unmarshal(bs, &paramIn)
+				} else if contentType == "application/json" {
+					err = json.Unmarshal(bs, &paramIn)
+				}
+				if err != nil {
+					goto responseHttp
+				}
+			}
+
+			if _api, ok = api.GetApiByName(ServiceName); !ok {
+				result, err = nil, fmt.Errorf("err no such api")
+				goto responseHttp
+			}
+			_api.MergeHeader(r, paramIn)
+
+			//prevent forged jwt field: remove nay field that starts with "Jwt" in paramIn
+			for k := range paramIn {
+				if strings.HasPrefix(k, "Jwt") {
+					delete(paramIn, k)
+				}
+			}
+			//add all Jwt fields to paramIn
+			for k, v := range svcCtx.Claims {
+				//convert first letter of k to upper case
+				k = strings.ToUpper(k[:1]) + k[1:]
+				paramIn["Jwt"+k] = v
+			}
+
+			result, err = _api.CallByMap(paramIn)
+			goto responseHttp
 		}
 
 		// data operation
@@ -653,6 +659,46 @@ func httpStart(path string, port int64) {
 		default:
 			result, err = nil, ErrBadCommand
 		}
+
+	responseHttp:
+		if len(config.Cfg.Http.CORES) > 0 {
+			w.Header().Set("Access-Control-Allow-Origin", config.Cfg.Http.CORES)
+		}
+
+		if err == nil {
+			if ResponseContentType == "application/msgpack" {
+				if bs, err = msgpack.Marshal(result); err != nil {
+					httpStatus = http.StatusInternalServerError
+				}
+			} else if bs, ok = result.([]byte); ok {
+			} else if s, ok = result.(string); ok {
+				bs = []byte(s)
+			} else {
+				if bs, err = json.Marshal(result); err == nil {
+					//json Compact b
+					var dst *bytes.Buffer = bytes.NewBuffer([]byte{})
+					if err = json.Compact(dst, bs); err == nil {
+						bs = dst.Bytes()
+					}
+				}
+			}
+		}
+		//this err may be from json.marshal, so don't move it to the above else if
+		if err != nil {
+			if bs = []byte(err.Error()); bytes.Contains(bs, []byte("JWT")) {
+				httpStatus = http.StatusUnauthorized
+			} else if httpStatus == http.StatusOK {
+				// this if is needed, because  httpStatus may have already setted as StatusBadRequest
+				httpStatus = http.StatusInternalServerError
+			}
+		}
+		//set Content-Type
+		if svcCtx != nil && len(ResponseContentType) > 0 {
+			w.Header().Set("Content-Type", ResponseContentType)
+		}
+
+		w.WriteHeader(httpStatus)
+		w.Write(bs)
 
 	})
 	router.HandleFunc("/wsapi", websocketAPI)
