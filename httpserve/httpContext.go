@@ -21,16 +21,14 @@ type DoptimeReqCtx struct {
 	Cmd   string
 	Key   string
 	Field string
-
-	ResponseContentType string
 }
 
 var ErrIncompleteRequest = errors.New("incomplete request")
 
 func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter) (httpCtx *DoptimeReqCtx, err error) {
 	var (
-		CmdKeyFields                                  []string
-		param, CmdKeyFieldsStr, pathStr, pathLastPart string
+		CmdKeyFields                           []string
+		CmdKeyFieldsStr, pathStr, pathLastPart string
 	)
 	svcContext := &DoptimeReqCtx{Ctx: ctx}
 
@@ -55,16 +53,14 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 	//url decoded already
 	svcContext.Field = r.FormValue("f")
 
-	//default response content type: application/json
-	if svcContext.ResponseContentType, param = "application/json", r.FormValue("rt"); param != "" {
-		svcContext.ResponseContentType = param
-	}
-
 	if err = svcContext.ParseJwtClaim(r); err != nil {
 		return svcContext, err
 	}
 
 	return svcContext, nil
+}
+func (svc *DoptimeReqCtx) isValid() bool {
+	return svc.Cmd != "" && svc.Key != ""
 }
 
 // Ensure the body is msgpack format

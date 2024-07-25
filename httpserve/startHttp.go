@@ -30,24 +30,30 @@ func httpStart(path string, port int64) {
 	router := http.NewServeMux()
 	router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		var (
-			result interface{}
-			bs     []byte
+			result       interface{}
+			bs           []byte
+			ok           bool
+			err          error
+			httpStatus   int = http.StatusOK
+			svcCtx       *DoptimeReqCtx
+			rds          *redis.Client
+			operation, s string = "", ""
 			//load redis datasource value from form
-			s, RedisDataSource string = "", r.FormValue("ds")
-			ok                 bool
-			err                error
-			httpStatus         int = http.StatusOK
-			svcCtx             *DoptimeReqCtx
-			rds                *redis.Client
-			operation          string
+			RedisDataSource            = r.FormValue("ds")
+			ResponseContentType string = "application/json"
 		)
+		//default response content type: application/json
+		if rt := r.FormValue("rt"); rt != "" {
+			ResponseContentType = rt
+		}
+
 		HTTPResponse := func() {
 			if len(config.Cfg.Http.CORES) > 0 {
 				w.Header().Set("Access-Control-Allow-Origin", config.Cfg.Http.CORES)
 			}
 
 			if err == nil {
-				if svcCtx.ResponseContentType == "application/msgpack" {
+				if ResponseContentType == "application/msgpack" {
 					if bs, err = msgpack.Marshal(result); err != nil {
 						httpStatus = http.StatusInternalServerError
 					}
@@ -74,8 +80,8 @@ func httpStart(path string, port int64) {
 				}
 			}
 			//set Content-Type
-			if svcCtx != nil && len(svcCtx.ResponseContentType) > 0 {
-				w.Header().Set("Content-Type", svcCtx.ResponseContentType)
+			if svcCtx != nil && len(ResponseContentType) > 0 {
+				w.Header().Set("Content-Type", ResponseContentType)
 			}
 
 			w.WriteHeader(httpStatus)
