@@ -9,13 +9,13 @@ type ApiInterface interface {
 	GetName() string
 	GetDataSource() string
 	CallByMap(_map map[string]interface{}) (ret interface{}, err error)
-	MergeHeader(req *http.Request, paramIn map[string]interface{})
+	MergeHeaderParam(req *http.Request, paramIn map[string]interface{})
 }
 
 func (a *Context[i, o]) GetName() string {
 	return a.Name
 }
-func (a *Context[i, o]) MergeHeader(req *http.Request, paramIn map[string]interface{}) {
+func (a *Context[i, o]) MergeHeaderParam(req *http.Request, paramIn map[string]interface{}) {
 	if !a.WithHeader {
 		return
 	}

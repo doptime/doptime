@@ -117,20 +117,10 @@ func httpStart(path string, port int64) {
 				result, err = nil, fmt.Errorf("err no such api")
 				goto responseHttp
 			}
-			_api.MergeHeader(r, paramIn)
+			_api.MergeHeaderParam(r, paramIn)
 
 			//prevent forged jwt field: remove nay field that starts with "Jwt" in paramIn
-			for k := range paramIn {
-				if strings.HasPrefix(k, "Jwt") {
-					delete(paramIn, k)
-				}
-			}
-			//add all Jwt fields to paramIn
-			for k, v := range svcCtx.Claims {
-				//convert first letter of k to upper case
-				k = strings.ToUpper(k[:1]) + k[1:]
-				paramIn["Jwt"+k] = v
-			}
+			svcCtx.MergeJwtParam(paramIn)
 
 			result, err = _api.CallByMap(paramIn)
 			goto responseHttp
