@@ -41,7 +41,6 @@ func httpStart(path string, port int64) {
 			rds                *redis.Client
 			operation          string
 		)
-
 		HTTPResponse := func() {
 			if len(config.Cfg.Http.CORES) > 0 {
 				w.Header().Set("Access-Control-Allow-Origin", config.Cfg.Http.CORES)
@@ -82,6 +81,7 @@ func httpStart(path string, port int64) {
 			w.WriteHeader(httpStatus)
 			w.Write(bs)
 		}
+
 		defer HTTPResponse()
 
 		if CorsChecked(r, w) {
@@ -103,7 +103,7 @@ func httpStart(path string, port int64) {
 		}
 
 		//@Tag in key or field should be replaced by value in Jwt
-		if operation, err = svcCtx.UpdateKeyFieldWithJwtClaims(r); err != nil {
+		if operation, err = svcCtx.UpdateKeyFieldWithJwtClaims(); err != nil {
 			httpStatus = http.StatusInternalServerError
 			return
 		}

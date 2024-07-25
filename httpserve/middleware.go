@@ -2,11 +2,10 @@ package httpserve
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 )
 
-func (svc *DoptimeReqCtx) UpdateKeyFieldWithJwtClaims(r *http.Request) (operation string, err error) {
+func (svc *DoptimeReqCtx) UpdateKeyFieldWithJwtClaims() (operation string, err error) {
 	var (
 		ok     bool
 		obj    interface{}
@@ -21,9 +20,6 @@ func (svc *DoptimeReqCtx) UpdateKeyFieldWithJwtClaims(r *http.Request) (operatio
 	}
 	operation = "@" + operation
 
-	if err = svc.ParseJwtToken(r); err != nil {
-		return operation, err
-	}
 	if svc.Claims == nil {
 		return operation, fmt.Errorf("JWT token is nil")
 	}

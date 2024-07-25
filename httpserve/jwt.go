@@ -3,20 +3,24 @@ package httpserve
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/doptime/doptime/config"
+	cmap "github.com/orcaman/concurrent-map/v2"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func Jwt2ClaimMap(jwtStr string, secret string) (mpclaims jwt.MapClaims, err error) {
+func Jwt2Claim(jwtStr string, secret string) (mpclaims jwt.MapClaims, err error) {
 	//decode jwt string to map[string] interface{} with jwtSrcrets as jwt secret
 	keyFunction := func(token *jwt.Token) (value interface{}, err error) {
 		return []byte(secret), nil
 	}
-	jwtToken, err := jwt.ParseWithClaims(jwtStr, jwt.MapClaims{}, keyFunction)
+	var jwtToken *jwt.Token
+	jwtToken, err = jwt.ParseWithClaims(jwtStr, jwt.MapClaims{}, keyFunction)
 	if err != nil {
 		return nil, err
 	}
@@ -29,41 +33,36 @@ func Jwt2ClaimMap(jwtStr string, secret string) (mpclaims jwt.MapClaims, err err
 			mpclaims[k] = int64(f64)
 		}
 	}
+	//ensure there's exp field in jwt token
+	if _, ok := mpclaims["exp"].(int64); !ok {
+		//set expiration time to maxInt64 if not found
+		mpclaims["exp"] = math.MaxInt64
+		if exp, ok := jwtToken.Header["exp"].(int64); ok {
+			mpclaims["exp"] = exp
+		}
+	}
 	return mpclaims, nil
 }
 
-func (svc *DoptimeReqCtx) ParseJwtToken(r *http.Request) (err error) {
-	jwtStr := r.Header.Get("Authorization")
-	jwtStr = strings.TrimPrefix(jwtStr, "Bearer ")
+var mapClaims cmap.ConcurrentMap[string, jwt.MapClaims] = cmap.New[jwt.MapClaims]()
+
+func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
+	var ok bool
+	jwtStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if len(jwtStr) == 0 {
 		return errors.New("no JWT token")
 	}
-	if svc.Claims, err = Jwt2ClaimMap(jwtStr, config.Cfg.Http.JwtSecret); err != nil {
+	if svc.Claims, ok = mapClaims.Get(jwtStr); ok {
+		exp := svc.Claims["exp"].(int64)
+		if exp < time.Now().Unix() {
+			return errors.New("JWT token is expired")
+		}
+	} else if svc.Claims, err = Jwt2Claim(jwtStr, config.Cfg.Http.JwtSecret); err != nil {
 		return fmt.Errorf("invalid JWT token: %v", err)
+	} else {
+		mapClaims.Set(jwtStr, svc.Claims)
 	}
 	return nil
-}
-func (svc *DoptimeReqCtx) MergeJwtField(r *http.Request, paramIn map[string]interface{}) {
-	//remove nay field that starts with "Jwt" in paramIn
-	//prevent forged jwt field
-	for k := range paramIn {
-		if strings.HasPrefix(k, "Jwt") {
-			delete(paramIn, k)
-		}
-	}
-
-	if err := svc.ParseJwtToken(r); err != nil {
-		return
-	}
-	//save every field in svc.Jwt.Claims to in
-	if svc.Claims == nil {
-		return
-	}
-	for k, v := range svc.Claims {
-		//convert first letter of k to upper case
-		k = strings.ToUpper(k[:1]) + k[1:]
-		paramIn["Jwt"+k] = v
-	}
 }
 
 func ConvertMapToJwtString(param map[string]interface{}) (jwtString string, err error) {

@@ -60,6 +60,10 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 		svcContext.ResponseContentType = param
 	}
 
+	if err = svcContext.ParseJwtClaim(r); err != nil {
+		return svcContext, err
+	}
+
 	return svcContext, nil
 }
 

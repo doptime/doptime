@@ -42,7 +42,7 @@ func websocketAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if claims, ok = Token2ClaimMap[jwtStr]; !ok {
-			if claims, err = Jwt2ClaimMap(jwtStr, config.Cfg.Http.JwtSecret); err != nil {
+			if claims, err = Jwt2Claim(jwtStr, config.Cfg.Http.JwtSecret); err != nil {
 				ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Invalid JWT token: %v", err)))
 				return
 			}
@@ -63,6 +63,7 @@ func websocketAPI(w http.ResponseWriter, r *http.Request) {
 		}
 		if mt == websocket.BinaryMessage {
 			var doptimeReqCtx DoptimeReqCtx
+			doptimeReqCtx.UpdateKeyFieldWithJwtClaims()
 			if err = msgpack.Unmarshal(message, &doptimeReqCtx); err != nil {
 				log.Println("msgpack.Unmarshal:", err)
 				continue

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/doptime/doptime/api"
 	"github.com/vmihailenco/msgpack/v5"
@@ -50,7 +51,21 @@ func (svcCtx *DoptimeReqCtx) APiHandler(r *http.Request) (ret interface{}, err e
 		return nil, fmt.Errorf("err no such api")
 	}
 	_api.MergeHeader(r, paramIn)
-	svcCtx.MergeJwtField(r, paramIn)
+
+	//remove nay field that starts with "Jwt" in paramIn
+	//prevent forged jwt field
+	for k := range paramIn {
+		if strings.HasPrefix(k, "Jwt") {
+			delete(paramIn, k)
+		}
+	}
+	//add all Jwt fields to paramIn
+	for k, v := range svcCtx.Claims {
+		//convert first letter of k to upper case
+		k = strings.ToUpper(k[:1]) + k[1:]
+		paramIn["Jwt"+k] = v
+	}
+
 	return _api.CallByMap(paramIn)
 
 }
