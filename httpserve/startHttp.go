@@ -93,13 +93,13 @@ func httpStart(path string, port int64) {
 				ok          bool
 			)
 
-			bs, err = io.ReadAll(r.Body)
+			svcCtx.ParamIn, err = io.ReadAll(r.Body)
 			//marshal body to map[string]interface{}
-			if contentType := r.Header.Get("Content-Type"); len(bs) > 0 && len(contentType) > 0 && err == nil {
+			if contentType := r.Header.Get("Content-Type"); len(svcCtx.ParamIn) > 0 && len(contentType) > 0 && err == nil {
 				if contentType == "application/octet-stream" {
-					err = msgpack.Unmarshal(bs, &paramIn)
+					err = msgpack.Unmarshal(svcCtx.ParamIn, &paramIn)
 				} else if contentType == "application/json" {
-					err = json.Unmarshal(bs, &paramIn)
+					err = json.Unmarshal(svcCtx.ParamIn, &paramIn)
 				}
 				if err != nil {
 					goto responseHttp

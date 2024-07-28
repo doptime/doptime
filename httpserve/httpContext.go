@@ -23,8 +23,8 @@ type DoptimeReqCtx struct {
 	Field string
 
 	//belongs to api over websocket
-	Data  []byte
-	ReqID string
+	ParamIn []byte
+	ReqID   string
 }
 
 var ErrIncompleteRequest = errors.New("incomplete request")

@@ -66,6 +66,7 @@ func websocketAPICallback(w http.ResponseWriter, r *http.Request) {
 			Token2ClaimMap[jwtStr] = claims
 		}
 	}
+
 	//enable auto ping
 	ws.SetReadLimit(512)
 	pongWait := 60 * time.Second
@@ -96,7 +97,7 @@ func websocketAPICallback(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			err = msgpack.Unmarshal(reqCtx.Data, &paramIn)
+			err = msgpack.Unmarshal(reqCtx.ParamIn, &paramIn)
 			if err != nil {
 				rsp.Response(ws, &mu, err)
 				continue
