@@ -21,10 +21,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type WsParam struct {
-	Api   string
-	Param []byte
-}
 type DoptimeRespCtx struct {
 	Data  []byte
 	ReqID string

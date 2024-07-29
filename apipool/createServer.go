@@ -1,4 +1,4 @@
-package apiwebsocket
+package apipool
 
 import (
 	cmap "github.com/orcaman/concurrent-map/v2"

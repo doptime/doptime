@@ -1,4 +1,4 @@
-package apiwebsocket
+package apipool
 
 import (
 	"sync"
