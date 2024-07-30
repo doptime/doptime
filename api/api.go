@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/doptime/doptime/apiinfo"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	"github.com/doptime/doptime/vars"
@@ -43,7 +44,10 @@ func Api[i any, o any](
 	apis = append(apis, out.Name)
 	APIGroupByRdsToReceiveJob.Set(out.ApiSourceRds, apis)
 
-	out.RegisterApi(option.PublishInfo)
+	iType := reflect.TypeOf((*i)(nil)).Elem()
+	oType := reflect.TypeOf((*o)(nil)).Elem()
+	apiinfo.RegisterApi(out.Name, iType, oType, option.PublishInfo)
+
 	dlog.Debug().Str("ApiNamed service created completed!", out.Name).Send()
 	return out
 }
