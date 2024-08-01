@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/doptime/doptime/apiinfo"
 	"github.com/gorilla/websocket"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/vmihailenco/msgpack/v5"
@@ -15,19 +16,21 @@ import (
 
 var MsgToReceive = cmap.New[chan *ApiResponse]()
 
-// CreateClient sends a message using the pool's connections
-func CreateClient[i any, o any](url, jwt string) (f func(InParameter i) (ret o, err error)) {
+// create Api that exists in the apipool
+func Api[i any, o any](option ...apiinfo.OptSetter) (f func(InParameter i) (ret o, err error)) {
+	options := &apiinfo.PublishSetting{ApiUrl: "https://api.doptime.com"}
+	options.MergeNewOptions(option...)
 
 	//support jwt should be enabled here
 	//msg * ApiContext
 	f = func(InParameter i) (ret o, err error) {
-		pool, ok := WebSocketPoolMap.Get(url)
+		pool, ok := WebSocketPoolMap.Get(options.ApiUrl)
 		if !ok {
-			pool, err = newWebSocketPool(url, 1, 3)
+			pool, err = newWebSocketPool(options.ApiUrl, 1, 3)
 			if err != nil {
 				return ret, err
 			}
-			WebSocketPoolMap.Set(url, pool)
+			WebSocketPoolMap.Set(options.ApiUrl, pool)
 		}
 		paramInBytes, err := msgpack.Marshal(InParameter)
 		if err != nil {

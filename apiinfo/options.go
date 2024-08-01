@@ -13,9 +13,11 @@ type PublishSetting struct {
 	RateByRequestToken  float64
 	RateByResponseToken float64
 
-	ActiveAt      int64
-	ApiUrl        string
-	ProviderToken string
+	ActiveAt int64
+	ApiUrl   string
+
+	//JWT will expire, while API Token never
+	ProviderAPIToken string
 }
 
 type OptSetter func(o *PublishSetting)
@@ -37,9 +39,20 @@ func WithRateByToken(RateByRequestToken, RateByResponseToken float64) OptSetter 
 		o.RateByResponseToken = RateByResponseToken
 	}
 }
+func WithApiUrl(url string) OptSetter {
+	return func(o *PublishSetting) {
+		o.ApiUrl = url
+	}
+}
+
+func WithProviderAPIToken(token string) OptSetter {
+	return func(o *PublishSetting) {
+		o.ProviderAPIToken = token
+	}
+}
 
 // mergeNewOptions applies a list of option functions to an Option object.
-func MergeNewOptions(o *PublishSetting, options ...OptSetter) *PublishSetting {
+func (o *PublishSetting) MergeNewOptions(options ...OptSetter) *PublishSetting {
 	for _, opt := range options {
 		opt(o)
 	}

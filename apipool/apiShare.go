@@ -8,7 +8,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func APIShare[i any, o any](f func(InParameter i) (ret o, err error), apiName string, optSetters ...OptSetter) func(InParameter i) (ret o, err error) {
+func APIShare[i any, o any](f func(InParameter i) (ret o, err error), apiName string, optSetter ...apiinfo.OptSetter) func(InParameter i) (ret o, err error) {
 	iType := reflect.TypeOf((*i)(nil)).Elem()
 	oType := reflect.TypeOf((*o)(nil)).Elem()
 	websocketCallback := func(apiMessege *ApiContext) {
@@ -43,7 +43,7 @@ func APIShare[i any, o any](f func(InParameter i) (ret o, err error), apiName st
 		}
 	}
 	var setting = &apiinfo.PublishSetting{ApiUrl: "https://api.doptime.com"}
-	for _, setter := range optSetters {
+	for _, setter := range optSetter {
 		setter(setting)
 	}
 	apiinfo.RegisterApi(apiName, iType, oType, setting)
