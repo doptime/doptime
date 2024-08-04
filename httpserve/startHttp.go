@@ -25,7 +25,11 @@ func Debug() {
 
 }
 
-// var hashKey = rdsdb.HashKey[string, interface{}](rdsdb.Option.WithKey("_"), rdsdb.Option.WithRds("default"))
+var hashKey = rdsdb.HashKey[string, interface{}](rdsdb.WithKey("_"))
+var zsetKey = rdsdb.ZSetKey[string, interface{}](rdsdb.WithKey("_"))
+var listKey = rdsdb.ListKey[string, interface{}](rdsdb.WithKey("_"))
+var setKey = rdsdb.SetKey[string, interface{}](rdsdb.WithKey("_"))
+var stringKey = rdsdb.StringKey[string, interface{}](rdsdb.WithKey("_"))
 
 // listten to a port and start http server
 func httpStart(path string, port int64) {
@@ -146,11 +150,12 @@ func httpStart(path string, port int64) {
 				match  string
 			)
 			result = ""
-			keySet := rdsdb.SetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
+			db := rdsdb.CtxSet[string, interface{}]{Ctx: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
 			} else if match = r.FormValue("Match"); match == "" {
 			} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
-			} else if values, cursor, err = keySet.SScan(cursor, match, count); err == nil {
+			} else if values, cursor, err = db.SScan(cursor, match, count); err == nil {
 				result = map[string]interface{}{"values": values, "cursor": cursor}
 			}
 		case "HSCAN":
@@ -160,17 +165,18 @@ func httpStart(path string, port int64) {
 				keys   []string
 				match  string
 			)
-			hKey := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
 			result = ""
-			if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
+			if err = db.Validate(); err != nil {
+			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
 			} else if match = r.FormValue("Match"); match == "" {
 			} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 			} else if novalue := r.FormValue("NOVALUE"); novalue == "true" {
-				if keys, cursor, err = hKey.HScanNoValues(cursor, match, count); err == nil {
+				if keys, cursor, err = db.HScanNoValues(cursor, match, count); err == nil {
 					result = map[string]interface{}{"keys": keys, "cursor": cursor}
 				}
 			} else {
-				keys, values, cursorRet, err := hKey.HScan(cursor, match, count)
+				keys, values, cursorRet, err := db.HScan(cursor, match, count)
 				if err == nil {
 					result = map[string]interface{}{"keys": keys, "values": values, "cursor": cursorRet}
 				}
@@ -182,12 +188,13 @@ func httpStart(path string, port int64) {
 				values []interface{}
 				match  string
 			)
-			zKey := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			result = ""
-			if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
+			if err = db.Validate(); err != nil {
+			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
 			} else if match = r.FormValue("Match"); match == "" {
 			} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
-			} else if values, cursor, err = zKey.ZScan(cursor, match, count); err == nil {
+			} else if values, cursor, err = db.ZScan(cursor, match, count); err == nil {
 				result = map[string]interface{}{"values": values, "cursor": cursor}
 			}
 		case "LRANGE":
@@ -265,50 +272,71 @@ func httpStart(path string, port int64) {
 			}
 
 		case "GET":
-			db := rdsdb.StringKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.Get(svcCtx.Field)
+			db := rdsdb.CtxString[string, interface{}]{Ctx: stringKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			if db.Validate() == nil {
+				result, err = db.Get(svcCtx.Field)
+			}
 		case "HGET":
-			db := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.HGet(svcCtx.Field)
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			if db.Validate() == nil {
+				result, err = db.HGet(svcCtx.Field)
+			}
 		case "HGETALL":
-			db := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.HGetAll()
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			if db.Validate() == nil {
+				result, err = db.HGetAll()
+			}
 		case "HMGET":
-			db := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.HMGET(strings.Split(svcCtx.Field, ",")...)
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			if db.Validate() == nil {
+				result, err = db.HMGET(strings.Split(svcCtx.Field, ",")...)
+			}
 		case "HKEYS":
-			db := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.HKeys()
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			if db.Validate() == nil {
+				result, err = db.HKeys()
+			}
 		case "HEXISTS":
-			db := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.HExists(svcCtx.Field)
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			if db.Validate() == nil {
+				result, err = db.HExists(svcCtx.Field)
+			}
 		case "HRANDFIELD":
-			db := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			var count int
-			if count, err = strconv.Atoi(r.FormValue("Count")); err != nil {
-				result, err = "", errors.New("parse count error:"+err.Error())
-			} else {
-				result, err = db.HRandField(count)
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			if db.Validate() == nil {
+				var count int
+				if count, err = strconv.Atoi(r.FormValue("Count")); err != nil {
+					result, err = "", errors.New("parse count error:"+err.Error())
+				} else {
+					result, err = db.HRandField(count)
+				}
 			}
 		case "HVALS":
-			db := rdsdb.HashKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.HVals()
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			if db.Validate() == nil {
+				result, err = db.HVals()
+			}
 		case "SISMEMBER":
-			db := rdsdb.SetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.SIsMember(r.FormValue("Member"))
+			db := rdsdb.CtxSet[string, interface{}]{Ctx: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if db.Validate() == nil {
+				result, err = db.SIsMember(r.FormValue("Member"))
+			}
 		case "TIME":
-			db := rdsdb.NonKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
 			result = ""
-			if tm, err := db.Time(); err == nil {
-				result = tm.UnixMilli()
+			db := hashKey.Duplicate(svcCtx.Key, RedisDataSource)
+			if db.Validate() == nil {
+				if tm, err := db.Time(); err == nil {
+					result = tm.UnixMilli()
+				}
 			}
 		case "ZRANGE":
-			db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
 			var (
 				start, stop int64 = 0, -1
 			)
 			result = ""
-			if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 			} else if r.FormValue("WITHSCORES") == "true" {
 				// ZRANGE key start stop [WITHSCORES==true]
@@ -321,13 +349,14 @@ func httpStart(path string, port int64) {
 				result, err = db.ZRange(start, stop)
 			}
 		case "ZRANGEBYSCORE":
-			db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
 			var (
 				offset, count int64 = 0, -1
 				scores        []float64
 			)
 			result = ""
-			if Min := r.FormValue("Min"); Min == "" {
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else if Min := r.FormValue("Min"); Min == "" {
 				result, err = "false", errors.New("no Min")
 			} else if Max := r.FormValue("Max"); Max == "" {
 				result, err = "false", errors.New("no Max")
@@ -345,12 +374,13 @@ func httpStart(path string, port int64) {
 				result, err = db.ZRangeByScore(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
 			}
 		case "ZREVRANGE":
-			db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
 			var (
 				start, stop int64 = 0, -1
 			)
 			result = ""
-			if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 			} else if r.FormValue("WITHSCORES") == "true" {
 				// ZREVRANGE key start stop [WITHSCORES==true]
@@ -368,11 +398,12 @@ func httpStart(path string, port int64) {
 				result, err = db.ZRevRange(start, stop)
 			}
 		case "ZREVRANGEBYSCORE":
-			db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
 			var (
 				offset, count int64 = 0, -1
 			)
-			if Min, Max := r.FormValue("Min"), r.FormValue("Max"); Min == "" || Max == "" {
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else if Min, Max := r.FormValue("Min"), r.FormValue("Max"); Min == "" || Max == "" {
 				result, err = "", errors.New("no Min or Max")
 			} else if offset, err = strconv.ParseInt(r.FormValue("Offset"), 10, 64); err != nil {
 				result, err = "", errors.New("parse offset error:"+err.Error())
@@ -393,41 +424,58 @@ func httpStart(path string, port int64) {
 				result, err = db.ZRevRangeByScore(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
 			}
 		case "ZRANK":
-			db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.ZRank(r.FormValue("Member"))
-		case "ZCOUNT":
-			db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.ZCount(r.FormValue("Min"), r.FormValue("Max"))
-		case "ZSCORE":
-			db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.ZScore(r.FormValue("Member"))
-		case "SCAN":
-			db := rdsdb.NonKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			var (
-				cursor uint64
-				count  int64
-				keys   []string
-				match  string
-			)
-			result = ""
-			if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
-			} else if match = r.FormValue("Match"); match == "" {
-			} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
-			} else if keys, cursor, err = db.Scan(cursor, match, count); err != nil {
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
 			} else {
-				result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+				result, err = db.ZRank(r.FormValue("Member"))
+			}
+		case "ZCOUNT":
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else {
+				result, err = db.ZCount(r.FormValue("Min"), r.FormValue("Max"))
+			}
+		case "ZSCORE":
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else {
+				result, err = db.ZScore(r.FormValue("Member"))
+			}
+		case "SCAN":
+			result = ""
+			db := rdsdb.CtxSet[string, interface{}]{Ctx: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if db.Validate() == nil {
+				var (
+					cursor uint64
+					count  int64
+					keys   []string
+					match  string
+				)
+				if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
+				} else if match = r.FormValue("Match"); match == "" {
+				} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
+				} else if keys, cursor, err = db.Scan(cursor, match, count); err != nil {
+				} else {
+					result, err = json.Marshal(map[string]interface{}{"keys": keys, "cursor": cursor})
+				}
 			}
 		case "LINDEX":
-			db := rdsdb.ListKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			var index int64
-			if index, err = strconv.ParseInt(r.FormValue("Index"), 10, 64); err != nil {
-				result, err = "", errors.New("parse index error:"+err.Error())
-			} else {
-				result, err = db.LIndex(index)
+			//db := listKey.Duplicate(svcCtx.Key, RedisDataSource)
+			db := rdsdb.CtxList[string, interface{}]{Ctx: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if db.Validate() == nil {
+				var index int64
+				if index, err = strconv.ParseInt(r.FormValue("Index"), 10, 64); err != nil {
+					result, err = "", errors.New("parse index error:"+err.Error())
+				} else {
+					result, err = db.LIndex(index)
+				}
 			}
+
 		case "LPOP":
-			db := rdsdb.ListKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.LPop()
+			db := rdsdb.CtxList[string, interface{}]{Ctx: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if db.Validate() == nil {
+				result, err = db.LPop()
+			}
 		case "LPUSH":
 			result = "false"
 			if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
@@ -462,8 +510,10 @@ func httpStart(path string, port int64) {
 				result = "true"
 			}
 		case "RPOP":
-			db := rdsdb.ListKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
-			result, err = db.RPop()
+			db := rdsdb.CtxList[string, interface{}]{Ctx: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if db.Validate() == nil {
+				result, err = db.RPop()
+			}
 		case "RPUSH":
 			result = "false"
 			if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
@@ -481,10 +531,11 @@ func httpStart(path string, port int64) {
 			}
 
 		case "ZADD":
-			db := rdsdb.ZSetKey[string, interface{}](&rdsdb.Option{Key: svcCtx.Key, DataSource: RedisDataSource})
 			var Score float64
 			var obj interface{}
-			if Score, err = strconv.ParseFloat(r.FormValue("Score"), 64); err != nil {
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else if Score, err = strconv.ParseFloat(r.FormValue("Score"), 64); err != nil {
 				result, err = "false", errors.New("parameter Score shoule be float")
 			} else if bs, err = svcCtx.MsgpackBody(r, true, true); len(bs) == 0 || err != nil {
 				result, err = "false", errors.New("missing MsgPack content")
@@ -535,8 +586,9 @@ func httpStart(path string, port int64) {
 			for i, v := range MemberStr {
 				Member[i] = v
 			}
-
-			if len(Member) == 0 {
+			db := rdsdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			if err = db.Validate(); err != nil {
+			} else if len(Member) == 0 {
 				err = errors.New("no Member")
 			} else if err = rds.ZRem(svcCtx.Ctx, svcCtx.Key, Member...).Err(); err == nil {
 				result = "true"

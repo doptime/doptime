@@ -12,22 +12,19 @@ type CtxZSet[k comparable, v any] struct {
 	Ctx[k, v]
 }
 
-func ZSetKey[k comparable, v any](ops ...*Option) *CtxZSet[k, v] {
+func ZSetKey[k comparable, v any](ops ...opSetter) *CtxZSet[k, v] {
 	ctx := &CtxZSet[k, v]{}
-	if err := ctx.useOption(ops...); err != nil {
+	op := Option{KeyType: "zset"}.applyOptions(ops...)
+	if err := ctx.useOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
-	}
-	if len(ops) > 0 && ops[0].RegisterWebData {
-		ctx.RegisterWebData("zset")
 	}
 	return ctx
 }
 
 func (ctx *CtxZSet[k, v]) ConcatKey(fields ...interface{}) *CtxZSet[k, v] {
-	return &CtxZSet[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...))}
+	return &CtxZSet[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName)}
 }
-
 func (ctx *CtxZSet[k, v]) ZAdd(members ...redis.Z) (err error) {
 	//MarshalRedisZ
 	for i := range members {

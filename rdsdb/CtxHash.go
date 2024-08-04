@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	"github.com/bits-and-blooms/bloom/v3"
-	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/vars"
 	"github.com/redis/go-redis/v9"
@@ -17,34 +16,18 @@ type CtxHash[k comparable, v any] struct {
 	BloomFilterKeys *bloom.BloomFilter
 }
 
-func HashKey[k comparable, v any](ops ...*Option) *CtxHash[k, v] {
+func HashKey[k comparable, v any](ops ...opSetter) *CtxHash[k, v] {
 	ctx := &CtxHash[k, v]{}
-	if err := ctx.useOption(ops...); err != nil {
+	op := Option{KeyType: "hash", DataSource: "default"}.applyOptions(ops...)
+	if err := ctx.useOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
-	if len(ops) > 0 && ops[0].RegisterWebData {
-		ctx.RegisterWebData("hash")
-	}
-
 	return ctx
 }
 
 func (ctx *CtxHash[k, v]) ConcatKey(fields ...interface{}) *CtxHash[k, v] {
-	return &CtxHash[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...)), ctx.BloomFilterKeys}
-}
-func (ctx *CtxHash[k, v]) Clone(Key string, RdsSourceName string) (newCtx *CtxHash[k, v], err error) {
-	newCtx = &CtxHash[k, v]{ctx.clone(Key), ctx.BloomFilterKeys}
-	//skip if RdsSourceName is unchanged
-	if RdsSourceName == ctx.RdsName {
-		return newCtx, nil
-	}
-	ctx.RdsName = RdsSourceName
-	var exists bool
-	if ctx.Rds, exists = config.Rds[RdsSourceName]; !exists {
-		return nil, fmt.Errorf("clone fail, rds item unconfigured: " + ctx.RdsName)
-	}
-	return newCtx, nil
+	return &CtxHash[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName), ctx.BloomFilterKeys}
 }
 
 func (ctx *CtxHash[k, v]) HGet(field k) (value v, err error) {

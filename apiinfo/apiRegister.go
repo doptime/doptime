@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
-	"github.com/doptime/doptime/rdsdb"
+	. "github.com/doptime/doptime/rdsdb"
 	"github.com/doptime/doptime/specification"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/vmihailenco/msgpack/v5"
@@ -20,13 +20,13 @@ type DocsOfApi struct {
 	UpdateAt int64
 }
 
-var KeyApiDataDocs = rdsdb.HashKey[string, *DocsOfApi](&rdsdb.Option{Key: "Docs:Api"})
+var KeyApiDataDocs = HashKey[string, *DocsOfApi](WithKey("Docs:Api"))
 
 var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
 
 var ApiProviderMap cmap.ConcurrentMap[string, *PublishSetting] = cmap.New[*PublishSetting]()
 
-var SynWebDataRunOnce = sync.Mutex{}
+var SynAPIRunOnce = sync.Mutex{}
 
 func RegisterApi(Name string, paramInType reflect.Type, paramOutType reflect.Type, providerinfo *PublishSetting) (err error) {
 	_, ok := ApiDocsMap.Get(Name)
@@ -47,7 +47,7 @@ func RegisterApi(Name string, paramInType reflect.Type, paramOutType reflect.Typ
 		return err
 	}
 	ApiDocsMap.Set(Name, webdata)
-	if SynWebDataRunOnce.TryLock() {
+	if SynAPIRunOnce.TryLock() {
 		go syncWithRedis()
 	}
 	return nil

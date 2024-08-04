@@ -3,7 +3,6 @@ package rdsdb
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/doptime/doptime/config"
@@ -22,16 +21,23 @@ type Ctx[k comparable, v any] struct {
 	UnmarshalValues func(valStrs []string) (values []v, err error)
 }
 
-func (ctx *Ctx[k, v]) clone(newKey string) (newCtx Ctx[k, v]) {
-	if len(newKey) == 0 {
-		newKey = ctx.Key
+func (ctx *Ctx[k, v]) Duplicate(newKey, RdsSourceName string) (newCtx Ctx[k, v]) {
+	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
+}
+func (ctx *Ctx[k, v]) Validate() error {
+	if disallowed, found := specification.DisAllowedDataKeyNames[ctx.Key]; found && disallowed {
+		return fmt.Errorf("key name is disallowed: " + ctx.Key)
 	}
-	return Ctx[k, v]{ctx.Context, ctx.RdsName, ctx.Rds, newKey, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
+	if _, ok := config.Rds[ctx.RdsName]; !ok {
+		return fmt.Errorf("rds item unconfigured: " + ctx.RdsName)
+	}
+	return nil
 }
 
-func NonKey[k comparable, v any](ops ...*Option) *Ctx[k, v] {
+func NonKey[k comparable, v any](ops ...opSetter) *Ctx[k, v] {
 	ctx := &Ctx[k, v]{}
-	if err := ctx.useOption(ops...); err != nil {
+	op := Option{KeyType: "nonkey"}.applyOptions(ops...)
+	if err := ctx.useOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
@@ -65,17 +71,22 @@ func (ctx *Ctx[k, v]) Scan(cursorOld uint64, match string, count int64) (keys []
 	return keys, cursorNew, nil
 }
 
-func (ctx *Ctx[k, v]) useOption(ops ...*Option) error {
-	if len(ops) > 0 {
-		ctx.Key = ops[0].Key
-		ctx.RdsName = ops[0].DataSource
+func (ctx *Ctx[k, v]) useOption(opt *Option) (err error) {
+	ctx.Key = opt.Key
+	ctx.RdsName = opt.DataSource
+
+	if opt.RegisterWebData {
+		ctx.RegisterWebData(opt.KeyType)
 	}
-	if len(ctx.Key) == 0 && !specification.GetValidDataKeyName((*v)(nil), &ctx.Key) {
-		return fmt.Errorf("invalid keyname infered from type: " + reflect.TypeOf((*v)(nil)).String())
+	if len(ctx.Key) == 0 {
+		ctx.Key, err = specification.GetValidDataKeyName((*v)(nil))
+		if err != nil {
+			return err
+		}
 	}
 	var exists bool
 	if ctx.Rds, exists = config.Rds[ctx.RdsName]; !exists {
-		return fmt.Errorf("Rds item unconfigured: " + ctx.RdsName)
+		return fmt.Errorf("rds item unconfigured: " + ctx.RdsName)
 	}
 	ctx.Context = context.Background()
 	ctx.MarshalValue = ctx.toValueStrFun()

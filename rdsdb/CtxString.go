@@ -13,22 +13,19 @@ type CtxString[k comparable, v any] struct {
 	BloomFilterKeys *bloom.BloomFilter
 }
 
-func StringKey[k comparable, v any](ops ...*Option) *CtxString[k, v] {
+func StringKey[k comparable, v any](ops ...opSetter) *CtxString[k, v] {
 	ctx := &CtxString[k, v]{}
-	if err := ctx.useOption(ops...); err != nil {
+	op := Option{KeyType: "string"}.applyOptions(ops...)
+	if err := ctx.useOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
-	}
-	if len(ops) > 0 && ops[0].RegisterWebData {
-		ctx.RegisterWebData("string")
 	}
 	return ctx
 }
 
 func (ctx *CtxString[k, v]) ConcatKey(fields ...interface{}) *CtxString[k, v] {
-	return &CtxString[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...)), ctx.BloomFilterKeys}
+	return &CtxString[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName), ctx.BloomFilterKeys}
 }
-
 func (ctx *CtxString[k, v]) Get(Field k) (value v, err error) {
 	FieldStr, err := ctx.toKeyStr(Field)
 	if err != nil {

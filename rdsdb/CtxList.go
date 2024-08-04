@@ -11,22 +11,19 @@ type CtxList[k comparable, v any] struct {
 	Ctx[k, v]
 }
 
-func ListKey[k comparable, v any](ops ...*Option) *CtxList[k, v] {
+func ListKey[k comparable, v any](ops ...opSetter) *CtxList[k, v] {
 	ctx := &CtxList[k, v]{}
-	if err := ctx.useOption(ops...); err != nil {
+	op := Option{KeyType: "list"}.applyOptions(ops...)
+	if err := ctx.useOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
-	}
-	if len(ops) > 0 && ops[0].RegisterWebData {
-		ctx.RegisterWebData("list")
 	}
 	return ctx
 }
 
 func (ctx *CtxList[k, v]) ConcatKey(fields ...interface{}) *CtxList[k, v] {
-	return &CtxList[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...))}
+	return &CtxList[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName)}
 }
-
 func (ctx *CtxList[k, v]) RPush(param ...v) error {
 	vals, err := ctx.toValueStrsSlice(param...)
 	if err != nil {

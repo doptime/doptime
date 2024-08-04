@@ -8,20 +8,17 @@ type CtxSet[k comparable, v any] struct {
 	Ctx[k, v]
 }
 
-func SetKey[k comparable, v any](ops ...*Option) *CtxSet[k, v] {
+func SetKey[k comparable, v any](ops ...opSetter) *CtxSet[k, v] {
 	ctx := &CtxSet[k, v]{}
-	if err := ctx.useOption(ops...); err != nil {
+	Opt := Option{KeyType: "set"}.applyOptions(ops...)
+	if err := ctx.useOption(Opt); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
-	if len(ops) > 0 && ops[0].RegisterWebData {
-		ctx.RegisterWebData("set")
-	}
 	return ctx
 }
-
 func (ctx *CtxSet[k, v]) ConcatKey(fields ...interface{}) *CtxSet[k, v] {
-	return &CtxSet[k, v]{ctx.clone(ConcatedKeys(ctx.Key, fields...))}
+	return &CtxSet[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName)}
 }
 
 // append to Set

@@ -1,9 +1,8 @@
 package specification
 
 import (
+	"fmt"
 	"reflect"
-
-	"github.com/doptime/doptime/dlog"
 )
 
 var DisAllowedDataKeyNames = map[string]bool{
@@ -23,18 +22,18 @@ var DisAllowedDataKeyNames = map[string]bool{
 	"complex128": true,
 }
 
-func GetValidDataKeyName(value interface{}, Key *string) (isValidName bool) {
-	if len(*Key) == 0 {
+func GetValidDataKeyName(value interface{}) (Key string, err error) {
+	if len(Key) == 0 {
 		//get default ServiceName
 		var _type reflect.Type
 		//take name of type v as key
 		for _type = reflect.TypeOf(value); _type.Kind() == reflect.Ptr || _type.Kind() == reflect.Array; _type = _type.Elem() {
 		}
-		*Key = _type.Name()
+		Key = _type.Name()
 	}
-	if _, ok := DisAllowedDataKeyNames[*Key]; ok {
-		dlog.Error().Str("service misnamed", *Key).Send()
-		return false
+	if _, ok := DisAllowedDataKeyNames[Key]; ok {
+		err = fmt.Errorf("invalid keyname infered from type: " + Key)
+		return "", err
 	}
-	return true
+	return Key, nil
 }

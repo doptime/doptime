@@ -14,7 +14,7 @@ import (
 var WebDataDocsMap cmap.ConcurrentMap[string, *WebDataDocs] = cmap.New[*WebDataDocs]()
 
 var SynWebDataRunOnce = sync.Mutex{}
-var KeyWebDataDocs = HashKey[string, *WebDataDocs](&Option{Key: "Docs:Data"})
+var KeyWebDataDocs = HashKey[string, *WebDataDocs](WithKey("Docs:Data"))
 
 func CheckDataSchema(key string, msgpackBytes []byte) error {
 	webdata, ok := WebDataDocsMap.Get(key)
