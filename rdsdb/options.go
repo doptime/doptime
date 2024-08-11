@@ -7,6 +7,7 @@ type Option struct {
 	KeyType         string
 	DataSource      string
 	RegisterWebData bool
+	Modifiers       map[string]ModifierFunc
 }
 type opSetter func(*Option)
 
@@ -25,6 +26,11 @@ func WithRds(dataSource string) opSetter {
 func WithRegisterWebData(registerWebData bool) opSetter {
 	return func(o *Option) {
 		o.RegisterWebData = registerWebData
+	}
+}
+func WithModifier(extraModifiers map[string]ModifierFunc) opSetter {
+	return func(o *Option) {
+		o.Modifiers = extraModifiers
 	}
 }
 

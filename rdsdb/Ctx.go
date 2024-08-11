@@ -16,13 +16,14 @@ type Ctx[k comparable, v any] struct {
 	RdsName         string
 	Rds             *redis.Client
 	Key             string
+	Moder           *StructModifiers[v]
 	MarshalValue    func(value v) (valueStr string, err error)
 	UnmarshalValue  func(valbytes []byte) (value v, err error)
 	UnmarshalValues func(valStrs []string) (values []v, err error)
 }
 
 func (ctx *Ctx[k, v]) Duplicate(newKey, RdsSourceName string) (newCtx Ctx[k, v]) {
-	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
+	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.Moder, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
 }
 func (ctx *Ctx[k, v]) Validate() error {
 	if disallowed, found := specification.DisAllowedDataKeyNames[ctx.Key]; found && disallowed {
@@ -92,5 +93,6 @@ func (ctx *Ctx[k, v]) useOption(opt *Option) (err error) {
 	ctx.MarshalValue = ctx.toValueStrFun()
 	ctx.UnmarshalValue = ctx.toValueFunc()
 	ctx.UnmarshalValues = ctx.toValuesFunc()
+	ctx.Moder = RegisterStructModifiers[v](opt.Modifiers)
 	return nil
 }

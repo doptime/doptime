@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-func Nanoid(size int) string {
+// GenerateNanoid creates a unique identifier using the specified size.
+func GenerateNanoid(size int) string {
 	alphabet := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	if size <= 0 || size > 21 {
 		size = 21
@@ -29,93 +30,136 @@ func Nanoid(size int) string {
 	return string(id)
 }
 
-// UnixTime sets the value to the current Unix timestamp based on provided unit.
-var nanoidFunc = func(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
-	return Nanoid(21), nil
-}
+// ModifierFunc is the function signature for all field modifiers.
+type ModifierFunc func(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error)
 
-// Modifier is the function signature for all modifiers.
-type Modifier func(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error)
-
-// TagCache stores metadata for a struct field's modifier.
-type TagCache struct {
-	Index      int
+// FieldModifier stores metadata for a struct field's modifier.
+type FieldModifier struct {
+	FieldIndex int
 	FieldName  string
-	ModFunc    Modifier
+	Modifier   ModifierFunc
 	TagParam   string
-	SkipIsZero bool
+	ForceApply bool
 }
 
-// Modifiers holds a collection of registered modifiers for a specific struct type and cached tag info.
-type Modifiers[T any] struct {
-	registry map[string]Modifier
-	tagCache []*TagCache
+// StructModifiers holds a collection of registered modifiers for a specific struct type and cached tag info.
+type StructModifiers[T any] struct {
+	modifierRegistry map[string]ModifierFunc
+	fieldModifiers   []*FieldModifier
 }
 
-// NewModifiers creates a new instance of Modifiers for a specific struct type.
-func NewModifiers[T any](modMap map[string]Modifier) *Modifiers[T] {
-	modifiers := &Modifiers[T]{
-		registry: map[string]Modifier{
-			"default":  Default,
-			"unixtime": unixtime,
-			"nanoid":   nanoidFunc,
+// TrimSpaces removes leading and trailing white spaces from the string.
+func TrimSpaces(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+	if str, ok := fieldValue.(string); ok {
+		return strings.TrimSpace(str), nil
+	}
+	return fieldValue, nil
+}
+
+// ToLowercase converts the string to lowercase.
+func ToLowercase(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+	if str, ok := fieldValue.(string); ok {
+		return strings.ToLower(str), nil
+	}
+	return fieldValue, nil
+}
+
+// ToUppercase converts the string to uppercase.
+func ToUppercase(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+	if str, ok := fieldValue.(string); ok {
+		return strings.ToUpper(str), nil
+	}
+	return fieldValue, nil
+}
+
+// ToTitleCase converts the string to title case.
+func ToTitleCase(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+	if str, ok := fieldValue.(string); ok {
+		return strings.Title(strings.ToLower(str)), nil
+	}
+	return fieldValue, nil
+}
+
+// FormatDate formats a time.Time value according to the provided format.
+func FormatDate(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+	if t, ok := fieldValue.(time.Time); ok {
+		return t.Format(tagParam), nil
+	}
+	return fieldValue, nil
+}
+
+// RegisterStructModifiers initializes the StructModifiers for a specific struct type with optional extra modifiers.
+func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *StructModifiers[T] {
+	modifiers := &StructModifiers[T]{
+		modifierRegistry: map[string]ModifierFunc{
+			"default":    ApplyDefault,
+			"unixtime":   ApplyUnixTime,
+			"nanoid":     GenerateNanoidFunc,
+			"trim":       TrimSpaces,
+			"lowercase":  ToLowercase,
+			"uppercase":  ToUppercase,
+			"title":      ToTitleCase,
+			"dateFormat": FormatDate,
 		},
-		tagCache: []*TagCache{},
+		fieldModifiers: []*FieldModifier{},
+	}
+	for name, modifier := range extraModifiers {
+		modifiers.modifierRegistry[name] = modifier
 	}
 
-	t := reflect.TypeOf((*T)(nil)).Elem()
+	structType := reflect.TypeOf((*T)(nil)).Elem()
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
 		tag := field.Tag.Get("mod")
 		if tag != "" {
-			keyValue := strings.SplitN(tag, "=", 2)
-			modName := keyValue[0]
+			tagParts := strings.SplitN(tag, "=", 2)
+			modifierName := tagParts[0]
 			tagParam := ""
-			if len(keyValue) == 2 {
-				tagParam = keyValue[1]
+			if len(tagParts) == 2 {
+				tagParam = tagParts[1]
 			}
-
-			skipIsZero := false
-			if strings.Contains(tagParam, "force") {
-				skipIsZero = true
-				tagParam = strings.Replace(tagParam, "force", "", -1)
-				tagParam = strings.Trim(tagParam, ",")
-			}
-
-			modFunc, exists := modifiers.registry[modName]
+			modifierFunc, exists := modifiers.modifierRegistry[modifierName]
 			if !exists {
 				continue // Skip unregistered modifiers
 			}
 
-			modifiers.tagCache = append(modifiers.tagCache, &TagCache{
-				Index:      i,
+			forceApply := false
+			if strings.Contains(tagParam, "force") {
+				forceApply = true
+				tagParam = strings.Replace(tagParam, "force", "", -1)
+				tagParam = strings.Trim(tagParam, ",")
+			}
+
+			fieldModifier := &FieldModifier{
+				FieldIndex: i,
 				FieldName:  field.Name,
-				ModFunc:    modFunc,
+				Modifier:   modifierFunc,
 				TagParam:   tagParam,
-				SkipIsZero: skipIsZero,
-			})
+				ForceApply: forceApply,
+			}
+			modifiers.fieldModifiers = append(modifiers.fieldModifiers, fieldModifier)
 		}
 	}
-	if len(modifiers.tagCache) == 0 {
+	if len(modifiers.fieldModifiers) == 0 {
 		return nil
 	}
 
 	return modifiers
 }
 
-// Mod applies the registered modifiers to an instance of the struct.
-func (m *Modifiers[T]) Mod(ctx context.Context, s *T) error {
+// ApplyModifiers applies the registered modifiers to an instance of the struct.
+func (m *StructModifiers[T]) ApplyModifiers(ctx context.Context, s *T) error {
 	if m == nil {
 		return nil
 	}
 
-	v := reflect.ValueOf(s).Elem()
+	structValue := reflect.ValueOf(s).Elem()
 
-	for _, cache := range m.tagCache {
-		field := v.Field(cache.Index)
-		if cache.SkipIsZero || isZero(field) {
-			newValue, err := cache.ModFunc(ctx, field.Interface(), cache.TagParam)
+	for _, fieldModifier := range m.fieldModifiers {
+		field := structValue.Field(fieldModifier.FieldIndex)
+		if fieldModifier.ForceApply || isZero(field) {
+			newValue, err := fieldModifier.Modifier(ctx, field.Interface(), fieldModifier.TagParam)
 			if err != nil {
 				return err
 			}
@@ -130,13 +174,13 @@ func (m *Modifiers[T]) Mod(ctx context.Context, s *T) error {
 	return nil
 }
 
-// Default sets a default value if the current value is nil or the zero value for its type.
-func Default(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+// ApplyDefault sets a default value if the current value is nil or the zero value for its type.
+func ApplyDefault(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
 	return tagParam, nil
 }
 
-// UnixTime sets the value to the current Unix timestamp based on provided unit.
-func unixtime(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+// ApplyUnixTime sets the value to the current Unix timestamp based on provided unit.
+func ApplyUnixTime(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
 	switch tagParam {
 	case "ms":
 		return time.Now().UnixMilli(), nil
@@ -145,6 +189,11 @@ func unixtime(ctx context.Context, fieldValue interface{}, tagParam string) (int
 	default:
 		return time.Now().UnixMilli(), nil
 	}
+}
+
+// GenerateNanoidFunc generates a Nanoid and returns it as a string.
+func GenerateNanoidFunc(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+	return GenerateNanoid(21), nil
 }
 
 // isZero checks if a reflect.Value is zero for its type.
@@ -170,7 +219,9 @@ func isZero(v reflect.Value) bool {
 
 // Example usage
 type ExampleStruct struct {
-	Name     string `mod:"trim"`
-	Age      int    `mod:"default=18"`
-	UnixTime int64  `mod:"unixtime=ms,force"`
+	Name     string    `mod:"trim,lowercase"`
+	Age      int       `mod:"default=18"`
+	UnixTime int64     `mod:"unixtime=ms,force"`
+	Email    string    `mod:"lowercase,trim"`
+	Created  time.Time `mod:"dateFormat=2006-01-02T15:04:05Z07:00"`
 }
