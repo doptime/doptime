@@ -90,6 +90,14 @@ func FormatDate(ctx context.Context, fieldValue interface{}, tagParam string) (i
 
 // RegisterStructModifiers initializes the StructModifiers for a specific struct type with optional extra modifiers.
 func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *StructModifiers[T] {
+	structType := reflect.TypeOf((*T)(nil)).Elem()
+	for structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+	if kv := structType.Kind().String(); kv != "struct" {
+		return nil
+	}
+
 	modifiers := &StructModifiers[T]{
 		modifierRegistry: map[string]ModifierFunc{
 			"default":    ApplyDefault,
@@ -105,14 +113,6 @@ func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *Str
 	}
 	for name, modifier := range extraModifiers {
 		modifiers.modifierRegistry[name] = modifier
-	}
-
-	structType := reflect.TypeOf((*T)(nil)).Elem()
-	for structType.Kind() == reflect.Ptr {
-		structType = structType.Elem()
-	}
-	if kv := structType.Kind().String(); kv != "struct" {
-		return nil
 	}
 
 	for i := 0; i < structType.NumField(); i++ {
