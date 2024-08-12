@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -87,6 +88,34 @@ func FormatDate(ctx context.Context, fieldValue interface{}, tagParam string) (i
 	}
 	return fieldValue, nil
 }
+func ApplyCounter(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+	if v, ok := fieldValue.(int); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(int8); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(int16); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(int32); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(int64); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(uint); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(uint8); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(uint16); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(uint32); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(uint64); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(float32); ok {
+		return v + 1, nil
+	} else if v, ok := fieldValue.(float64); ok {
+		return v + 1, nil
+	}
+	return fieldValue, nil
+}
 
 // RegisterStructModifiers initializes the StructModifiers for a specific struct type with optional extra modifiers.
 func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *StructModifiers[T] {
@@ -102,6 +131,7 @@ func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *Str
 		modifierRegistry: map[string]ModifierFunc{
 			"default":    ApplyDefault,
 			"unixtime":   ApplyUnixTime,
+			"counter":    ApplyCounter,
 			"nanoid":     GenerateNanoidFunc,
 			"trim":       TrimSpaces,
 			"lowercase":  ToLowercase,
@@ -186,16 +216,18 @@ func ApplyUnixTime(ctx context.Context, fieldValue interface{}, tagParam string)
 	switch tagParam {
 	case "ms":
 		return time.Now().UnixMilli(), nil
-	case "s":
-		return time.Now().Unix(), nil
 	default:
-		return time.Now().UnixMilli(), nil
+		return time.Now().Unix(), nil
 	}
 }
 
 // GenerateNanoidFunc generates a Nanoid and returns it as a string.
 func GenerateNanoidFunc(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
-	return GenerateNanoid(21), nil
+	size := 21
+	if tagParam != "" {
+		size, _ = strconv.Atoi(tagParam)
+	}
+	return GenerateNanoid(size), nil
 }
 
 // isZero checks if a reflect.Value is zero for its type.
@@ -224,6 +256,7 @@ type ExampleStruct struct {
 	Name     string    `mod:"trim,lowercase"`
 	Age      int       `mod:"default=18"`
 	UnixTime int64     `mod:"unixtime=ms,force"`
+	Counter  int64     `mod:"counter,force"`
 	Email    string    `mod:"lowercase,trim"`
 	Created  time.Time `mod:"dateFormat=2006-01-02T15:04:05Z07:00"`
 }
