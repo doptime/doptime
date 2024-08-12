@@ -4,7 +4,6 @@ package rdsdb
 // Option is parameter to create an API, RPC, or CallAt
 type Option struct {
 	Key             string
-	KeyType         string
 	DataSource      string
 	RegisterWebData bool
 	Modifiers       map[string]ModifierFunc
@@ -34,7 +33,7 @@ func WithModifier(extraModifiers map[string]ModifierFunc) opSetter {
 	}
 }
 
-func (opt Option) applyOptions(options ...opSetter) *Option {
+func (opt Option) buildOptions(options ...opSetter) *Option {
 	for _, option := range options {
 		option(&opt)
 	}

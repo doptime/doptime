@@ -37,14 +37,15 @@ func httpStart(path string, port int64) {
 	router := http.NewServeMux()
 	router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		var (
-			result       interface{}
-			bs           []byte
-			ok           bool
-			err          error
-			httpStatus   int = http.StatusOK
-			svcCtx       *DoptimeReqCtx
-			rds          *redis.Client
-			operation, s string = "", ""
+			result        interface{}
+			bs            []byte
+			ok            bool
+			err           error
+			httpStatus    int = http.StatusOK
+			svcCtx        *DoptimeReqCtx
+			rds           *redis.Client
+			hkeyInterface rdsdb.HashInterface
+			operation, s  string = "", ""
 			//load redis datasource value from form
 			RedisDataSource            = r.FormValue("ds")
 			ResponseContentType string = "application/json"
@@ -165,7 +166,7 @@ func httpStart(path string, port int64) {
 				keys   []string
 				match  string
 			)
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			result = ""
 			if err = db.Validate(); err != nil {
 			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
@@ -272,37 +273,59 @@ func httpStart(path string, port int64) {
 			}
 
 		case "GET":
-			db := rdsdb.CtxString[string, interface{}]{Ctx: stringKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			db := rdsdb.CtxString[string, interface{}]{Ctx: stringKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db.Validate() == nil {
 				result, err = db.Get(svcCtx.Field)
 			}
 		case "HGET":
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db.Validate() == nil {
 				result, err = db.HGet(svcCtx.Field)
 			}
 		case "HGETALL":
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db.Validate() == nil {
 				result, err = db.HGetAll()
 			}
 		case "HMGET":
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
-			if db.Validate() == nil {
-				result, err = db.HMGET(strings.Split(svcCtx.Field, ",")...)
+			hkeyInterface, err = rdsdb.HKeyInterface(svcCtx.Key, RedisDataSource)
+			if err == nil {
+				//convert strings.Split(svcCtx.Field, ",") to types of []interface{}
+				var fields []interface{} = SliceToInterface(strings.Split(svcCtx.Field, ","))
+				result, err = hkeyInterface.HMGETInterface(fields...)
+			}
+
+		case "HSET":
+			result = "false"
+			hkeyInterface, err = rdsdb.HKeyInterface(svcCtx.Key, RedisDataSource)
+			if err != nil {
+			} else if svcCtx.Key == "" || svcCtx.Field == "" {
+				err = ErrEmptyKeyOrField
+			} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
+			} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
+			} else if err = hkeyInterface.HSet(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, bs); err == nil {
+				result = "true"
+			}
+		case "HDEL":
+			result = "false"
+			//error if empty Key or Field
+			if svcCtx.Field == "" {
+				err = ErrEmptyKeyOrField
+			} else if err = rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Err(); err == nil {
+				result = "true"
 			}
 		case "HKEYS":
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db.Validate() == nil {
 				result, err = db.HKeys()
 			}
 		case "HEXISTS":
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db.Validate() == nil {
 				result, err = db.HExists(svcCtx.Field)
 			}
 		case "HRANDFIELD":
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db.Validate() == nil {
 				var count int
 				if count, err = strconv.Atoi(r.FormValue("Count")); err != nil {
@@ -312,7 +335,7 @@ func httpStart(path string, port int64) {
 				}
 			}
 		case "HVALS":
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource), BloomFilterKeys: nil}
+			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db.Validate() == nil {
 				result, err = db.HVals()
 			}
@@ -552,25 +575,6 @@ func httpStart(path string, port int64) {
 			} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
 			} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
 			} else if rds.Set(svcCtx.Ctx, svcCtx.Key+":"+svcCtx.Field, bs, 0).Err() == nil {
-				result = "true"
-			}
-
-		case "HSET":
-			result = "false"
-			//error if empty Key or Field
-			if svcCtx.Key == "" || svcCtx.Field == "" {
-				err = ErrEmptyKeyOrField
-			} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
-			} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
-			} else if err = rds.HSet(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, bs).Err(); err == nil {
-				result = "true"
-			}
-		case "HDEL":
-			result = "false"
-			//error if empty Key or Field
-			if svcCtx.Field == "" {
-				err = ErrEmptyKeyOrField
-			} else if err = rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Err(); err == nil {
 				result = "true"
 			}
 		case "DEL":

@@ -12,10 +12,13 @@ import (
 )
 
 type Ctx[k comparable, v any] struct {
-	Context         context.Context
-	RdsName         string
-	Rds             *redis.Client
-	Key             string
+	Context context.Context
+	RdsName string
+	Rds     *redis.Client
+
+	Key     string
+	KeyType string
+
 	Moder           *StructModifiers[v]
 	MarshalValue    func(value v) (valueStr string, err error)
 	UnmarshalValue  func(valbytes []byte) (value v, err error)
@@ -23,7 +26,7 @@ type Ctx[k comparable, v any] struct {
 }
 
 func (ctx *Ctx[k, v]) Duplicate(newKey, RdsSourceName string) (newCtx Ctx[k, v]) {
-	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.Moder, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
+	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.KeyType, ctx.Moder, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
 }
 func (ctx *Ctx[k, v]) Validate() error {
 	if disallowed, found := specification.DisAllowedDataKeyNames[ctx.Key]; found && disallowed {
@@ -36,9 +39,9 @@ func (ctx *Ctx[k, v]) Validate() error {
 }
 
 func NonKey[k comparable, v any](ops ...opSetter) *Ctx[k, v] {
-	ctx := &Ctx[k, v]{}
-	op := Option{KeyType: "nonkey"}.applyOptions(ops...)
-	if err := ctx.useOption(op); err != nil {
+	ctx := &Ctx[k, v]{KeyType: "nonkey"}
+	op := Option{}.buildOptions(ops...)
+	if err := ctx.applyOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
@@ -72,12 +75,12 @@ func (ctx *Ctx[k, v]) Scan(cursorOld uint64, match string, count int64) (keys []
 	return keys, cursorNew, nil
 }
 
-func (ctx *Ctx[k, v]) useOption(opt *Option) (err error) {
+func (ctx *Ctx[k, v]) applyOption(opt *Option) (err error) {
 	ctx.Key = opt.Key
 	ctx.RdsName = opt.DataSource
 
 	if opt.RegisterWebData {
-		ctx.RegisterWebData(opt.KeyType)
+		ctx.RegisterWebData()
 	}
 	if len(ctx.Key) == 0 {
 		ctx.Key, err = specification.GetValidDataKeyName((*v)(nil))

@@ -136,9 +136,9 @@ type WebDataDocs struct {
 	Instance        interface{}
 }
 
-func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
+func (ctx *Ctx[k, v]) RegisterWebData() {
 	var validRdsKeyTypes = map[string]bool{"string": true, "list": true, "set": true, "hash": true, "zset": true, "stream": true}
-	if _, ok := validRdsKeyTypes[keyType]; !ok {
+	if _, ok := validRdsKeyTypes[ctx.KeyType]; !ok {
 		return
 	}
 	// 获取 v 的类型
@@ -163,7 +163,7 @@ func (ctx *Ctx[k, v]) RegisterWebData(keyType string) {
 	}
 	initializeFields(valueElem)
 	rootKey := strings.Split(ctx.Key, ":")[0]
-	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: keyType, Instance: value, UpdateAt: time.Now().Unix(), CreateFromLocal: true}
+	dataSchema := &WebDataDocs{KeyName: rootKey, KeyType: ctx.KeyType, Instance: value, UpdateAt: time.Now().Unix(), CreateFromLocal: true}
 	WebDataDocsMap.Set(ctx.Key, dataSchema)
 	if SynWebDataRunOnce.TryLock() {
 		go syncWebDataToRedis()

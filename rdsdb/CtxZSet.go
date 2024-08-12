@@ -14,8 +14,9 @@ type CtxZSet[k comparable, v any] struct {
 
 func ZSetKey[k comparable, v any](ops ...opSetter) *CtxZSet[k, v] {
 	ctx := &CtxZSet[k, v]{}
-	op := Option{KeyType: "zset"}.applyOptions(ops...)
-	if err := ctx.useOption(op); err != nil {
+	ctx.KeyType = "zset"
+	op := Option{}.buildOptions(ops...)
+	if err := ctx.applyOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}

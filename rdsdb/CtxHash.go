@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/vars"
 	"github.com/redis/go-redis/v9"
@@ -13,21 +12,23 @@ import (
 
 type CtxHash[k comparable, v any] struct {
 	Ctx[k, v]
-	BloomFilterKeys *bloom.BloomFilter
 }
 
 func HashKey[k comparable, v any](ops ...opSetter) *CtxHash[k, v] {
 	ctx := &CtxHash[k, v]{}
-	op := Option{KeyType: "hash", DataSource: "default"}.applyOptions(ops...)
-	if err := ctx.useOption(op); err != nil {
+	ctx.KeyType = "hash"
+	op := Option{DataSource: "default"}.buildOptions(ops...)
+	if err := ctx.applyOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
+	//add to hashKeyMap
+	hashKeyMap.Set(ctx.Key+":"+ctx.RdsName, ctx)
 	return ctx
 }
 
 func (ctx *CtxHash[k, v]) ConcatKey(fields ...interface{}) *CtxHash[k, v] {
-	return &CtxHash[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName), ctx.BloomFilterKeys}
+	return &CtxHash[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName)}
 }
 
 func (ctx *CtxHash[k, v]) HGet(field k) (value v, err error) {
@@ -52,6 +53,23 @@ func (ctx *CtxHash[k, v]) HGet(field k) (value v, err error) {
 //
 //   - HSet("myhash", map[string]interface{}{"key1": "value1", "key2": "value2"})
 func (ctx *CtxHash[k, v]) HSet(values ...interface{}) error {
+
+	// if Moder is not nil, apply modifiers to the values
+	if ctx.Moder == nil {
+	} else if kvMap, ok := values[0].(map[k]v); ok {
+		for _, value := range kvMap {
+			ctx.Moder.ApplyModifiers(ctx.Context, &value)
+		}
+	} else if valuesIsSlice := reflect.TypeOf(values).Kind() == reflect.Slice; len(values)%2 == 0 && valuesIsSlice {
+		for i, l := 0, len(values); i < l; i += 2 {
+			value, ok := values[i+1].(v)
+			if !ok {
+				continue
+			}
+			ctx.Moder.ApplyModifiers(ctx.Context, &value)
+		}
+	}
+
 	KeyValuesStrs, err := ctx.toKeyValueStrs(values...)
 	if err != nil {
 		return err
@@ -95,7 +113,17 @@ func (ctx *CtxHash[k, v]) HRandField(count int) (fields []k, err error) {
 	}
 	return ctx.toKeys(cmd.Val())
 }
-func (ctx *CtxHash[k, v]) HMGET(fields ...k) (values []v, err error) {
+func (ctx *CtxHash[k, v]) HMGETInterface(fields ...interface{}) (values []interface{}, err error) {
+	var Values []v
+	if Values, err = ctx.HMGET(fields...); err != nil {
+		return nil, err
+	}
+	for _, value := range Values {
+		values = append(values, value)
+	}
+	return values, nil
+}
+func (ctx *CtxHash[k, v]) HMGET(fields ...interface{}) (values []v, err error) {
 	var (
 		cmd          *redis.SliceCmd
 		fieldsString []string

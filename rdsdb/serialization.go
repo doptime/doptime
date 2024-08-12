@@ -9,17 +9,42 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-func (ctx *Ctx[k, v]) toKeyStr(key k) (keyStr string, err error) {
+func (ctx *Ctx[k, v]) toKeyStr(key interface{}) (keyStr string, err error) {
 	if vv := reflect.ValueOf(key); vv.Kind() == reflect.Ptr && vv.IsNil() {
 		return "", nil
 	} else if !vv.IsValid() {
 		return keyStr, vars.ErrInvalidField
 	}
 	//if key is a string, directly append to keyBytes
-	if strkey, ok := interface{}(key).(string); ok {
+	if strkey, ok := key.(string); ok {
 		return strkey, nil
-	}
-	if keyBytes, err := json.Marshal(key); err != nil {
+	} else if strkey, ok := key.(int); ok {
+		return strconv.FormatInt(int64(strkey), 10), nil
+	} else if strkey, ok := key.(int8); ok {
+		return strconv.FormatInt(int64(strkey), 10), nil
+	} else if strkey, ok := key.(int16); ok {
+		return strconv.FormatInt(int64(strkey), 10), nil
+	} else if strkey, ok := key.(int32); ok {
+		return strconv.FormatInt(int64(strkey), 10), nil
+	} else if strkey, ok := key.(int64); ok {
+		return strconv.FormatInt(strkey, 10), nil
+	} else if strkey, ok := key.(uint); ok {
+		return strconv.FormatUint(uint64(strkey), 10), nil
+	} else if strkey, ok := key.(uint8); ok {
+		return strconv.FormatUint(uint64(strkey), 10), nil
+	} else if strkey, ok := key.(uint16); ok {
+		return strconv.FormatUint(uint64(strkey), 10), nil
+	} else if strkey, ok := key.(uint32); ok {
+		return strconv.FormatUint(uint64(strkey), 10), nil
+	} else if strkey, ok := key.(uint64); ok {
+		return strconv.FormatUint(strkey, 10), nil
+	} else if strkey, ok := key.(float32); ok {
+		return strconv.FormatFloat(float64(strkey), 'f', -1, 32), nil
+	} else if strkey, ok := key.(float64); ok {
+		return strconv.FormatFloat(strkey, 'f', -1, 64), nil
+	} else if strkey, ok := key.(bool); ok {
+		return strconv.FormatBool(strkey), nil
+	} else if keyBytes, err := json.Marshal(key); err != nil {
 		return keyStr, err
 	} else {
 		return string(keyBytes), nil
@@ -105,7 +130,7 @@ func (ctx *Ctx[k, v]) toValueStrFun() func(value v) (valueStr string, err error)
 	}
 }
 
-func (ctx *Ctx[k, v]) toKeyStrs(keys ...k) (KeyStrs []string, err error) {
+func (ctx *Ctx[k, v]) toKeyStrs(keys ...interface{}) (KeyStrs []string, err error) {
 	var keyStr string
 	for _, key := range keys {
 		if keyStr, err = ctx.toKeyStr(key); err != nil {

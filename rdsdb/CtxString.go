@@ -4,19 +4,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/doptime/doptime/dlog"
 )
 
 type CtxString[k comparable, v any] struct {
 	Ctx[k, v]
-	BloomFilterKeys *bloom.BloomFilter
 }
 
 func StringKey[k comparable, v any](ops ...opSetter) *CtxString[k, v] {
 	ctx := &CtxString[k, v]{}
-	op := Option{KeyType: "string"}.applyOptions(ops...)
-	if err := ctx.useOption(op); err != nil {
+	ctx.KeyType = "string"
+	op := Option{}.buildOptions(ops...)
+	if err := ctx.applyOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}
@@ -24,7 +23,7 @@ func StringKey[k comparable, v any](ops ...opSetter) *CtxString[k, v] {
 }
 
 func (ctx *CtxString[k, v]) ConcatKey(fields ...interface{}) *CtxString[k, v] {
-	return &CtxString[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName), ctx.BloomFilterKeys}
+	return &CtxString[k, v]{ctx.Duplicate(ConcatedKeys(ctx.Key, fields...), ctx.RdsName)}
 }
 func (ctx *CtxString[k, v]) Get(Field k) (value v, err error) {
 	FieldStr, err := ctx.toKeyStr(Field)

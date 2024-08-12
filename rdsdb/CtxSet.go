@@ -10,8 +10,9 @@ type CtxSet[k comparable, v any] struct {
 
 func SetKey[k comparable, v any](ops ...opSetter) *CtxSet[k, v] {
 	ctx := &CtxSet[k, v]{}
-	Opt := Option{KeyType: "set"}.applyOptions(ops...)
-	if err := ctx.useOption(Opt); err != nil {
+	ctx.KeyType = "set"
+	Opt := Option{}.buildOptions(ops...)
+	if err := ctx.applyOption(Opt); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
 		return nil
 	}

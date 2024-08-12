@@ -150,10 +150,6 @@ func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *Str
 
 // ApplyModifiers applies the registered modifiers to an instance of the struct.
 func (m *StructModifiers[T]) ApplyModifiers(ctx context.Context, s *T) error {
-	if m == nil {
-		return nil
-	}
-
 	structValue := reflect.ValueOf(s).Elem()
 
 	for _, fieldModifier := range m.fieldModifiers {

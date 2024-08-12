@@ -30,7 +30,7 @@ func TestStringKey(t *testing.T) {
 		t.Error("value.Name != value1")
 	}
 	keyTestInDemo.HSet("field2", &TestHash{Name: "value2"})
-	values, err = keyTestInDemo.HMGET([]string{"field1", "field2"}...)
+	values, err = keyTestInDemo.HMGET("field1", "field2")
 	if err != nil {
 		t.Error(err)
 	}
@@ -41,7 +41,7 @@ func TestStringKey(t *testing.T) {
 	if values[0] == nil {
 		t.Error("values[0] == nil")
 	}
-	if values, err = keyTestInDemo.HMGET([]string{"field1", "field2"}...); err != nil {
+	if values, err = keyTestInDemo.HMGET("field1", "field2"); err != nil {
 		t.Error(err)
 	}
 	if len(values) != 2 {
@@ -80,7 +80,7 @@ func TestStringKey2(t *testing.T) {
 	if err = keyTestInDemo.HSet(&k2, v2); err != nil {
 		t.Error(err)
 	}
-	values, err = keyTestInDemo.HMGET([]*string{&k1, &k2}...)
+	values, err = keyTestInDemo.HMGET(k1, k2)
 	if err != nil {
 		t.Error(err)
 	}
