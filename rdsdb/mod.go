@@ -108,6 +108,9 @@ func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *Str
 	}
 
 	structType := reflect.TypeOf((*T)(nil)).Elem()
+	for structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
 
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
