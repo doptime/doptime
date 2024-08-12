@@ -291,7 +291,7 @@ func httpStart(path string, port int64) {
 			hkeyInterface, err = rdsdb.HKeyInterface(svcCtx.Key, RedisDataSource)
 			if err == nil {
 				//convert strings.Split(svcCtx.Field, ",") to types of []interface{}
-				var fields []interface{} = SliceToInterface(strings.Split(svcCtx.Field, ","))
+				var fields []interface{} = sliceToInterface(strings.Split(svcCtx.Field, ","))
 				result, err = hkeyInterface.HMGETInterface(fields...)
 			}
 
