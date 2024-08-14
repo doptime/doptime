@@ -8,46 +8,12 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 var WebDataDocsMap cmap.ConcurrentMap[string, *WebDataDocs] = cmap.New[*WebDataDocs]()
 
 var SynWebDataRunOnce = sync.Mutex{}
 var KeyWebDataDocs = HashKey[string, *WebDataDocs](WithKey("Docs:Data"))
-
-func CheckDataSchema(key string, msgpackBytes []byte) error {
-	webdata, ok := WebDataDocsMap.Get(key)
-	if !ok {
-		return nil
-	}
-	if webdata.Instance == nil {
-		return fmt.Errorf("webdata.Instance is nil")
-	}
-	if len(msgpackBytes) == 0 {
-		return fmt.Errorf("msgpackBytes is empty")
-	}
-	//check if the msgpackBytes is the same type as the schema.Instance
-	//if not, return false
-	if reflect.TypeOf(webdata.Instance).Kind() == reflect.Ptr {
-		elemType := reflect.TypeOf(webdata.Instance).Elem()
-		if elemType.Kind() == reflect.Struct {
-			elem := reflect.New(elemType).Interface()
-			if err := msgpack.Unmarshal(msgpackBytes, elem); err != nil {
-				return err
-			}
-		}
-	} else {
-		elemType := reflect.TypeOf(webdata.Instance)
-		if elemType.Kind() == reflect.Struct {
-			elem := reflect.New(elemType).Interface()
-			if err := msgpack.Unmarshal(msgpackBytes, elem); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
 
 func initializeFields(value reflect.Value) {
 	if value.Kind() == reflect.Ptr {

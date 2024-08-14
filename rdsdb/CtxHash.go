@@ -2,11 +2,9 @@ package rdsdb
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
 
 	"github.com/doptime/doptime/dlog"
-	"github.com/doptime/doptime/vars"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -23,7 +21,7 @@ func HashKey[k comparable, v any](ops ...opSetter) *CtxHash[k, v] {
 		return nil
 	}
 	//add to hashKeyMap
-	hashKeyMap.Set(ctx.Key+":"+ctx.RdsName, ctx)
+	hKeyMap.Set(ctx.Key+":"+ctx.RdsName, ctx)
 	return ctx
 }
 
@@ -54,12 +52,11 @@ func (ctx *CtxHash[k, v]) HGet(field k) (value v, err error) {
 //   - HSet("myhash", map[string]interface{}{"key1": "value1", "key2": "value2"})
 func (ctx *CtxHash[k, v]) HSet(values ...interface{}) error {
 
+	if kvMap, ok := values[0].(map[k]v); ok {
+		return ctx.HMSet(kvMap)
+	}
 	// if Moder is not nil, apply modifiers to the values
 	if ctx.Moder == nil {
-	} else if kvMap, ok := values[0].(map[k]v); ok {
-		for _, value := range kvMap {
-			ctx.Moder.ApplyModifiers(ctx.Context, &value)
-		}
 	} else if valuesIsSlice := reflect.TypeOf(values).Kind() == reflect.Slice; len(values)%2 == 0 && valuesIsSlice {
 		for i, l := 0, len(values); i < l; i += 2 {
 			value, ok := values[i+1].(v)
@@ -71,6 +68,21 @@ func (ctx *CtxHash[k, v]) HSet(values ...interface{}) error {
 	}
 
 	KeyValuesStrs, err := ctx.toKeyValueStrs(values...)
+	if err != nil {
+		return err
+	}
+	return ctx.Rds.HSet(ctx.Context, ctx.Key, KeyValuesStrs).Err()
+}
+func (ctx *CtxHash[k, v]) HMSet(kvMap map[k]v) error {
+
+	// if Moder is not nil, apply modifiers to the values
+	if ctx.Moder != nil {
+		for _, value := range kvMap {
+			ctx.Moder.ApplyModifiers(ctx.Context, &value)
+		}
+	}
+
+	KeyValuesStrs, err := ctx.toKeyValueStrs(kvMap)
 	if err != nil {
 		return err
 	}
@@ -112,16 +124,6 @@ func (ctx *CtxHash[k, v]) HRandField(count int) (fields []k, err error) {
 		return nil, cmd.Err()
 	}
 	return ctx.toKeys(cmd.Val())
-}
-func (ctx *CtxHash[k, v]) HMGETInterface(fields ...interface{}) (values []interface{}, err error) {
-	var Values []v
-	if Values, err = ctx.HMGET(fields...); err != nil {
-		return nil, err
-	}
-	for _, value := range Values {
-		values = append(values, value)
-	}
-	return values, nil
 }
 func (ctx *CtxHash[k, v]) HMGET(fields ...interface{}) (values []v, err error) {
 	var (
@@ -234,51 +236,6 @@ func (ctx *CtxHash[k, v]) HSetNX(field k, value v) error {
 	return ctx.Rds.HSetNX(ctx.Context, ctx.Key, fieldStr, valStr).Err()
 }
 
-func (ctx *CtxHash[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []string, err error) {
-	var (
-		key              k
-		value            v
-		strkey, strvalue string
-	)
-	if len(keyValue) == 0 {
-		return keyValStrs, fmt.Errorf("key value is nil")
-	}
-	// if key value is a map, convert it to key value slice
-	if kvMap, ok := keyValue[0].(map[k]v); ok {
-		for key, value := range kvMap {
-			if strkey, err = ctx.toKeyStr(key); err != nil {
-				return nil, err
-			}
-			if strvalue, err = ctx.MarshalValue(value); err != nil {
-				return nil, err
-			}
-			keyValStrs = append(keyValStrs, strkey, strvalue)
-		}
-	} else if l := len(keyValue); l%2 == 0 {
-		for i := 0; i < l; i += 2 {
-			//type check, should be of type k and v
-			if key, ok = interface{}(keyValue[i]).(k); !ok {
-				dlog.Error().Any(" key must be of type k", key).Any("raw", keyValue[i+1]).Send()
-				return nil, vars.ErrInvalidField
-			}
-			if value, ok = interface{}(keyValue[i+1]).(v); !ok {
-				dlog.Error().Any(" value must be of type v", value).Any("raw", keyValue[i+1]).Send()
-				return nil, vars.ErrInvalidField
-			}
-			if strkey, err = ctx.toKeyStr(key); err != nil {
-				return nil, err
-			}
-			if strvalue, err = ctx.MarshalValue(value); err != nil {
-				return nil, err
-			}
-
-			keyValStrs = append(keyValStrs, strkey, strvalue)
-		}
-	} else {
-		return nil, vars.ErrInvalidField
-	}
-	return keyValStrs, nil
-}
 func (ctx *CtxHash[k, v]) HScan(cursor uint64, match string, count int64) (keys []k, values []v, cursorRet uint64, err error) {
 	var (
 		cmd          *redis.ScanCmd

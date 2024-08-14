@@ -37,15 +37,17 @@ func httpStart(path string, port int64) {
 	router := http.NewServeMux()
 	router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		var (
-			result        interface{}
-			bs            []byte
-			ok            bool
-			err           error
-			httpStatus    int = http.StatusOK
-			svcCtx        *DoptimeReqCtx
-			rds           *redis.Client
-			hkeyInterface rdsdb.HashInterface
-			operation, s  string = "", ""
+			result       interface{}
+			bs           []byte
+			ok           bool
+			err          error
+			httpStatus   int = http.StatusOK
+			svcCtx       *DoptimeReqCtx
+			rds          *redis.Client
+			hkey         *rdsdb.CtxHash[string, interface{}]
+			lkey         *rdsdb.CtxList[string, interface{}]
+			strKey       *rdsdb.CtxString[string, interface{}]
+			operation, s string = "", ""
 			//load redis datasource value from form
 			RedisDataSource            = r.FormValue("ds")
 			ResponseContentType string = "application/json"
@@ -278,9 +280,9 @@ func httpStart(path string, port int64) {
 				result, err = db.Get(svcCtx.Field)
 			}
 		case "HGET":
-			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
-			if db.Validate() == nil {
-				result, err = db.HGet(svcCtx.Field)
+			if hkey, result, err = rdsdb.HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			} else {
+				result, err = hkey.HGet(svcCtx.Field)
 			}
 		case "HGETALL":
 			db := rdsdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
@@ -288,24 +290,23 @@ func httpStart(path string, port int64) {
 				result, err = db.HGetAll()
 			}
 		case "HMGET":
-			hkeyInterface, err = rdsdb.HKeyInterface(svcCtx.Key, RedisDataSource)
-			if err == nil {
+			if hkey, result, err = rdsdb.HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			} else {
 				//convert strings.Split(svcCtx.Field, ",") to types of []interface{}
 				var fields []interface{} = sliceToInterface(strings.Split(svcCtx.Field, ","))
-				result, err = hkeyInterface.HMGETInterface(fields...)
+				result, err = hkey.HMGET(fields...)
 			}
 
 		case "HSET":
 			result = "false"
-			hkeyInterface, err = rdsdb.HKeyInterface(svcCtx.Key, RedisDataSource)
-			if err != nil {
-			} else if svcCtx.Key == "" || svcCtx.Field == "" {
+			if svcCtx.Key == "" || svcCtx.Field == "" {
 				err = ErrEmptyKeyOrField
 			} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
-			} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
-			} else if err = hkeyInterface.HSet(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, bs); err == nil {
-				result = "true"
+			} else if hkey, result, err = rdsdb.HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
+			} else {
+				err = hkey.HSet(svcCtx.Field, result)
 			}
+
 		case "HDEL":
 			result = "false"
 			//error if empty Key or Field
@@ -502,9 +503,9 @@ func httpStart(path string, port int64) {
 		case "LPUSH":
 			result = "false"
 			if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
-			} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
-			} else if err = rds.LPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
-				result = "true"
+			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
+			} else {
+				err = lkey.LPush(svcCtx.Ctx, svcCtx.Key, result)
 			}
 		case "LREM":
 			var count int64
@@ -540,17 +541,17 @@ func httpStart(path string, port int64) {
 		case "RPUSH":
 			result = "false"
 			if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
-			} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
-			} else if err = rds.RPush(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
-				result = "true"
+			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
+			} else {
+				err = lkey.RPush(svcCtx.Ctx, svcCtx.Key, result)
 			}
 
 		case "RPUSHX":
 			result = "false"
 			if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
-			} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
-			} else if err = rds.RPushX(svcCtx.Ctx, svcCtx.Key, bs).Err(); err == nil {
-				result = "true"
+			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
+			} else {
+				err = lkey.RPushX(svcCtx.Ctx, svcCtx.Key, result)
 			}
 
 		case "ZADD":
@@ -572,10 +573,9 @@ func httpStart(path string, port int64) {
 			result = "false"
 			if svcCtx.Key == "" || svcCtx.Field == "" {
 				err = ErrEmptyKeyOrField
-			} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
-			} else if err = rdsdb.CheckDataSchema(svcCtx.Key, bs); err != nil {
-			} else if rds.Set(svcCtx.Ctx, svcCtx.Key+":"+svcCtx.Field, bs, 0).Err() == nil {
-				result = "true"
+			} else if strKey, result, err = rdsdb.StringCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
+			} else {
+				err = strKey.Set(svcCtx.Key+":"+svcCtx.Field, result, 0)
 			}
 		case "DEL":
 			result = "false"

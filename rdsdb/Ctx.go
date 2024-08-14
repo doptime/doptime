@@ -28,15 +28,6 @@ type Ctx[k comparable, v any] struct {
 func (ctx *Ctx[k, v]) Duplicate(newKey, RdsSourceName string) (newCtx Ctx[k, v]) {
 	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.KeyType, ctx.Moder, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
 }
-func (ctx *Ctx[k, v]) Validate() error {
-	if disallowed, found := specification.DisAllowedDataKeyNames[ctx.Key]; found && disallowed {
-		return fmt.Errorf("key name is disallowed: " + ctx.Key)
-	}
-	if _, ok := config.Rds[ctx.RdsName]; !ok {
-		return fmt.Errorf("rds item unconfigured: " + ctx.RdsName)
-	}
-	return nil
-}
 
 func NonKey[k comparable, v any](ops ...opSetter) *Ctx[k, v] {
 	ctx := &Ctx[k, v]{KeyType: "nonkey"}
@@ -98,4 +89,47 @@ func (ctx *Ctx[k, v]) applyOption(opt *Option) (err error) {
 	ctx.UnmarshalValues = ctx.toValuesFunc()
 	ctx.Moder = RegisterStructModifiers[v](opt.Modifiers)
 	return nil
+}
+
+func (ctx *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []string, err error) {
+	var (
+		key              k
+		value            v
+		strkey, strvalue string
+	)
+	if len(keyValue) == 0 {
+		return keyValStrs, fmt.Errorf("key value is nil")
+	}
+	// if key value is a map, convert it to key value slice
+	if kvMap, ok := keyValue[0].(map[k]v); ok {
+		for key, value := range kvMap {
+			if strkey, err = ctx.toKeyStr(key); err != nil {
+				return nil, err
+			}
+			if strvalue, err = ctx.MarshalValue(value); err != nil {
+				return nil, err
+			}
+			keyValStrs = append(keyValStrs, strkey, strvalue)
+		}
+	} else if l := len(keyValue); l%2 == 0 {
+		for i := 0; i < l; i += 2 {
+			if strkey, err = ctx.toKeyStr(key); err != nil {
+				return nil, err
+			}
+			if strvalue, err = ctx.MarshalValue(value); err != nil {
+				return nil, err
+			}
+			keyValStrs = append(keyValStrs, strkey, strvalue)
+		}
+	} else {
+		return nil, fmt.Errorf("invalid type key value while converting to strings")
+	}
+	return keyValStrs, nil
+}
+func (ctx *Ctx[k, v]) MsgpackUnmarshalValue(msgpack []byte) (rets interface{}, err error) {
+	return nil, nil
+}
+
+func (ctx *Ctx[k, v]) MsgpackUnmarshalKeyValues(msgpack []byte) (rets interface{}, err error) {
+	return nil, nil
 }

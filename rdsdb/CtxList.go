@@ -32,6 +32,13 @@ func (ctx *CtxList[k, v]) RPush(param ...v) error {
 	}
 	return ctx.Rds.RPush(ctx.Context, ctx.Key, vals...).Err()
 }
+func (ctx *CtxList[k, v]) RPushX(param ...v) error {
+	vals, err := ctx.toValueStrsSlice(param...)
+	if err != nil {
+		return err
+	}
+	return ctx.Rds.RPushX(ctx.Context, ctx.Key, vals...).Err()
+}
 
 func (ctx *CtxList[k, v]) LPush(param ...v) error {
 	vals, err := ctx.toValueStrsSlice(param...)
