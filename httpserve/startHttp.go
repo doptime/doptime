@@ -301,7 +301,7 @@ func httpStart(path string, port int64) {
 			result = "false"
 			if svcCtx.Key == "" || svcCtx.Field == "" {
 				err = ErrEmptyKeyOrField
-			} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
+			} else if bs, err = svcCtx.MsgpackBody(r, true, false); err != nil {
 			} else if hkey, result, err = rdsdb.HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = hkey.HSet(svcCtx.Field, result)
@@ -502,7 +502,7 @@ func httpStart(path string, port int64) {
 			}
 		case "LPUSH":
 			result = "false"
-			if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
+			if bs, err = svcCtx.MsgpackBody(r, true, false); err != nil {
 			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = lkey.LPush(svcCtx.Ctx, svcCtx.Key, result)
@@ -540,7 +540,7 @@ func httpStart(path string, port int64) {
 			}
 		case "RPUSH":
 			result = "false"
-			if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
+			if bs, err = svcCtx.MsgpackBody(r, true, false); err != nil {
 			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = lkey.RPush(svcCtx.Ctx, svcCtx.Key, result)
@@ -548,7 +548,7 @@ func httpStart(path string, port int64) {
 
 		case "RPUSHX":
 			result = "false"
-			if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
+			if bs, err = svcCtx.MsgpackBody(r, true, false); err != nil {
 			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = lkey.RPushX(svcCtx.Ctx, svcCtx.Key, result)
@@ -561,10 +561,8 @@ func httpStart(path string, port int64) {
 			if err = db.Validate(); err != nil {
 			} else if Score, err = strconv.ParseFloat(r.FormValue("Score"), 64); err != nil {
 				result, err = "false", errors.New("parameter Score shoule be float")
-			} else if bs, err = svcCtx.MsgpackBody(r, true, true); len(bs) == 0 || err != nil {
+			} else if bs, err = svcCtx.MsgpackBody(r, true, &obj); len(bs) == 0 || err != nil {
 				result, err = "false", errors.New("missing MsgPack content")
-			} else if result, err = "true", msgpack.Unmarshal(bs, &obj); err != nil {
-				result = "false"
 			} else if err = db.ZAdd(redis.Z{Score: Score, Member: obj}); err != nil {
 				result = "false"
 			}
@@ -682,10 +680,8 @@ func httpStart(path string, port int64) {
 			)
 			if id := r.FormValue("ID"); id == "" {
 				result, err = "false", errors.New("no ID")
-			} else if bs, err = svcCtx.MsgpackBody(r, true, true); len(bs) == 0 && err != nil {
+			} else if bs, err = svcCtx.MsgpackBody(r, true, &obj); len(bs) == 0 && err != nil {
 				result, err = "false", errors.New("msgPack content err:"+err.Error())
-			} else if result, err = "true", msgpack.Unmarshal(bs, &obj); err != nil {
-				result = "false"
 			} else if err = rds.XAdd(svcCtx.Ctx, &redis.XAddArgs{Stream: svcCtx.Key, Values: map[string]interface{}{id: obj}}).Err(); err != nil {
 				result = "false"
 			}
