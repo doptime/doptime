@@ -301,7 +301,7 @@ func httpStart(path string, port int64) {
 			result = "false"
 			if svcCtx.Key == "" || svcCtx.Field == "" {
 				err = ErrEmptyKeyOrField
-			} else if bs, err = svcCtx.MsgpackBody(r, true, false); err != nil {
+			} else if bs, err = svcCtx.MsgpackBody(r, true, nil); err != nil {
 			} else if hkey, result, err = rdsdb.HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = hkey.HSet(svcCtx.Field, result)
@@ -502,7 +502,7 @@ func httpStart(path string, port int64) {
 			}
 		case "LPUSH":
 			result = "false"
-			if bs, err = svcCtx.MsgpackBody(r, true, false); err != nil {
+			if bs, err = svcCtx.MsgpackBody(r, true, nil); err != nil {
 			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = lkey.LPush(svcCtx.Ctx, svcCtx.Key, result)
@@ -511,7 +511,7 @@ func httpStart(path string, port int64) {
 			var count int64
 			if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 				result, err = "false", errors.New("parse count error:"+err.Error())
-			} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
+			} else if bs, err = svcCtx.MsgpackBody(r, true, nil); err != nil {
 			} else if err = rds.LRem(svcCtx.Ctx, svcCtx.Key, count, bs).Err(); err == nil {
 				result = "true"
 			}
@@ -520,7 +520,7 @@ func httpStart(path string, port int64) {
 			var index int64
 			if index, err = strconv.ParseInt(r.FormValue("Index"), 10, 64); err != nil {
 				err = errors.New("parse index error:" + err.Error())
-			} else if bs, err = svcCtx.MsgpackBody(r, true, true); err != nil {
+			} else if bs, err = svcCtx.MsgpackBody(r, true, nil); err != nil {
 			} else if err = rds.LSet(svcCtx.Ctx, svcCtx.Key, index, bs).Err(); err == nil {
 				result = "true"
 			}
@@ -540,7 +540,7 @@ func httpStart(path string, port int64) {
 			}
 		case "RPUSH":
 			result = "false"
-			if bs, err = svcCtx.MsgpackBody(r, true, false); err != nil {
+			if bs, err = svcCtx.MsgpackBody(r, true, nil); err != nil {
 			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = lkey.RPush(svcCtx.Ctx, svcCtx.Key, result)
@@ -548,7 +548,7 @@ func httpStart(path string, port int64) {
 
 		case "RPUSHX":
 			result = "false"
-			if bs, err = svcCtx.MsgpackBody(r, true, false); err != nil {
+			if bs, err = svcCtx.MsgpackBody(r, true, nil); err != nil {
 			} else if lkey, result, err = rdsdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = lkey.RPushX(svcCtx.Ctx, svcCtx.Key, result)
