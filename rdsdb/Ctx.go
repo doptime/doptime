@@ -3,6 +3,7 @@ package rdsdb
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/doptime/doptime/config"
@@ -19,14 +20,13 @@ type Ctx[k comparable, v any] struct {
 	Key     string
 	KeyType string
 
-	Moder           *StructModifiers[v]
 	MarshalValue    func(value v) (valueStr string, err error)
 	UnmarshalValue  func(valbytes []byte) (value v, err error)
 	UnmarshalValues func(valStrs []string) (values []v, err error)
 }
 
 func (ctx *Ctx[k, v]) Duplicate(newKey, RdsSourceName string) (newCtx Ctx[k, v]) {
-	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.KeyType, ctx.Moder, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
+	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.KeyType, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
 }
 
 func NonKey[k comparable, v any](ops ...opSetter) *Ctx[k, v] {
@@ -87,7 +87,7 @@ func (ctx *Ctx[k, v]) applyOption(opt *Option) (err error) {
 	ctx.MarshalValue = ctx.toValueStrFun()
 	ctx.UnmarshalValue = ctx.toValueFunc()
 	ctx.UnmarshalValues = ctx.toValuesFunc()
-	ctx.Moder = RegisterStructModifiers[v](opt.Modifiers)
+	RegisterStructModifiers(opt.Modifiers, reflect.TypeOf((*v)(nil)).Elem())
 	return nil
 }
 

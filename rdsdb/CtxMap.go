@@ -19,59 +19,57 @@ type CtxInterface interface {
 }
 
 var hKeyMap cmap.ConcurrentMap[string, CtxInterface] = cmap.New[CtxInterface]()
+var nonKey = NonKey[string, interface{}]()
 
-var hashKey = HashKey[string, interface{}](WithKey("_"))
+func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (db *Ctx[string, interface{}], value interface{}, err error) {
 
-// var zsetKey = ZSetKey[string, interface{}](WithKey("_"))
-var listKey = ListKey[string, interface{}](WithKey("_"))
+	hashInterface, exists := hKeyMap.Get(key + ":" + RedisDataSource)
+	if exists && msgpackData != nil {
+		value, err = hashInterface.CheckDataSchema(msgpackData)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	if disallowed, found := specification.DisAllowedDataKeyNames[key]; found && disallowed {
+		return nil, nil, fmt.Errorf("key name is disallowed: " + key)
+	}
+	ctx := Ctx[string, interface{}]{context.Background(), RedisDataSource, nil, key, keyType, nonKey.MarshalValue, nonKey.UnmarshalValue, nonKey.UnmarshalValues}
+	if ctx.Rds, exists = config.Rds[RedisDataSource]; !exists {
+		return nil, nil, fmt.Errorf("rds item unconfigured: " + RedisDataSource)
+	}
 
-// var setKey = SetKey[string, interface{}](WithKey("_"))
-var stringKey = StringKey[string, interface{}](WithKey("_"))
+	if value == nil && msgpackData != nil {
+		value, err = ctx.CheckDataSchema(msgpackData)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return &ctx, value, nil
+}
 
 func HashCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *CtxHash[string, interface{}], value interface{}, err error) {
-	hashInterface, ok := hKeyMap.Get(key + ":" + RedisDataSource)
-	if msgpackData != nil && ok {
-		if err = hashInterface.Validate(); err != nil {
-			return nil, nil, err
-		} else if value, err = hashInterface.CheckDataSchema(msgpackData); err != nil {
-			return nil, nil, err
-		}
-	}
-	ctx := Ctx[string, interface{}]{hashKey.Context, RedisDataSource, hashKey.Rds, key, hashKey.KeyType, hashKey.Moder, hashKey.MarshalValue, hashKey.UnmarshalValue, hashKey.UnmarshalValues}
-	if err = ctx.Validate(); err != nil {
+	var ctx *Ctx[string, interface{}]
+	ctx, value, err = CtxWitchValueSchemaChecked(key, "hash", RedisDataSource, msgpackData)
+	if err != nil {
 		return nil, nil, err
 	}
-	return &CtxHash[string, interface{}]{ctx}, value, nil
+	return &CtxHash[string, interface{}]{*ctx}, value, nil
 }
 func ListCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *CtxList[string, interface{}], value interface{}, err error) {
-	hashInterface, ok := hKeyMap.Get(key + ":" + RedisDataSource)
-	if msgpackData != nil && ok {
-		if err = hashInterface.Validate(); err != nil {
-			return nil, nil, err
-		} else if value, err = hashInterface.CheckDataSchema(msgpackData); err != nil {
-			return nil, nil, err
-		}
-	}
-	ctx := Ctx[string, interface{}]{listKey.Context, RedisDataSource, listKey.Rds, key, listKey.KeyType, listKey.Moder, listKey.MarshalValue, listKey.UnmarshalValue, listKey.UnmarshalValues}
-	if err = ctx.Validate(); err != nil {
+	var ctx *Ctx[string, interface{}]
+	ctx, value, err = CtxWitchValueSchemaChecked(key, "list", RedisDataSource, msgpackData)
+	if err != nil {
 		return nil, nil, err
 	}
-	return &CtxList[string, interface{}]{ctx}, value, nil
+	return &CtxList[string, interface{}]{*ctx}, value, nil
 }
 func StringCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *CtxString[string, interface{}], value interface{}, err error) {
-	hashInterface, ok := hKeyMap.Get(key + ":" + RedisDataSource)
-	if msgpackData != nil && ok {
-		if err = hashInterface.Validate(); err != nil {
-			return nil, nil, err
-		} else if value, err = hashInterface.CheckDataSchema(msgpackData); err != nil {
-			return nil, nil, err
-		}
-	}
-	ctx := Ctx[string, interface{}]{stringKey.Context, RedisDataSource, stringKey.Rds, key, stringKey.KeyType, stringKey.Moder, stringKey.MarshalValue, stringKey.UnmarshalValue, stringKey.UnmarshalValues}
-	if err = ctx.Validate(); err != nil {
+	var ctx *Ctx[string, interface{}]
+	ctx, value, err = CtxWitchValueSchemaChecked(key, "string", RedisDataSource, msgpackData)
+	if err != nil {
 		return nil, nil, err
 	}
-	return &CtxString[string, interface{}]{ctx}, value, nil
+	return &CtxString[string, interface{}]{*ctx}, value, nil
 }
 
 func (ctx *Ctx[k, v]) Validate() error {
@@ -105,15 +103,4 @@ func (ctx *Ctx[k, v]) CheckDataSchema(msgpackBytes []byte) (val interface{}, err
 	}
 
 	return nil, fmt.Errorf("type %v is not a struct or pointer to struct", vType)
-}
-func (ctx *Ctx[k, v]) ModData(val interface{}) (err error) {
-	_val, ok := val.(v)
-	if !ok {
-		return nil
-	}
-	if ctx.Moder != nil {
-		return ctx.Moder.ApplyModifiers(context.Background(), &_val)
-	}
-
-	return nil
 }

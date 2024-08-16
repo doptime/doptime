@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 // GenerateNanoid creates a unique identifier using the specified size.
@@ -44,7 +46,7 @@ type FieldModifier struct {
 }
 
 // StructModifiers holds a collection of registered modifiers for a specific struct type and cached tag info.
-type StructModifiers[T any] struct {
+type StructModifiers struct {
 	modifierRegistry map[string]ModifierFunc
 	fieldModifiers   []*FieldModifier
 }
@@ -117,9 +119,11 @@ func ApplyCounter(ctx context.Context, fieldValue interface{}, tagParam string) 
 	return fieldValue, nil
 }
 
+var ModerMap = cmap.New[*StructModifiers]()
+
 // RegisterStructModifiers initializes the StructModifiers for a specific struct type with optional extra modifiers.
-func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *StructModifiers[T] {
-	structType := reflect.TypeOf((*T)(nil)).Elem()
+func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType reflect.Type) *StructModifiers {
+	//structType := reflect.TypeOf((*T)(nil)).Elem()
 	for structType.Kind() == reflect.Ptr {
 		structType = structType.Elem()
 	}
@@ -127,7 +131,7 @@ func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *Str
 		return nil
 	}
 
-	modifiers := &StructModifiers[T]{
+	modifiers := &StructModifiers{
 		modifierRegistry: map[string]ModifierFunc{
 			"default":    ApplyDefault,
 			"unixtime":   ApplyUnixTime,
@@ -180,15 +184,32 @@ func RegisterStructModifiers[T any](extraModifiers map[string]ModifierFunc) *Str
 	if len(modifiers.fieldModifiers) == 0 {
 		return nil
 	}
+	ModerMap.Set(structType.String(), modifiers)
 
 	return modifiers
 }
 
 // ApplyModifiers applies the registered modifiers to an instance of the struct.
-func (m *StructModifiers[T]) ApplyModifiers(ctx context.Context, s *T) error {
-	structValue := reflect.ValueOf(s).Elem()
+func getModifier(structType reflect.Type) *StructModifiers {
+	if structType.Kind() == reflect.Pointer {
+		structType = structType.Elem()
+	}
 
-	for _, fieldModifier := range m.fieldModifiers {
+	modifiers, ok := ModerMap.Get(structType.String())
+	if !ok {
+		return nil
+	}
+	return modifiers
+}
+func (modifiers *StructModifiers) ApplyModifiers(ctx context.Context, val interface{}) error {
+	var structType reflect.Type = reflect.TypeOf(val)
+	modifiers, ok := ModerMap.Get(structType.String())
+	if !ok {
+		return nil
+	}
+	structValue := reflect.ValueOf(val).Elem()
+
+	for _, fieldModifier := range modifiers.fieldModifiers {
 		field := structValue.Field(fieldModifier.FieldIndex)
 		if fieldModifier.ForceApply || isZero(field) {
 			newValue, err := fieldModifier.Modifier(ctx, field.Interface(), fieldModifier.TagParam)
