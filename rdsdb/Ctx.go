@@ -67,8 +67,12 @@ func (ctx *Ctx[k, v]) Scan(cursorOld uint64, match string, count int64) (keys []
 }
 
 func (ctx *Ctx[k, v]) applyOption(opt *Option) (err error) {
-	ctx.Key = opt.Key
-	ctx.RdsName = opt.DataSource
+	if len(opt.Key) > 0 {
+		ctx.Key = opt.Key
+	}
+	if len(opt.DataSource) > 0 {
+		ctx.RdsName = opt.DataSource
+	}
 
 	if opt.RegisterWebData {
 		ctx.RegisterWebData()
