@@ -24,15 +24,11 @@ var nonKey = NonKey[string, interface{}]()
 func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (db *Ctx[string, interface{}], value interface{}, err error) {
 
 	hashInterface, exists := hKeyMap.Get(key + ":" + RedisDataSource)
-	if exists && msgpackData != nil {
+	if hashInterface != nil && exists && msgpackData != nil {
 		value, err = hashInterface.CheckDataSchema(msgpackData)
 		if err != nil {
 			return nil, nil, err
 		}
-	}
-	if hashInterface != nil {
-		value, err = hashInterface.CheckDataSchema(msgpackData)
-		hashInterface.ApplyModifiers(&value)
 	}
 	if disallowed, found := specification.DisAllowedDataKeyNames[key]; found && disallowed {
 		return nil, nil, fmt.Errorf("key name is disallowed: " + key)
