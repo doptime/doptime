@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"time"
 
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/specification"
@@ -34,9 +33,7 @@ func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msg
 	if disallowed, found := specification.DisAllowedDataKeyNames[key]; found && disallowed {
 		return nil, nil, fmt.Errorf("key name is disallowed: " + key)
 	}
-	_ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
-	defer cancel()
-	ctx := Ctx[string, interface{}]{_ctx, RedisDataSource, nil, key, keyType, nonKey.MarshalValue, nonKey.UnmarshalValue, nonKey.UnmarshalValues}
+	ctx := Ctx[string, interface{}]{context.Background(), RedisDataSource, nil, key, keyType, nonKey.MarshalValue, nonKey.UnmarshalValue, nonKey.UnmarshalValues}
 	if ctx.Rds, exists = config.Rds[RedisDataSource]; !exists {
 		return nil, nil, fmt.Errorf("rds item unconfigured: " + RedisDataSource)
 	}

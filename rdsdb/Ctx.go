@@ -30,7 +30,7 @@ func (ctx *Ctx[k, v]) Duplicate(newKey, RdsSourceName string) (newCtx Ctx[k, v])
 }
 
 func NonKey[k comparable, v any](ops ...opSetter) *Ctx[k, v] {
-	ctx := &Ctx[k, v]{KeyType: "nonkey"}
+	ctx := &Ctx[k, v]{Key: "nonkey", KeyType: "nonkey"}
 	op := Option{}.buildOptions(ops...)
 	if err := ctx.applyOption(op); err != nil {
 		dlog.Error().Err(err).Msg("data.New failed")
