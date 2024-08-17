@@ -56,17 +56,17 @@ func (ctx *CtxHash[k, v]) HSet(values ...interface{}) error {
 		return ctx.HMSet(kvMap)
 	}
 	// if Moder is not nil, apply modifiers to the values
-	if modifiers := getModifier(reflect.TypeOf((*v)(nil))); modifiers != nil {
-		if valuesIsSlice := reflect.TypeOf(values).Kind() == reflect.Slice; len(values)%2 == 0 && valuesIsSlice {
+	if len(values)%2 == 0 && reflect.TypeOf(values).Kind() == reflect.Slice {
+		if modifiers := getModifier(reflect.TypeOf((*v)(nil))); modifiers != nil {
 			for i, l := 0, len(values); i < l; i += 2 {
-				value, ok := values[i+1].(v)
-				if !ok {
-					continue
+				if value, ok := values[i+1].(v); ok {
+					modifiers.ApplyModifiers(&value)
+				} else {
+					break
 				}
-				modifiers.ApplyModifiers(ctx.Context, &value)
+
 			}
 		}
-
 	}
 
 	KeyValuesStrs, err := ctx.toKeyValueStrs(values...)
@@ -80,7 +80,7 @@ func (ctx *CtxHash[k, v]) HMSet(kvMap map[k]v) error {
 	// if Moder is not nil, apply modifiers to the values
 	if modifiers := getModifier(reflect.TypeOf((*v)(nil))); modifiers != nil {
 		for _, value := range kvMap {
-			modifiers.ApplyModifiers(ctx.Context, &value)
+			modifiers.ApplyModifiers(&value)
 		}
 	}
 

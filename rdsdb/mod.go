@@ -1,7 +1,6 @@
 package rdsdb
 
 import (
-	"context"
 	"crypto/rand"
 	"math/big"
 	"reflect"
@@ -34,7 +33,7 @@ func GenerateNanoid(size int) string {
 }
 
 // ModifierFunc is the function signature for all field modifiers.
-type ModifierFunc func(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error)
+type ModifierFunc func(fieldValue interface{}, tagParam string) (interface{}, error)
 
 // FieldModifier stores metadata for a struct field's modifier.
 type FieldModifier struct {
@@ -52,7 +51,7 @@ type StructModifiers struct {
 }
 
 // TrimSpaces removes leading and trailing white spaces from the string.
-func TrimSpaces(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func TrimSpaces(fieldValue interface{}, tagParam string) (interface{}, error) {
 	if str, ok := fieldValue.(string); ok {
 		return strings.TrimSpace(str), nil
 	}
@@ -60,7 +59,7 @@ func TrimSpaces(ctx context.Context, fieldValue interface{}, tagParam string) (i
 }
 
 // ToLowercase converts the string to lowercase.
-func ToLowercase(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func ToLowercase(fieldValue interface{}, tagParam string) (interface{}, error) {
 	if str, ok := fieldValue.(string); ok {
 		return strings.ToLower(str), nil
 	}
@@ -68,7 +67,7 @@ func ToLowercase(ctx context.Context, fieldValue interface{}, tagParam string) (
 }
 
 // ToUppercase converts the string to uppercase.
-func ToUppercase(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func ToUppercase(fieldValue interface{}, tagParam string) (interface{}, error) {
 	if str, ok := fieldValue.(string); ok {
 		return strings.ToUpper(str), nil
 	}
@@ -76,7 +75,7 @@ func ToUppercase(ctx context.Context, fieldValue interface{}, tagParam string) (
 }
 
 // ToTitleCase converts the string to title case.
-func ToTitleCase(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func ToTitleCase(fieldValue interface{}, tagParam string) (interface{}, error) {
 	if str, ok := fieldValue.(string); ok {
 		return strings.Title(strings.ToLower(str)), nil
 	}
@@ -84,13 +83,13 @@ func ToTitleCase(ctx context.Context, fieldValue interface{}, tagParam string) (
 }
 
 // FormatDate formats a time.Time value according to the provided format.
-func FormatDate(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func FormatDate(fieldValue interface{}, tagParam string) (interface{}, error) {
 	if t, ok := fieldValue.(time.Time); ok {
 		return t.Format(tagParam), nil
 	}
 	return fieldValue, nil
 }
-func ApplyCounter(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func ApplyCounter(fieldValue interface{}, tagParam string) (interface{}, error) {
 	if v, ok := fieldValue.(int); ok {
 		return v + 1, nil
 	} else if v, ok := fieldValue.(int8); ok {
@@ -201,18 +200,16 @@ func getModifier(structType reflect.Type) *StructModifiers {
 	}
 	return modifiers
 }
-func (modifiers *StructModifiers) ApplyModifiers(ctx context.Context, val interface{}) error {
-	var structType reflect.Type = reflect.TypeOf(val)
-	modifiers, ok := ModerMap.Get(structType.String())
-	if !ok {
-		return nil
+func (modifiers *StructModifiers) ApplyModifiers(val interface{}) error {
+	structValue := reflect.ValueOf(val)
+	for structValue.Kind() == reflect.Ptr {
+		structValue = structValue.Elem()
 	}
-	structValue := reflect.ValueOf(val).Elem()
 
 	for _, fieldModifier := range modifiers.fieldModifiers {
 		field := structValue.Field(fieldModifier.FieldIndex)
 		if fieldModifier.ForceApply || isZero(field) {
-			newValue, err := fieldModifier.Modifier(ctx, field.Interface(), fieldModifier.TagParam)
+			newValue, err := fieldModifier.Modifier(field.Interface(), fieldModifier.TagParam)
 			if err != nil {
 				return err
 			}
@@ -228,12 +225,12 @@ func (modifiers *StructModifiers) ApplyModifiers(ctx context.Context, val interf
 }
 
 // ApplyDefault sets a default value if the current value is nil or the zero value for its type.
-func ApplyDefault(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func ApplyDefault(fieldValue interface{}, tagParam string) (interface{}, error) {
 	return tagParam, nil
 }
 
 // ApplyUnixTime sets the value to the current Unix timestamp based on provided unit.
-func ApplyUnixTime(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func ApplyUnixTime(fieldValue interface{}, tagParam string) (interface{}, error) {
 	switch tagParam {
 	case "ms":
 		return time.Now().UnixMilli(), nil
@@ -243,7 +240,7 @@ func ApplyUnixTime(ctx context.Context, fieldValue interface{}, tagParam string)
 }
 
 // GenerateNanoidFunc generates a Nanoid and returns it as a string.
-func GenerateNanoidFunc(ctx context.Context, fieldValue interface{}, tagParam string) (interface{}, error) {
+func GenerateNanoidFunc(fieldValue interface{}, tagParam string) (interface{}, error) {
 	size := 21
 	if tagParam != "" {
 		size, _ = strconv.Atoi(tagParam)

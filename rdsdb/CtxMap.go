@@ -3,7 +3,6 @@ package rdsdb
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/specification"
@@ -15,6 +14,7 @@ type CtxInterface interface {
 	// MsgpackUnmarshalValue(msgpack []byte) (rets interface{}, err error)
 	// MsgpackUnmarshalKeyValues(msgpack []byte) (rets interface{}, err error)
 	CheckDataSchema(msgpackBytes []byte) (val interface{}, err error)
+	ApplyModifiers(val interface{}) error
 	Validate() error
 }
 
@@ -29,6 +29,10 @@ func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msg
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+	if hashInterface != nil {
+		value, err = hashInterface.CheckDataSchema(msgpackData)
+		hashInterface.ApplyModifiers(&value)
 	}
 	if disallowed, found := specification.DisAllowedDataKeyNames[key]; found && disallowed {
 		return nil, nil, fmt.Errorf("key name is disallowed: " + key)
@@ -88,19 +92,10 @@ func (ctx *Ctx[k, v]) CheckDataSchema(msgpackBytes []byte) (val interface{}, err
 	}
 
 	var vInstance v
-	vType := reflect.TypeOf(vInstance)
 
-	if vType.Kind() == reflect.Ptr {
-		vType = vType.Elem()
+	if err = msgpack.Unmarshal(msgpackBytes, &vInstance); err != nil {
+		return nil, err
 	}
 
-	if vType.Kind() == reflect.Struct {
-		elem := reflect.New(vType).Interface()
-		if err := msgpack.Unmarshal(msgpackBytes, elem); err != nil {
-			return nil, err
-		}
-		return elem, nil
-	}
-
-	return nil, fmt.Errorf("type %v is not a struct or pointer to struct", vType)
+	return vInstance, nil
 }
