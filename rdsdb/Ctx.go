@@ -123,7 +123,6 @@ func (ctx *Ctx[k, v]) toKeyValueStrs(keyValue ...interface{}) (keyValStrs []stri
 		}
 	} else if l := len(keyValue); l%2 == 0 {
 		for i := 0; i < l; i += 2 {
-
 			if key, ok = keyValue[i].(k); !ok {
 				dlog.Error().Any(" key must be of type k", key).Any("raw", keyValue[i+1]).Send()
 				return nil, fmt.Errorf("invalid key type in toKeyValueStrs")

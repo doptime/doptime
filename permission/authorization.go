@@ -13,10 +13,10 @@ var rdsPermit = HashKey[string, string](WithKey("_permissions"))
 var permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 
 // this version of IsPermitted is design for fast searching & modifying
-func IsPermitted(dataKey string, operation string) (ok bool) {
+func IsPermitted(operation string) (ok bool) {
 	var (
 		autoPermit                            bool   = config.Cfg.Http.AutoAuth
-		permitKey                             string = operation + "::" + dataKey
+		permitKey                             string = operation
 		permitKeyAllowed, permitKeyDisallowed string = permitKey + "::on", permitKey + "::off"
 	)
 	//blacklist first

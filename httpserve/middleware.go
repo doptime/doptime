@@ -6,54 +6,52 @@ import (
 )
 
 func (svc *DoptimeReqCtx) UpdateKeyFieldWithJwtClaims() (operation string, err error) {
-	var (
-		ok     bool
-		obj    interface{}
-		subTag string
-		f64    float64
-	)
-	operation = strings.ToLower(svc.Cmd)
-	KeyContainsAt := strings.Contains(svc.Key, "@")
-	FieldContainsAt := strings.Contains(svc.Field, "@")
-	if !KeyContainsAt && !FieldContainsAt {
-		return operation, nil
-	}
-	operation = "@" + operation
-
 	if svc.Claims == nil {
 		return operation, fmt.Errorf("JWT token is nil")
 	}
+	skey := strings.Split(svc.Key, ":")[0]
+	skey = strings.Split(skey, "@")[0]
+	operation = strings.ToLower(svc.Cmd) + "::" + skey
+
 	// Field contains @*, replace @* with jwt value
 	// 只要设置的时候，有@id,@pub，可以确保写不越权，因为 是"@" + operation
-	if FieldContainsAt {
-		FieldParts := strings.Split(svc.Field, "@")
-		if subTag = FieldParts[len(FieldParts)-1]; len(subTag) == 0 {
-			return operation, fmt.Errorf("jwt missing subTag " + subTag)
+	keyParts, fieldPars := strings.Split(svc.Key, "@"), strings.Split(svc.Field, "@")
+	if len(keyParts) > 1 {
+		operation += "@" + strings.Join(keyParts[1:], "@")
+		svc.Key, err = replaceAtWithJwtClaims(svc.Claims, keyParts)
+		if err != nil {
+			return operation, err
 		}
-		if obj, ok = svc.Claims[subTag]; !ok {
-			return operation, fmt.Errorf("jwt missing subTag " + subTag)
-		}
-		// if 64 is int, convert to int
-		if f64, ok = obj.(float64); ok && f64 == float64(int64(f64)) {
-			obj = int64(f64)
-		}
-		FieldParts[len(FieldParts)-1] = fmt.Sprintf("%v", obj)
-		svc.Field = strings.Join(FieldParts, "")
 	}
-	if KeyContainsAt {
-		KeyParts := strings.Split(svc.Key, "@")
-		if subTag = KeyParts[len(KeyParts)-1]; len(subTag) == 0 {
-			return operation, fmt.Errorf("jwt missing subTag " + subTag)
+	if len(fieldPars) > 1 {
+		operation += "::@" + strings.Join(fieldPars[1:], "@")
+		svc.Field, err = replaceAtWithJwtClaims(svc.Claims, fieldPars)
+		if err != nil {
+			return operation, err
 		}
-		if obj, ok = svc.Claims[subTag]; !ok {
-			return operation, fmt.Errorf("jwt missing subTag " + subTag)
-		}
-		// if 64 is int, convert to int
-		if f64, ok = obj.(float64); ok && f64 == float64(int64(f64)) {
-			obj = int64(f64)
-		}
-		KeyParts[len(KeyParts)-1] = fmt.Sprintf("%v", obj)
-		svc.Key = strings.Join(KeyParts, "")
 	}
 	return operation, nil
+}
+
+func replaceAtWithJwtClaims(claims map[string]interface{}, KeyParts []string) (newKey string, err error) {
+	var (
+		ok         bool
+		obj        interface{}
+		strBuilder strings.Builder
+		f64        float64
+	)
+	strBuilder.WriteString(KeyParts[0])
+	for i, l := 1, len(KeyParts); i < l; i++ {
+		keyPart := KeyParts[i]
+		if obj, ok = claims[keyPart]; !ok {
+			return "", fmt.Errorf("jwt missing key " + keyPart[1:])
+		} else {
+			// if 64 is int, convert to int
+			if f64, ok = obj.(float64); ok && f64 == float64(int64(f64)) {
+				obj = int64(f64)
+			}
+			strBuilder.WriteString(fmt.Sprintf("%v", obj))
+		}
+	}
+	return strBuilder.String(), nil
 }

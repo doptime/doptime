@@ -85,7 +85,7 @@ func httpStart(path string, port int64) {
 			httpStatus = http.StatusForbidden
 			err = ErrSUNotMatch
 			goto responseHttp
-		} else if DataOpSuperUserToken == "" && !permission.IsPermitted(svcCtx.Key, operation) {
+		} else if DataOpSuperUserToken == "" && !permission.IsPermitted(operation) {
 			httpStatus = http.StatusForbidden
 			err = ErrOperationNotPermited
 			goto responseHttp
