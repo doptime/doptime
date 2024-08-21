@@ -25,7 +25,7 @@ func GetServiceDB(serviceName string) (db *redis.Client, ok bool) {
 	)
 	serviceInfo, _ := ApiServices.Get(serviceName)
 	DataSource := serviceInfo.GetDataSource()
-	if db, exists = config.Rds[DataSource]; !exists {
+	if db, exists = config.Rds.Get(DataSource); !exists {
 		dlog.Error().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
 	}
 	return db, exists

@@ -10,11 +10,8 @@ import (
 	"github.com/doptime/doptime/vars"
 )
 
-func Api[i any, o any](
-	f func(InParameter i) (ret o, err error),
-	options ...*Option,
-) (out *Context[i, o]) {
-	var option *Option = mergeNewOptions(&Option{ApiSourceRds: "default"}, options...)
+func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...optionSetter) (out *Context[i, o]) {
+	var option *Option = Option{ApiSourceRds: "default"}.mergeNewOptions(options...)
 
 	out = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
@@ -46,7 +43,7 @@ func Api[i any, o any](
 
 	iType := reflect.TypeOf((*i)(nil)).Elem()
 	oType := reflect.TypeOf((*o)(nil)).Elem()
-	apiinfo.RegisterApi(out.Name, iType, oType, option.PublishInfo)
+	apiinfo.RegisterApi(out.Name, iType, oType)
 
 	dlog.Debug().Str("ApiNamed service created completed!", out.Name).Send()
 	return out

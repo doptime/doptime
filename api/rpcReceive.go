@@ -39,7 +39,7 @@ func rpcReceive() {
 			continue
 		}
 
-		if rds, exists = config.Rds[dataSource]; !exists {
+		if rds, exists = config.Rds.Get(dataSource); !exists {
 			dlog.Error().Str("dataSource missing in rpcReceive", dataSource).Send()
 			continue
 		}
@@ -124,7 +124,7 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 	}
 	ctx := context.Background()
 	DataSource := service.GetDataSource()
-	if rds, exists = config.Rds[DataSource]; !exists {
+	if rds, exists = config.Rds.Get(DataSource); !exists {
 		dlog.Error().Str("DataSource not defined in enviroment while CallApiLocallyAndSendBackResult", DataSource).Send()
 		return fmt.Errorf("DataSource not defined in enviroment %s", DataSource)
 	}

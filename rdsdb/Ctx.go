@@ -90,7 +90,7 @@ func (ctx *Ctx[k, v]) applyOption(opt *Option) (err error) {
 		}
 	}
 	var exists bool
-	if ctx.Rds, exists = config.Rds[ctx.RdsName]; !exists {
+	if ctx.Rds, exists = config.Rds.Get(ctx.RdsName); !exists {
 		return fmt.Errorf("rds item unconfigured: " + ctx.RdsName)
 	}
 	ctx.Context = context.Background()

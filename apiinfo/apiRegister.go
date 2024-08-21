@@ -24,11 +24,9 @@ var KeyApiDataDocs = HashKey[string, *DocsOfApi](WithKey("Docs:Api"))
 
 var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
 
-var ApiProviderMap cmap.ConcurrentMap[string, *PublishSetting] = cmap.New[*PublishSetting]()
-
 var SynAPIRunOnce = sync.Mutex{}
 
-func RegisterApi(Name string, paramInType reflect.Type, paramOutType reflect.Type, providerinfo *PublishSetting) (err error) {
+func RegisterApi(Name string, paramInType reflect.Type, paramOutType reflect.Type) (err error) {
 	_, ok := ApiDocsMap.Get(Name)
 	if ok {
 		return nil
@@ -59,8 +57,8 @@ func syncWithRedis() {
 	for {
 		now := time.Now().Unix()
 
-		client, ok := config.Rds["default"]
-		if !ok || (ApiDocsMap.Count() == 0 && ApiProviderMap.Count() == 0) {
+		client, ok := config.Rds.Get("default")
+		if !ok || (ApiDocsMap.Count() == 0) {
 			time.Sleep(time.Minute)
 			continue
 		}
@@ -70,14 +68,6 @@ func syncWithRedis() {
 				value.UpdateAt = now
 				if bs, err := msgpack.Marshal(value); err == nil {
 					clientpiepie.HSet(context.Background(), "Docs:Api", value.KeyName, string(bs)).Err()
-				}
-			})
-		}
-		if ok && ApiProviderMap.Count() > 0 {
-			ApiProviderMap.IterCb(func(key string, value *PublishSetting) {
-				value.ActiveAt = now
-				if bs, err := msgpack.Marshal(value); err == nil {
-					clientpiepie.HSet(context.Background(), "Docs:ApiProvider", key, string(bs)).Err()
 				}
 			})
 		}

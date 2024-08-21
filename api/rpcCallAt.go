@@ -30,7 +30,7 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error)) (callAtFun func(
 		dlog.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
 	}
 	dataSource, apiName := apiInfo.GetDataSource(), apiInfo.GetName()
-	if db, exists = config.Rds[dataSource]; !exists {
+	if db, exists = config.Rds.Get(dataSource); !exists {
 		dlog.Info().Str("DataSource not defined in enviroment", dataSource).Send()
 		return nil
 	}

@@ -16,9 +16,9 @@ import (
 // create Api context.
 // This New function is for the case the API is defined outside of this package.
 // If the API is defined in this package, use Api() instead.
-func Rpc[i any, o any](options ...*Option) (rpc *Context[i, o]) {
+func Rpc[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 
-	var option *Option = mergeNewOptions(&Option{ApiSourceRds: "default"}, options...)
+	var option *Option = Option{ApiSourceRds: "default"}.mergeNewOptions(options...)
 
 	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
@@ -44,7 +44,7 @@ func Rpc[i any, o any](options ...*Option) (rpc *Context[i, o]) {
 		// } else {
 		// 	Values = []string{"data", string(b)}
 		// }
-		if db, exists = config.Rds[rpc.ApiSourceRds]; !exists {
+		if db, exists = config.Rds.Get(rpc.ApiSourceRds); !exists {
 			dlog.Info().Str("DataSource not defined in enviroment", rpc.ApiSourceRds).Send()
 			return ret, err
 		}

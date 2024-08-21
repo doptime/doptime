@@ -140,7 +140,7 @@ func rpcCallAtTasksLoad() {
 		if !ok {
 			continue
 		}
-		if rds, exists = config.Rds[dataSource]; !exists {
+		if rds, exists = config.Rds.Get(dataSource); !exists {
 			dlog.Info().AnErr("err LoadDelayApiTask, ", err).Send()
 			continue
 		}

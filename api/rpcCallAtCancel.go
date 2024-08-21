@@ -24,7 +24,7 @@ func CallAtCancel[i any](f func(timeAt time.Time, InParam i) (err error), timeAt
 	if api, exists = callAtfun2Api.Get(funcPtr); !exists {
 		dlog.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
 	}
-	if Rds, exists = config.Rds[api.GetDataSource()]; !exists {
+	if Rds, exists = config.Rds.Get(api.GetDataSource()); !exists {
 		dlog.Info().Str("DataSource not defined in enviroment", api.GetDataSource()).Send()
 		return fmt.Errorf("DataSource not defined in enviroment")
 	}

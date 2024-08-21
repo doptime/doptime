@@ -70,7 +70,7 @@ func httpStart(path string, port int64) {
 		}
 
 		//RedisDataSource should be valid
-		if rds, ok = config.Rds[RedisDataSource]; !ok {
+		if rds, ok = config.Rds.Get(RedisDataSource); !ok {
 			httpStatus = http.StatusInternalServerError
 			goto responseHttp
 		}

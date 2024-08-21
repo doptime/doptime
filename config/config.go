@@ -13,6 +13,7 @@ import (
 
 	"github.com/doptime/doptime/dlog"
 	"github.com/go-ping/ping"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
@@ -40,7 +41,8 @@ type ConfigRedis struct {
 type ApiSourceHttp struct {
 	Name    string
 	UrlBase string
-	Jwt     string
+	//also known as JWT token
+	ApiKey string
 }
 type ConfigSettings struct {
 	//{"DebugLevel": 0,"InfoLevel": 1,"WarnLevel": 2,"ErrorLevel": 3,"FatalLevel": 4,"PanicLevel": 5,"NoLevel": 6,"Disabled": 7	  }
@@ -85,7 +87,7 @@ func (c Configuration) String() string {
 		rds.Password = HideCharsButLat4(rds.Password)
 	}
 	for _, rpc := range c1.HttpRPC {
-		rpc.Jwt = HideCharsButLat4(rpc.Jwt)
+		rpc.ApiKey = HideCharsButLat4(rpc.ApiKey)
 	}
 	c1.Settings.SUToken = HideCharsButLat4(c1.Settings.SUToken)
 	//convert c1 to json string
@@ -98,14 +100,16 @@ var Cfg Configuration = Configuration{
 	ConfigUrl: "",
 	Redis:     []*ConfigRedis{},
 	Http:      ConfigHttp{CORES: "*", Port: 80, Path: "/", MaxBufferSize: 10485760},
-	HttpRPC:   []*ApiSourceHttp{{Name: "doptime", UrlBase: "https://api.doptime.com", Jwt: ""}},
-	Settings:  ConfigSettings{LogLevel: 1},
+	HttpRPC:   []*ApiSourceHttp{_defaultHttpRPC},
+	//[]*ApiSourceHttp{{Name: "doptime", UrlBase: "https://api.doptime.com", Jwt: ""}},
+	Settings: ConfigSettings{LogLevel: 1},
 }
+var _defaultHttpRPC = &ApiSourceHttp{Name: "doptime", UrlBase: "https://api.doptime.com", ApiKey: ""}
 
 var ErrNoSuchRedisDB = fmt.Errorf("no such redis db")
-var Rds map[string]*redis.Client = map[string]*redis.Client{}
+var Rds cmap.ConcurrentMap[string, *redis.Client] = cmap.New[*redis.Client]()
 var ErrNoSuchRpcServer = fmt.Errorf("no such http Rpc Server")
-var HttpRpc map[string]*ApiSourceHttp = map[string]*ApiSourceHttp{}
+var HttpRpc cmap.ConcurrentMap[string, *ApiSourceHttp] = cmap.New[*ApiSourceHttp]()
 
 func init() {
 	dlog.Info().Msg("Step1.0: App Start! load config from OS env")
@@ -121,7 +125,6 @@ func init() {
 	zerolog.SetGlobalLevel(zerolog.Level(Cfg.Settings.LogLevel))
 
 	dlog.Info().Str("Step1.2 Checking Redis", "Start").Send()
-
 	for _, rdsCfg := range Cfg.Redis {
 		//apply configuration
 		redisOption := &redis.Options{
@@ -142,7 +145,7 @@ func init() {
 		}
 		//save to the list
 		dlog.Info().Str("Step1.3 Redis Load ", "Success").Any("RedisUsername", rdsCfg.Username).Any("RedisHost", rdsCfg.Host).Any("RedisPort", rdsCfg.Port).Send()
-		Rds[rdsCfg.Name] = rdsClient
+		Rds.Set(rdsCfg.Name, rdsClient)
 		timeCmd := rdsClient.Time(context.Background())
 		dlog.Info().Any("Step1.4 Redis server time: ", timeCmd.Val().String()).Send()
 		//ping the address of redisAddress, if failed, print to log
@@ -150,16 +153,17 @@ func init() {
 
 	}
 	//check if default redis is set
-	if _rds, ok := Rds["default"]; !ok {
+	if _rds, ok := Rds.Get("default"); !ok {
 		dlog.Warn().Msg("Step1.0 \"default\" redis server missing in Configuration. RPC will can not be received. Please ensure this is what your want")
 		return
 	} else {
-		Rds[""] = _rds
+		Rds.Set("", _rds)
 		dlog.RdsClientToLog = _rds
 	}
 	for _, rpc := range Cfg.HttpRPC {
-		HttpRpc[rpc.Name] = rpc
+		HttpRpc.Set(rpc.Name, rpc)
 	}
+	HttpRpc.Set("doptime", _defaultHttpRPC)
 	dlog.Info().Msg("Step1.E: App loaded done")
 
 }
