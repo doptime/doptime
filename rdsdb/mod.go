@@ -183,7 +183,8 @@ func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType 
 	if len(modifiers.fieldModifiers) == 0 {
 		return nil
 	}
-	ModerMap.Set(structType.String(), modifiers)
+	_typeName := structType.String()
+	ModerMap.Set(_typeName, modifiers)
 
 	return modifiers
 }
@@ -193,8 +194,8 @@ func getModifier(structType reflect.Type) *StructModifiers {
 	if structType.Kind() == reflect.Pointer {
 		structType = structType.Elem()
 	}
-
-	modifiers, ok := ModerMap.Get(structType.String())
+	_typeName := structType.String()
+	modifiers, ok := ModerMap.Get(_typeName)
 	if !ok {
 		return nil
 	}

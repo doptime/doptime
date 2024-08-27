@@ -45,6 +45,7 @@ func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msg
 	if ctx.Rds, exists = config.Rds.Get(RedisDataSource); !exists {
 		return nil, nil, fmt.Errorf("rds item unconfigured: " + RedisDataSource)
 	}
+	hKeyMap.Set(key+":"+RedisDataSource, &ctx)
 
 	if value == nil && msgpackData != nil {
 		value, err = ctx.CheckDataSchema(msgpackData)
