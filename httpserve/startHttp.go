@@ -56,6 +56,11 @@ func httpStart(path string, port int64) {
 		if rt := r.FormValue("rt"); rt != "" {
 			ResponseContentType = rt
 		}
+		//default RedisDataSource is "default"
+		if RedisDataSource == "" {
+			RedisDataSource = "default"
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*12000)
 		defer cancel()
 
