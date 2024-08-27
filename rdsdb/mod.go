@@ -189,19 +189,27 @@ func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType 
 	return modifiers
 }
 
-// ApplyModifiers applies the registered modifiers to an instance of the struct.
-func getModifier(structType reflect.Type) *StructModifiers {
-	if structType.Kind() == reflect.Pointer {
-		structType = structType.Elem()
-	}
-	_typeName := structType.String()
-	modifiers, ok := ModerMap.Get(_typeName)
-	if !ok {
+var nonModifiers *StructModifiers = &StructModifiers{modifierRegistry: nil, fieldModifiers: nil}
+
+func ApplyModifiers(modifiers *StructModifiers, val interface{}) error {
+	var ok bool
+
+	// load modifier
+	if modifiers == nonModifiers {
 		return nil
+	} else {
+		structType := reflect.TypeOf(val)
+		if structType.Kind() == reflect.Pointer {
+			structType = structType.Elem()
+		}
+		_typeName := structType.String()
+		modifiers, ok = ModerMap.Get(_typeName)
+		if !ok {
+			*modifiers = *nonModifiers
+			return nil
+		}
 	}
-	return modifiers
-}
-func (modifiers *StructModifiers) ApplyModifiers(val interface{}) error {
+
 	structValue := reflect.ValueOf(val)
 	for structValue.Kind() == reflect.Ptr {
 		structValue = structValue.Elem()
