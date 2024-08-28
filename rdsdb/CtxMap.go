@@ -33,27 +33,25 @@ func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msg
 	key = strings.Join(keyItems, "@")
 
 	hashInterface, exists := hKeyMap.Get(key + ":" + RedisDataSource)
-	if hashInterface != nil && exists && msgpackData != nil {
+	if hashInterface != nil && exists {
 		useModer = hashInterface.GetUseModer()
-		value, err = hashInterface.CheckDataSchema(msgpackData)
-		if err != nil {
-			return nil, nil, err
+		if msgpackData != nil {
+			value, err = hashInterface.CheckDataSchema(msgpackData)
 		}
+	} else if msgpackData != nil {
+		err = msgpack.Unmarshal(msgpackData, &value)
 	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if disallowed, found := specification.DisAllowedDataKeyNames[key]; found && disallowed {
 		return nil, nil, fmt.Errorf("key name is disallowed: " + key)
 	}
 	ctx := Ctx[string, interface{}]{context.Background(), RedisDataSource, nil, key, keyType, nonKey.MarshalValue, nonKey.UnmarshalValue, nonKey.UnmarshalValues, useModer}
 	if ctx.Rds, exists = config.Rds.Get(RedisDataSource); !exists {
 		return nil, nil, fmt.Errorf("rds item unconfigured: " + RedisDataSource)
-	}
-	hKeyMap.Set(key+":"+RedisDataSource, &ctx)
-
-	if value == nil && msgpackData != nil {
-		value, err = ctx.CheckDataSchema(msgpackData)
-		if err != nil {
-			return nil, nil, err
-		}
 	}
 	return &ctx, value, nil
 }
