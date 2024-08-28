@@ -2,6 +2,7 @@ package rdsdb
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -48,6 +49,7 @@ type FieldModifier struct {
 type StructModifiers struct {
 	modifierRegistry map[string]ModifierFunc
 	fieldModifiers   []*FieldModifier
+	ValType          reflect.Type
 }
 
 // TrimSpaces removes leading and trailing white spaces from the string.
@@ -122,10 +124,13 @@ var ModerMap = cmap.New[*StructModifiers]()
 
 // RegisterStructModifiers initializes the StructModifiers for a specific struct type with optional extra modifiers.
 func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType reflect.Type) bool {
-	//structType := reflect.TypeOf((*T)(nil)).Elem()
-	for structType.Kind() == reflect.Ptr {
+	if structType == nil {
+		return false
+	}
+	for k := structType.Kind(); k == reflect.Pointer; k = structType.Kind() {
 		structType = structType.Elem()
 	}
+	// Ensure we have a struct type.
 	if structType.Kind() != reflect.Struct {
 		return false
 	}
@@ -143,6 +148,7 @@ func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType 
 			"dateFormat": FormatDate,
 		},
 		fieldModifiers: []*FieldModifier{},
+		ValType:        structType,
 	}
 	for name, modifier := range extraModifiers {
 		modifiers.modifierRegistry[name] = modifier
@@ -152,22 +158,19 @@ func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType 
 		field := structType.Field(i)
 		tag := field.Tag.Get("mod")
 		if tag != "" {
-			tagParts := strings.SplitN(tag, "=", 2)
-			modifierName := tagParts[0]
+			forceApply := false
+			if forceApply = strings.Contains(tag, ",force"); forceApply {
+				tag = strings.Replace(tag, ",force", "", -1)
+			}
+			cmd_Param := strings.SplitN(tag, "=", 2)
+			modifierName := cmd_Param[0]
 			tagParam := ""
-			if len(tagParts) == 2 {
-				tagParam = tagParts[1]
+			if len(cmd_Param) == 2 {
+				tagParam = cmd_Param[1]
 			}
 			modifierFunc, exists := modifiers.modifierRegistry[modifierName]
 			if !exists {
 				continue // Skip unregistered modifiers
-			}
-
-			forceApply := false
-			if strings.Contains(tagParam, "force") {
-				forceApply = true
-				tagParam = strings.Replace(tagParam, "force", "", -1)
-				tagParam = strings.Trim(tagParam, ",")
 			}
 
 			fieldModifier := &FieldModifier{
@@ -183,47 +186,61 @@ func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType 
 	if len(modifiers.fieldModifiers) == 0 {
 		return false
 	}
+
 	_typeName := structType.String()
 	ModerMap.Set(_typeName, modifiers)
 	return true
 }
 
 func ApplyModifiers(val interface{}) error {
-
-	// load modifier
-	structType := reflect.TypeOf(val)
-	for structType.Kind() == reflect.Pointer {
-		structType = structType.Elem()
+	// Check if the provided value is nil
+	if val == nil {
+		return fmt.Errorf("nil value passed to ApplyModifiers")
 	}
-	if structType.Kind() != reflect.Struct {
-		return nil
+
+	// Load the modifiers
+	structValue := reflect.ValueOf(val)
+	structType := structValue.Type()
+	// If it's a pointer, dereference it until we get the underlying non-pointer type
+	for structType.Kind() == reflect.Pointer || structType.Kind() == reflect.Interface {
+		structValue = structValue.Elem()
+		structType = structValue.Type()
 	}
 	_typeName := structType.String()
 	modifiers, ok := ModerMap.Get(_typeName)
 	if !ok || modifiers == nil {
-		return nil
+		return nil // If no modifiers are found, simply return
+	}
+	// Ensure the final type is a struct
+	if structType != modifiers.ValType {
+		return fmt.Errorf("ApplyModifiers expects a struct type but got %v", structType.Kind())
 	}
 
-	structValue := reflect.ValueOf(val)
-	for structValue.Kind() == reflect.Ptr {
-		structValue = structValue.Elem()
-	}
-
+	// Apply the modifiers to each field
 	for _, fieldModifier := range modifiers.fieldModifiers {
 		field := structValue.Field(fieldModifier.FieldIndex)
+
+		// Apply the modifier only if the field can be set
 		if fieldModifier.ForceApply || isZero(field) {
 			newValue, err := fieldModifier.Modifier(field.Interface(), fieldModifier.TagParam)
 			if err != nil {
 				return err
 			}
 
-			// Setting the new value back to the struct field.
+			// Set the new value back to the struct field
 			if field.CanSet() {
-				field.Set(reflect.ValueOf(newValue))
+				// Handle type conversion, in case the new value's type doesn't match the field's type
+				newValueReflect := reflect.ValueOf(newValue)
+				if newValueReflect.Type().ConvertibleTo(field.Type()) {
+					field.Set(newValueReflect.Convert(field.Type()))
+				} else {
+					return fmt.Errorf("cannot set field %s: incompatible types", fieldModifier.FieldName)
+				}
+			} else {
+				return fmt.Errorf("cannot set field %s: field is unexported or otherwise not settable", fieldModifier.FieldName)
 			}
 		}
 	}
-
 	return nil
 }
 
