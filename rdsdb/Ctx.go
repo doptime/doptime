@@ -23,10 +23,11 @@ type Ctx[k comparable, v any] struct {
 	MarshalValue    func(value v) (valueStr string, err error)
 	UnmarshalValue  func(valbytes []byte) (value v, err error)
 	UnmarshalValues func(valStrs []string) (values []v, err error)
+	UseModer        bool
 }
 
 func (ctx *Ctx[k, v]) Duplicate(newKey, RdsSourceName string) (newCtx Ctx[k, v]) {
-	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.KeyType, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues}
+	return Ctx[k, v]{ctx.Context, RdsSourceName, ctx.Rds, newKey, ctx.KeyType, ctx.MarshalValue, ctx.UnmarshalValue, ctx.UnmarshalValues, ctx.UseModer}
 }
 
 func NonKey[k comparable, v any](ops ...opSetter) *Ctx[k, v] {
@@ -41,6 +42,9 @@ func NonKey[k comparable, v any](ops ...opSetter) *Ctx[k, v] {
 func (ctx *Ctx[k, v]) Time() (tm time.Time, err error) {
 	cmd := ctx.Rds.Time(ctx.Context)
 	return cmd.Result()
+}
+func (ctx *Ctx[k, v]) GetUseModer() bool {
+	return ctx.UseModer
 }
 
 // sacn key by pattern
@@ -90,7 +94,7 @@ func (ctx *Ctx[k, v]) applyOption(opt *Option) (err error) {
 	ctx.MarshalValue = ctx.toValueStrFun()
 	ctx.UnmarshalValue = ctx.toValueFunc()
 	ctx.UnmarshalValues = ctx.toValuesFunc()
-	RegisterStructModifiers(opt.Modifiers, reflect.TypeOf((*v)(nil)).Elem())
+	ctx.UseModer = RegisterStructModifiers(opt.Modifiers, reflect.TypeOf((*v)(nil)).Elem())
 	return nil
 }
 

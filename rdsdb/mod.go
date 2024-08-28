@@ -121,13 +121,13 @@ func ApplyCounter(fieldValue interface{}, tagParam string) (interface{}, error) 
 var ModerMap = cmap.New[*StructModifiers]()
 
 // RegisterStructModifiers initializes the StructModifiers for a specific struct type with optional extra modifiers.
-func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType reflect.Type) {
+func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType reflect.Type) bool {
 	//structType := reflect.TypeOf((*T)(nil)).Elem()
 	for structType.Kind() == reflect.Ptr {
 		structType = structType.Elem()
 	}
-	if kv := structType.Kind().String(); kv != "struct" {
-		return
+	if structType.Kind() != reflect.Struct {
+		return false
 	}
 
 	modifiers := &StructModifiers{
@@ -181,31 +181,27 @@ func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType 
 		}
 	}
 	if len(modifiers.fieldModifiers) == 0 {
-		return
+		return false
 	}
 	_typeName := structType.String()
 	ModerMap.Set(_typeName, modifiers)
+	return true
 }
 
-var nonModifiers *StructModifiers = &StructModifiers{modifierRegistry: nil, fieldModifiers: nil}
-
-func ApplyModifiers(modifiers *StructModifiers, val interface{}) error {
-	var ok bool
+func ApplyModifiers(val interface{}) error {
 
 	// load modifier
-	if modifiers == nonModifiers {
+	structType := reflect.TypeOf(val)
+	for structType.Kind() == reflect.Pointer {
+		structType = structType.Elem()
+	}
+	if structType.Kind() != reflect.Struct {
 		return nil
-	} else {
-		structType := reflect.TypeOf(val)
-		if structType.Kind() == reflect.Pointer {
-			structType = structType.Elem()
-		}
-		_typeName := structType.String()
-		modifiers, ok = ModerMap.Get(_typeName)
-		if !ok {
-			*modifiers = *nonModifiers
-			return nil
-		}
+	}
+	_typeName := structType.String()
+	modifiers, ok := ModerMap.Get(_typeName)
+	if !ok || modifiers == nil {
+		return nil
 	}
 
 	structValue := reflect.ValueOf(val)

@@ -15,6 +15,7 @@ type CtxInterface interface {
 	// MsgpackUnmarshalValue(msgpack []byte) (rets interface{}, err error)
 	// MsgpackUnmarshalKeyValues(msgpack []byte) (rets interface{}, err error)
 	CheckDataSchema(msgpackBytes []byte) (val interface{}, err error)
+	GetUseModer() bool
 	Validate() error
 }
 
@@ -22,6 +23,7 @@ var hKeyMap cmap.ConcurrentMap[string, CtxInterface] = cmap.New[CtxInterface]()
 var nonKey = NonKey[string, interface{}]()
 
 func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (db *Ctx[string, interface{}], value interface{}, err error) {
+	useModer := false
 	keyItems := strings.Split(key, "@")
 	for i, item := range keyItems {
 		if len(item) > 1 && strings.Contains(item, ":") {
@@ -32,6 +34,7 @@ func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msg
 
 	hashInterface, exists := hKeyMap.Get(key + ":" + RedisDataSource)
 	if hashInterface != nil && exists && msgpackData != nil {
+		useModer = hashInterface.GetUseModer()
 		value, err = hashInterface.CheckDataSchema(msgpackData)
 		if err != nil {
 			return nil, nil, err
@@ -40,7 +43,7 @@ func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msg
 	if disallowed, found := specification.DisAllowedDataKeyNames[key]; found && disallowed {
 		return nil, nil, fmt.Errorf("key name is disallowed: " + key)
 	}
-	ctx := Ctx[string, interface{}]{context.Background(), RedisDataSource, nil, key, keyType, nonKey.MarshalValue, nonKey.UnmarshalValue, nonKey.UnmarshalValues}
+	ctx := Ctx[string, interface{}]{context.Background(), RedisDataSource, nil, key, keyType, nonKey.MarshalValue, nonKey.UnmarshalValue, nonKey.UnmarshalValues, useModer}
 	if ctx.Rds, exists = config.Rds.Get(RedisDataSource); !exists {
 		return nil, nil, fmt.Errorf("rds item unconfigured: " + RedisDataSource)
 	}

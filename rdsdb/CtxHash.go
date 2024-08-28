@@ -55,12 +55,13 @@ func (ctx *CtxHash[k, v]) HSet(values ...interface{}) error {
 	if kvMap, ok := values[0].(map[k]v); ok {
 		return ctx.HMSet(kvMap)
 	}
-	var modifier *StructModifiers
 	// if Moder is not nil, apply modifiers to the values
 	if l := len(values); l >= 2 && l%2 == 0 && reflect.TypeOf(values).Kind() == reflect.Slice {
 		for i, l := 0, len(values); i < l; i += 2 {
 			if value, ok := values[i+1].(v); ok {
-				ApplyModifiers(modifier, &value)
+				if ctx.UseModer {
+					ApplyModifiers(&value)
+				}
 			} else {
 				break
 			}
@@ -75,10 +76,11 @@ func (ctx *CtxHash[k, v]) HSet(values ...interface{}) error {
 	return ctx.Rds.HSet(ctx.Context, ctx.Key, KeyValuesStrs).Err()
 }
 func (ctx *CtxHash[k, v]) HMSet(kvMap map[k]v) error {
-	var modifiers *StructModifiers
 	// if Moder is not nil, apply modifiers to the values
-	for _, value := range kvMap {
-		ApplyModifiers(modifiers, &value)
+	if ctx.UseModer {
+		for _, value := range kvMap {
+			ApplyModifiers(&value)
+		}
 	}
 
 	KeyValuesStrs, err := ctx.toKeyValueStrs(kvMap)
