@@ -121,13 +121,13 @@ func ApplyCounter(fieldValue interface{}, tagParam string) (interface{}, error) 
 var ModerMap = cmap.New[*StructModifiers]()
 
 // RegisterStructModifiers initializes the StructModifiers for a specific struct type with optional extra modifiers.
-func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType reflect.Type) *StructModifiers {
+func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType reflect.Type) {
 	//structType := reflect.TypeOf((*T)(nil)).Elem()
 	for structType.Kind() == reflect.Ptr {
 		structType = structType.Elem()
 	}
 	if kv := structType.Kind().String(); kv != "struct" {
-		return nil
+		return
 	}
 
 	modifiers := &StructModifiers{
@@ -181,12 +181,10 @@ func RegisterStructModifiers(extraModifiers map[string]ModifierFunc, structType 
 		}
 	}
 	if len(modifiers.fieldModifiers) == 0 {
-		return nil
+		return
 	}
 	_typeName := structType.String()
 	ModerMap.Set(_typeName, modifiers)
-
-	return modifiers
 }
 
 var nonModifiers *StructModifiers = &StructModifiers{modifierRegistry: nil, fieldModifiers: nil}
