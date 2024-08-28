@@ -65,12 +65,6 @@ func (ctx *Ctx[k, v]) Scan(cursorOld uint64, match string, count int64) (keys []
 	}
 	return keys, cursorNew, nil
 }
-func (ctx *Ctx[k, v]) ApplyModifiers(val interface{}) error {
-	var modifiers *StructModifiers
-	return ApplyModifiers(modifiers, val)
-
-}
-
 func (ctx *Ctx[k, v]) applyOption(opt *Option) (err error) {
 	if len(opt.Key) > 0 {
 		ctx.Key = opt.Key

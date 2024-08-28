@@ -15,7 +15,6 @@ type CtxInterface interface {
 	// MsgpackUnmarshalValue(msgpack []byte) (rets interface{}, err error)
 	// MsgpackUnmarshalKeyValues(msgpack []byte) (rets interface{}, err error)
 	CheckDataSchema(msgpackBytes []byte) (val interface{}, err error)
-	ApplyModifiers(val interface{}) error
 	Validate() error
 }
 
