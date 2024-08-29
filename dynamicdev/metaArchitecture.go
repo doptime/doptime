@@ -120,6 +120,7 @@ type GetProjectArchitectureInfoIn struct {
 	SkipDirs         []string
 	SkipFiles        []string
 	IncludedFileExts []string
+	UseRawText       bool
 }
 type GetProjectArchitectureInfoOut struct {
 	AbsPath      string
@@ -172,7 +173,6 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		}
 
 		page, _ := ReadInFile(path)
-
 		corrupted := false
 		if doctype == "go" {
 			// 先确认语法树是否正确，如果正确再进行替换
@@ -181,7 +181,7 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		}
 		RelName := path[len(architectures.AbsPath):]
 		architectures.RelFile2Arch[RelName] = page
-		if (doctype == "go" || doctype == "js") && !corrupted {
+		if (doctype == "go" || doctype == "js") && !corrupted && !packInfo.UseRawText {
 			architectures.RelFile2Arch[RelName], _ = SourceCodeToArchitecture(page)
 		}
 		return nil
