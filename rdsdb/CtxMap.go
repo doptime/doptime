@@ -3,6 +3,7 @@ package rdsdb
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/specification"
@@ -22,9 +23,11 @@ var hKeyMap cmap.ConcurrentMap[string, CtxInterface] = cmap.New[CtxInterface]()
 var nonKey = NonKey[string, interface{}]()
 
 func CtxWitchValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (db *Ctx[string, interface{}], value interface{}, err error) {
-	useModer := false
+	useModer, originalKey := false, key
+	originalKey = strings.SplitN(key, "@", 2)[0]
+	originalKey = strings.SplitN(originalKey, ":", 2)[0]
 
-	hashInterface, exists := hKeyMap.Get(key + ":" + RedisDataSource)
+	hashInterface, exists := hKeyMap.Get(originalKey + ":" + RedisDataSource)
 	if hashInterface != nil && exists {
 		useModer = hashInterface.GetUseModer()
 		if msgpackData != nil {
