@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
-	. "github.com/doptime/doptime/rdsdb"
+	. "github.com/doptime/doptime/db"
 	"github.com/doptime/doptime/specification"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/vmihailenco/msgpack/v5"

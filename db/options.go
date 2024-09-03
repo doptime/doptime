@@ -1,5 +1,5 @@
 // package do stands for data options
-package rdsdb
+package db
 
 // Option is parameter to create an API, RPC, or CallAt
 type Option struct {

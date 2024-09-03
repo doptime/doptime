@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/doptime/doptime/rdsdb"
+	"github.com/doptime/doptime/db"
 )
 
 type TestHash struct {
@@ -20,7 +20,7 @@ func TestStringKey(t *testing.T) {
 	)
 	//create a http context
 
-	var keyTestInDemo = rdsdb.HashKey[string, *TestHash]()
+	var keyTestInDemo = db.HashKey[string, *TestHash]()
 	if err = keyTestInDemo.HSet("field1", &TestHash{Name: "value1"}); err != nil {
 		t.Error(err)
 	}
@@ -67,7 +67,7 @@ func TestStringKey2(t *testing.T) {
 	)
 	//create a http context
 
-	var keyTestInDemo = rdsdb.HashKey[*string, *TestHash]()
+	var keyTestInDemo = db.HashKey[*string, *TestHash]()
 	if err = keyTestInDemo.HSet(&k1, v1); err != nil {
 		t.Error(err)
 	}
@@ -116,7 +116,7 @@ func TestObjectKey(t *testing.T) {
 	)
 	//create a http context
 
-	var keyTestInDemo = rdsdb.HashKey[*Key, *TestHash]()
+	var keyTestInDemo = db.HashKey[*Key, *TestHash]()
 	if err = keyTestInDemo.HSet(k1, v1); err != nil {
 		t.Error(err)
 	}

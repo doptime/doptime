@@ -1,4 +1,4 @@
-package rdsdb
+package db
 
 import (
 	"github.com/doptime/doptime/dlog"

@@ -1,4 +1,4 @@
-package rdsdb
+package db
 
 import (
 	"crypto/rand"

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/doptime/doptime/rdsdb"
+	"github.com/doptime/doptime/db"
 )
 
 func GetApiDocs() (string, error) {
@@ -36,7 +36,7 @@ func GetApiDocs() (string, error) {
 }
 
 func GetDataDocs() (string, error) {
-	result, err := rdsdb.KeyWebDataDocs.HGetAll()
+	result, err := db.KeyWebDataDocs.HGetAll()
 	if err != nil {
 		return "", err
 	}

@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/config"
+	. "github.com/doptime/doptime/db"
 	"github.com/doptime/doptime/dlog"
-	. "github.com/doptime/doptime/rdsdb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
