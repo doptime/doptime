@@ -12,8 +12,8 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-// GenerateNanoid creates a unique identifier using the specified size.
-func GenerateNanoid(size int) string {
+// NanoId creates a unique identifier using the specified size.
+func NanoId(size int) string {
 	alphabet := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	if size <= 0 || size > 21 {
 		size = 21
@@ -265,7 +265,7 @@ func GenerateNanoidFunc(fieldValue interface{}, tagParam string) (interface{}, e
 	if tagParam != "" {
 		size, _ = strconv.Atoi(tagParam)
 	}
-	return GenerateNanoid(size), nil
+	return NanoId(size), nil
 }
 
 // isZero checks if a reflect.Value is zero for its type.
