@@ -179,12 +179,12 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 			return nil
 		}
 		for _, skipFileWithLeadingWildCard := range skipFilesWithLeadingWildCard {
-			if strings.HasPrefix(info.Name(), skipFileWithLeadingWildCard) {
+			if strings.HasSuffix(info.Name(), skipFileWithLeadingWildCard) {
 				return nil
 			}
 		}
 		for _, skipFileWithTrailingWildCard := range skipFilesWithTrailingWildCard {
-			if strings.HasSuffix(info.Name(), skipFileWithTrailingWildCard) {
+			if strings.HasPrefix(info.Name(), skipFileWithTrailingWildCard) {
 				return nil
 			}
 		}
