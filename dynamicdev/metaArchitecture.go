@@ -151,8 +151,19 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 		skipDirs[skippedDir] = true
 	}
 	var skipFiles = map[string]bool{}
+	var skipFilesWithLeadingWildCard = []string{}
+	var skipFilesWithTrailingWildCard = []string{}
 	for _, skipFile := range packInfo.SkipFiles {
+		if len(skipFile) == 0 {
+			continue
+		}
 		skipFiles[skipFile] = true
+		if skipFile[0] == '*' {
+			skipFilesWithLeadingWildCard = append(skipFilesWithLeadingWildCard, strings.Trim(skipFile, "*"))
+		}
+		if skipFile[len(skipFile)-1] == '*' {
+			skipFilesWithTrailingWildCard = append(skipFilesWithTrailingWildCard, strings.Trim(skipFile, "*"))
+		}
 	}
 	// walkDir recursively walks through a directory and processes all .go files
 	filepath.WalkDir(architectures.AbsPath+"/.", func(path string, info os.DirEntry, err error) error {
@@ -166,6 +177,16 @@ var APIGetProjectArchitectureInfo = api.Api(func(packInfo *GetProjectArchitectur
 			return nil
 		} else if skipfile, ok := skipFiles[info.Name()]; ok && skipfile {
 			return nil
+		}
+		for _, skipFileWithLeadingWildCard := range skipFilesWithLeadingWildCard {
+			if strings.HasPrefix(info.Name(), skipFileWithLeadingWildCard) {
+				return nil
+			}
+		}
+		for _, skipFileWithTrailingWildCard := range skipFilesWithTrailingWildCard {
+			if strings.HasSuffix(info.Name(), skipFileWithTrailingWildCard) {
+				return nil
+			}
 		}
 		doctype, typeExisted := surffixType[filepath.Ext(path)]
 		if !typeExisted {
