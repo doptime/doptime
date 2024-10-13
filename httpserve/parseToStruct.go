@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/doptime/doptime/config"
-
+	"github.com/doptime/config/cfghttp"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -21,7 +20,7 @@ func ToStruct(r *http.Request, v interface{}) error {
 	} else if r.ContentLength > 0 && (r.Header.Get("Content-Type") == "multipart/form-data") {
 		m := map[string]interface{}{}
 		//parse form multipart form data
-		if err := r.ParseMultipartForm(config.Cfg.Http.MaxBufferSize); err == nil {
+		if err := r.ParseMultipartForm(cfghttp.MaxBufferSize); err == nil {
 			for k, v := range r.MultipartForm.Value {
 				if len(v) == 1 {
 					m[k] = v[0]

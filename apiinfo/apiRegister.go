@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/doptime/doptime/config"
-	. "github.com/doptime/doptime/db"
+	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/specification"
+	"github.com/doptime/redisdb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -20,7 +20,7 @@ type DocsOfApi struct {
 	UpdateAt int64
 }
 
-var KeyApiDataDocs = HashKey[string, *DocsOfApi](WithKey("Docs:Api"))
+var KeyApiDataDocs = redisdb.HashKey[string, *DocsOfApi](redisdb.WithKey("Docs:Api"))
 
 var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
 
@@ -57,7 +57,7 @@ func syncWithRedis() {
 	for {
 		now := time.Now().Unix()
 
-		client, ok := config.Rds.Get("default")
+		client, ok := cfgredis.Servers.Get("default")
 		if !ok || (ApiDocsMap.Count() == 0) {
 			time.Sleep(time.Minute)
 			continue

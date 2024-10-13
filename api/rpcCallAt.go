@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/doptime/doptime/config"
+	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -30,7 +30,7 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error)) (callAtFun func(
 		dlog.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
 	}
 	dataSource, apiName := apiInfo.GetDataSource(), apiInfo.GetName()
-	if db, exists = config.Rds.Get(dataSource); !exists {
+	if db, exists = cfgredis.Servers.Get(dataSource); !exists {
 		dlog.Info().Str("DataSource not defined in enviroment", dataSource).Send()
 		return nil
 	}

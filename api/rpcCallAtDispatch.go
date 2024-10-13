@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/doptime/doptime/config"
+	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/dlog"
 	"github.com/redis/go-redis/v9"
 )
@@ -140,7 +140,7 @@ func rpcCallAtTasksLoad() {
 		if !ok {
 			continue
 		}
-		if rds, exists = config.Rds.Get(dataSource); !exists {
+		if rds, exists = cfgredis.Servers.Get(dataSource); !exists {
 			dlog.Info().AnErr("err LoadDelayApiTask, ", err).Send()
 			continue
 		}

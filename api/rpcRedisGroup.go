@@ -5,10 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/doptime/doptime/config"
 	"github.com/doptime/doptime/dlog"
 	"github.com/redis/go-redis/v9"
 )
+
+var ServiceBatchSize int64 = 64
 
 func defaultXReadGroupArgs(serviceNames []string) *redis.XReadGroupArgs {
 	var (
@@ -22,7 +23,7 @@ func defaultXReadGroupArgs(serviceNames []string) *redis.XReadGroupArgs {
 	}
 
 	//ServiceBatchSize is the number of tasks that a service can read from redis at the same time
-	args := &redis.XReadGroupArgs{Streams: streams, Block: time.Second * 20, Count: config.ServiceBatchSize, NoAck: true, Group: "group0", Consumer: "doptime"}
+	args := &redis.XReadGroupArgs{Streams: streams, Block: time.Second * 20, Count: ServiceBatchSize, NoAck: true, Group: "group0", Consumer: "doptime"}
 	return args
 }
 func XGroupEnsureCreatedOneGroup(c context.Context, serviceName string, rds *redis.Client) (err error) {

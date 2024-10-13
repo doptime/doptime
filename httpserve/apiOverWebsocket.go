@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/doptime/config/cfghttp"
 	"github.com/doptime/doptime/api"
-	"github.com/doptime/doptime/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"github.com/vmihailenco/msgpack/v5"
@@ -48,14 +48,14 @@ func websocketAPICallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer ws.Close()
-	if len(config.Cfg.Http.JwtSecret) > 0 {
+	if len(cfghttp.JWTSecret) > 0 {
 		jwtStr := w.Header().Get("Authorization")
 		if jwtStr == "" {
 			ws.WriteMessage(websocket.TextMessage, []byte("Missing Authorization in Header,Unauthorized!"))
 			return
 		}
 		if claims, ok = Token2ClaimMap[jwtStr]; !ok {
-			if claims, err = Jwt2Claim(jwtStr, config.Cfg.Http.JwtSecret); err != nil {
+			if claims, err = Jwt2Claim(jwtStr, cfghttp.JWTSecret); err != nil {
 				ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Invalid JWT token: %v", err)))
 				return
 			}

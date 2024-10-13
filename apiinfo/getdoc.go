@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/doptime/doptime/db"
+	"github.com/doptime/redisdb"
 )
 
 func GetApiDocs() (string, error) {
@@ -36,7 +36,7 @@ func GetApiDocs() (string, error) {
 }
 
 func GetDataDocs() (string, error) {
-	result, err := db.KeyWebDataDocs.HGetAll()
+	result, err := redisdb.KeyWebDataDocs.HGetAll()
 	if err != nil {
 		return "", err
 	}

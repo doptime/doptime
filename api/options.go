@@ -30,6 +30,7 @@ func WithApiKey(apiKey string) optionSetter {
 		o.ApiKey = apiKey
 	}
 }
+
 func (o Option) mergeNewOptions(optionSetters ...optionSetter) (out *Option) {
 	for _, setter := range optionSetters {
 		setter(&o)

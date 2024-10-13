@@ -3,19 +3,19 @@ package permission
 import (
 	"time"
 
-	"github.com/doptime/doptime/config"
-	. "github.com/doptime/doptime/db"
+	"github.com/doptime/config/cfghttp"
 	"github.com/doptime/doptime/dlog"
+	"github.com/doptime/redisdb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-var rdsPermit = HashKey[string, string](WithKey("_permissions"))
+var rdsPermit = redisdb.HashKey[string, string](redisdb.WithKey("_permissions"))
 var permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 
 // this version of IsPermitted is design for fast searching & modifying
 func IsPermitted(operation string) (ok bool) {
 	var (
-		autoPermit                            bool   = config.Cfg.Http.AutoAuth
+		autoPermit                            bool   = cfghttp.AutoDataAuth
 		permitKey                             string = operation
 		permitKeyAllowed, permitKeyDisallowed string = permitKey + "::on", permitKey + "::off"
 	)

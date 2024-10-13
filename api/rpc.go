@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/doptime/doptime/config"
+	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	"github.com/redis/go-redis/v9"
@@ -44,7 +44,7 @@ func Rpc[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 		// } else {
 		// 	Values = []string{"data", string(b)}
 		// }
-		if db, exists = config.Rds.Get(rpc.ApiSourceRds); !exists {
+		if db, exists = cfgredis.Servers.Get(rpc.ApiSourceRds); !exists {
 			dlog.Info().Str("DataSource not defined in enviroment", rpc.ApiSourceRds).Send()
 			return ret, err
 		}

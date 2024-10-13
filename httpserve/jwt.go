@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/doptime/doptime/config"
+	"github.com/doptime/config/cfghttp"
 	cmap "github.com/orcaman/concurrent-map/v2"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -57,7 +57,7 @@ func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 		if exp < time.Now().Unix() {
 			return errors.New("JWT token is expired")
 		}
-	} else if svc.Claims, err = Jwt2Claim(jwtStr, config.Cfg.Http.JwtSecret); err != nil {
+	} else if svc.Claims, err = Jwt2Claim(jwtStr, cfghttp.JWTSecret); err != nil {
 		return fmt.Errorf("invalid JWT token: %v", err)
 	} else {
 		mapClaims.Set(jwtStr, svc.Claims)
@@ -74,6 +74,6 @@ func ConvertMapToJwtString(param map[string]interface{}) (jwtString string, err 
 	//create jwt token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	//sign jwt token
-	jwtString, err = token.SignedString([]byte(config.Cfg.Http.JwtSecret))
+	jwtString, err = token.SignedString([]byte(cfghttp.JWTSecret))
 	return jwtString, err
 }

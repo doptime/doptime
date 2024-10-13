@@ -1,8 +1,9 @@
 package api
 
 import (
-	"github.com/doptime/doptime/config"
+	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/dlog"
+
 	"github.com/doptime/doptime/specification"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
@@ -25,7 +26,7 @@ func GetServiceDB(serviceName string) (db *redis.Client, ok bool) {
 	)
 	serviceInfo, _ := ApiServices.Get(serviceName)
 	DataSource := serviceInfo.GetDataSource()
-	if db, exists = config.Rds.Get(DataSource); !exists {
+	if db, exists = cfgredis.Servers.Get(DataSource); !exists {
 		dlog.Error().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
 	}
 	return db, exists

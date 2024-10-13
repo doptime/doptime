@@ -3,14 +3,15 @@ package api
 import (
 	"context"
 
-	"github.com/doptime/doptime/config"
+	"github.com/doptime/config/cfgapi"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 // ApiOption is parameter to create an API, RPC, or CallAt
 type Context[i any, o any] struct {
 	Name          string
 	ApiSourceRds  string
-	ApiSourceHttp *config.ApiSourceHttp
+	ApiSourceHttp *cfgapi.ApiSourceHttp
 	WithHeader    bool
 	Ctx           context.Context
 	Func          func(InParameter i) (ret o, err error)
@@ -24,3 +25,5 @@ type Context[i any, o any] struct {
 	// you can modify the result value to the web client.
 	ResponseModifier func(param i, ret o) (valueToWebclient interface{}, err error)
 }
+
+var ApiServiceBatchSize = cmap.New[int64]()

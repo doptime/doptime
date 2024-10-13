@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/doptime/doptime/config"
+	"github.com/doptime/config/cfgapi"
 	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	"github.com/vmihailenco/msgpack/v5"
@@ -49,7 +49,7 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 func RpcOverHttp[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 	var option *Option = Option{ApiSourceHttp: "https://api.doptime.com"}.mergeNewOptions(options...)
 
-	httpServer, exists := config.HttpRpc.Get(option.ApiSourceHttp)
+	httpServer, exists := cfgapi.Servers.Get(option.ApiSourceHttp)
 	if !exists {
 		dlog.Error().Str("DataSource not defined in enviroment", option.ApiSourceHttp).Send()
 		return nil

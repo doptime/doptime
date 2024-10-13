@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/doptime/doptime/config"
+	"github.com/doptime/config/cfghttp"
 	_ "github.com/doptime/doptime/httpserve"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -18,7 +18,7 @@ func TestHTTPPostMsgPack(t *testing.T) {
 		body  []byte
 		err   error
 		param = &Demo1{Text: "TestCallAt 10s later"}
-		url   = "http://127.0.0.1:" + strconv.Itoa(int(config.Cfg.Http.Port)) + "/API-!demo1"
+		url   = "http://127.0.0.1:" + strconv.Itoa(int(cfghttp.Port)) + "/API-!demo1"
 		resp  *http.Response
 	)
 	//create a http context
@@ -48,7 +48,7 @@ func TestHTTPPostJson(t *testing.T) {
 		body  []byte
 		err   error
 		param = &Demo1{Text: "TestCallAt 10s later"}
-		url   = "http://127.0.0.1:" + strconv.Itoa(int(config.Cfg.Http.Port)) + "/API-!demo1"
+		url   = "http://127.0.0.1:" + strconv.Itoa(int(cfghttp.Port)) + "/API-!demo1"
 		resp  *http.Response
 	)
 	//create a http context
@@ -77,7 +77,7 @@ func TestHTTPPOSTJson(t *testing.T) {
 	var (
 		body []byte
 		err  error
-		url  = "http://127.0.0.1:" + strconv.Itoa(int(config.Cfg.Http.Port)) + "/API-!demo1?Text=TestCallAt"
+		url  = "http://127.0.0.1:" + strconv.Itoa(int(cfghttp.Port)) + "/API-!demo1?Text=TestCallAt"
 		resp *http.Response
 	)
 	postBody := []byte(`{"Attach":{"Text":"TestCallAtBody"}}`)
@@ -105,7 +105,7 @@ func TestHTTPGetJson(t *testing.T) {
 	var (
 		body []byte
 		err  error
-		url  = "http://127.0.0.1:" + strconv.Itoa(int(config.Cfg.Http.Port)) + "/API-!demo1?Text=TestHTTPGetJson"
+		url  = "http://127.0.0.1:" + strconv.Itoa(int(cfghttp.Port)) + "/API-!demo1?Text=TestHTTPGetJson"
 		resp *http.Response
 	)
 	// demo1 := &Demo1{Attach: &Demo{Text: "TestCallAtBody"}}
@@ -134,7 +134,7 @@ func TestHTTPGetJson(t *testing.T) {
 func TestHTTPCheckNonEmpty(t *testing.T) {
 	var (
 		err  error
-		url  = "http://127.0.0.1:" + strconv.Itoa(int(config.Cfg.Http.Port)) + "/API-!demo1"
+		url  = "http://127.0.0.1:" + strconv.Itoa(int(cfghttp.Port)) + "/API-!demo1"
 		resp *http.Response
 	)
 	// demo1 := &Demo1{Attach: &Demo{Text: "TestCallAtBody"}}
