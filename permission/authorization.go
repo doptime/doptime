@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfghttp"
-	"github.com/doptime/doptime/dlog"
+	"github.com/doptime/logger"
 	"github.com/doptime/redisdb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
@@ -43,9 +43,9 @@ func LoadPermissionTable() {
 	// show log if it is the first time to load
 	for ; !ConfigurationLoaded; ConfigurationLoaded = true {
 		if err != nil {
-			dlog.Warn().AnErr("Step2.1: start permission loading from redis failed", err).Send()
+			logger.Warn().AnErr("Step2.1: start permission loading from redis failed", err).Send()
 		} else {
-			dlog.Info().Msg("Step2.2: start permission loaded from redis")
+			logger.Info().Msg("Step2.2: start permission loaded from redis")
 		}
 	}
 	for _, key := range keys {

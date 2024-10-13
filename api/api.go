@@ -5,9 +5,9 @@ import (
 	"reflect"
 
 	"github.com/doptime/doptime/apiinfo"
-	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
 	"github.com/doptime/doptime/vars"
+	"github.com/doptime/logger"
 )
 
 func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...optionSetter) (out *Context[i, o]) {
@@ -20,16 +20,16 @@ func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...opti
 	}
 
 	if len(out.Name) == 0 {
-		dlog.Debug().Msg("ApiNamed service created failed!")
+		logger.Debug().Msg("ApiNamed service created failed!")
 		out.Func = func(InParameter i) (ret o, err error) {
-			dlog.Warn().Str("service misnamed", out.Name).Send()
+			logger.Warn().Str("service misnamed", out.Name).Send()
 			return ret, vars.ErrApiNameEmpty
 		}
 	}
 
 	// Error handling: Check for naming conflicts
 	if _, exists := ApiServices.Get(out.Name); exists {
-		dlog.Panic().Str("same service not allowed to defined twice!", out.Name).Send()
+		logger.Panic().Str("same service not allowed to defined twice!", out.Name).Send()
 		return out
 	}
 
@@ -46,6 +46,6 @@ func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...opti
 	oType := reflect.TypeOf((*o)(nil)).Elem()
 	apiinfo.RegisterApi(out.Name, iType, oType)
 
-	dlog.Debug().Str("ApiNamed service created completed!", out.Name).Send()
+	logger.Debug().Str("ApiNamed service created completed!", out.Name).Send()
 	return out
 }

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgredis"
-	"github.com/doptime/doptime/dlog"
+	"github.com/doptime/logger"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -29,12 +29,12 @@ func rpcCallAtTaskRemoveOne(serviceName string, timeAtStr string) {
 		err              error
 	)
 	if !redisExists {
-		dlog.Error().Str("rpcCallAtTaskRemoveOne missing redis server", serviceName).Send()
+		logger.Error().Str("rpcCallAtTaskRemoveOne missing redis server", serviceName).Send()
 		return
 	}
 
 	if TimeAtUnixNs, err = strconv.ParseInt(timeAtStr, 10, 64); err != nil {
-		dlog.Info().Err(err).Send()
+		logger.Info().Err(err).Send()
 		return
 	}
 
@@ -56,16 +56,16 @@ func rpcCallAtTaskAddOne(serviceName string, timeAtStr string, bytesValue string
 		err              error
 	)
 	if !redisExists {
-		dlog.Error().Str("rpcCallAtTaskAddOne missing redis server", serviceName).Send()
+		logger.Error().Str("rpcCallAtTaskAddOne missing redis server", serviceName).Send()
 		return
 	}
 	task := &TaskAtFuture{ServiceName: serviceName}
 	if task.TimeAtUnixNs, err = strconv.ParseInt(timeAtStr, 10, 64); err != nil {
-		dlog.Info().Err(err).Send()
+		logger.Info().Err(err).Send()
 		return
 	}
 	if cmd := rds.HSet(context.Background(), serviceName+":delay", timeAtStr, bytesValue); cmd.Err() != nil {
-		dlog.Info().Err(cmd.Err()).Send()
+		logger.Info().Err(cmd.Err()).Send()
 		return
 	}
 	index := sort.Search(len(TasksAtFutureList), func(i int) bool { return TasksAtFutureList[i].TimeAtUnixNs < task.TimeAtUnixNs })
@@ -105,14 +105,14 @@ func rpcCallAtDispatcher() {
 		TasksAtFutureList = TasksAtFutureList[1:]
 		strTime := strconv.FormatInt(TaskAtFutureNs, 10)
 		if rds, redisExists = GetServiceDB(task.ServiceName); !redisExists {
-			dlog.Error().Str("rpcCallAtDispatcher missing redis server", task.ServiceName).Send()
+			logger.Error().Str("rpcCallAtDispatcher missing redis server", task.ServiceName).Send()
 			return
 		}
 		pipeline := rds.Pipeline()
 		pipeline.HGet(context.Background(), task.ServiceName+":delay", strTime)
 		pipeline.HDel(context.Background(), task.ServiceName+":delay", strTime)
 		if cmd, err = pipeline.Exec(context.Background()); err != nil {
-			dlog.Info().Err(err).Send()
+			logger.Info().Err(err).Send()
 			continue
 		} else if len(cmd) != 2 || cmd[1].Err() != nil {
 			continue
@@ -133,7 +133,7 @@ func rpcCallAtTasksLoad() {
 		rds        *redis.Client
 		exists     bool
 	)
-	dlog.Info().Msg("rpcCallAtTasksLoading started")
+	logger.Info().Msg("rpcCallAtTasksLoading started")
 	var _TasksAtFutureList = []*TaskAtFuture{}
 	for _, dataSource := range APIGroupByRdsToReceiveJob.Keys() {
 		services, ok := APIGroupByRdsToReceiveJob.Get(dataSource)
@@ -141,7 +141,7 @@ func rpcCallAtTasksLoad() {
 			continue
 		}
 		if rds, exists = cfgredis.Servers.Get(dataSource); !exists {
-			dlog.Info().AnErr("err LoadDelayApiTask, ", err).Send()
+			logger.Info().AnErr("err LoadDelayApiTask, ", err).Send()
 			continue
 		}
 		pipeline := rds.Pipeline()
@@ -149,7 +149,7 @@ func rpcCallAtTasksLoad() {
 			pipeline.HKeys(context.Background(), service+":delay")
 		}
 		if cmd, err = pipeline.Exec(context.Background()); err != nil {
-			dlog.Info().AnErr("err LoadDelayApiTask, ", err).Send()
+			logger.Info().AnErr("err LoadDelayApiTask, ", err).Send()
 			continue
 		}
 
@@ -172,7 +172,7 @@ func rpcCallAtTasksLoad() {
 	mut.Lock()
 	TasksAtFutureList = _TasksAtFutureList
 	mut.Unlock()
-	dlog.Info().Msg("rpcCallAtTasksLoading completed")
+	logger.Info().Msg("rpcCallAtTasksLoading completed")
 }
 func init() {
 	go func() {

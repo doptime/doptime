@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgredis"
-	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
+	"github.com/doptime/logger"
 	"github.com/redis/go-redis/v9"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -45,12 +45,12 @@ func Rpc[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 		// 	Values = []string{"data", string(b)}
 		// }
 		if db, exists = cfgredis.Servers.Get(rpc.ApiSourceRds); !exists {
-			dlog.Info().Str("DataSource not defined in enviroment", rpc.ApiSourceRds).Send()
+			logger.Info().Str("DataSource not defined in enviroment", rpc.ApiSourceRds).Send()
 			return ret, err
 		}
 		args := &redis.XAddArgs{Stream: rpc.Name, Values: Values, MaxLen: 4096}
 		if cmd = db.XAdd(rpc.Ctx, args); cmd.Err() != nil {
-			dlog.Info().AnErr("Do XAdd", cmd.Err()).Send()
+			logger.Info().AnErr("Do XAdd", cmd.Err()).Send()
 			return ret, cmd.Err()
 		}
 		// if hashCallAt {

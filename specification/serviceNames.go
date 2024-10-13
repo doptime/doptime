@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/doptime/doptime/dlog"
+	"github.com/doptime/logger"
 )
 
 var DisAllowedServiceNames = map[string]bool{
@@ -63,7 +63,7 @@ func ApiName(nameOld string) (nameNew string) {
 
 	if _, ok := DisAllowedServiceNames[nameNew]; ok || len(nameNew) == 0 {
 		nameNew = big.NewInt(rand.Int63()).String()
-		dlog.Error().Msg("Service created failed when calling ApiNamed, service name " + nameOld + " is invalid , it's renamed to " + nameNew)
+		logger.Error().Msg("Service created failed when calling ApiNamed, service name " + nameOld + " is invalid , it's renamed to " + nameNew)
 	}
 
 	//first byte of ServiceName should be lower case

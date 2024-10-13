@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/doptime/config/cfgredis"
-	"github.com/doptime/doptime/dlog"
+	"github.com/doptime/logger"
 
 	"github.com/doptime/doptime/specification"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -14,7 +14,7 @@ var ApiServices cmap.ConcurrentMap[string, ApiInterface] = cmap.New[ApiInterface
 func GetApiByName(serviceName string) (apiInfo ApiInterface, ok bool) {
 	var stdServiceName string
 	if stdServiceName = specification.ApiName(serviceName); len(stdServiceName) == 0 {
-		dlog.Error().Str("service misnamed", stdServiceName).Send()
+		logger.Error().Str("service misnamed", stdServiceName).Send()
 		return nil, false
 	}
 	return ApiServices.Get(stdServiceName)
@@ -27,7 +27,7 @@ func GetServiceDB(serviceName string) (db *redis.Client, ok bool) {
 	serviceInfo, _ := ApiServices.Get(serviceName)
 	DataSource := serviceInfo.GetDataSource()
 	if db, exists = cfgredis.Servers.Get(DataSource); !exists {
-		dlog.Error().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
+		logger.Error().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
 	}
 	return db, exists
 }

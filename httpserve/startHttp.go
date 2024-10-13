@@ -15,8 +15,8 @@ import (
 	"github.com/doptime/config/cfghttp"
 	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/api"
-	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/permission"
+	"github.com/doptime/logger"
 	"github.com/doptime/redisdb"
 	"github.com/redis/go-redis/v9"
 	"github.com/vmihailenco/msgpack/v5"
@@ -757,10 +757,10 @@ func httpStart(path string, port int64) {
 		IdleTimeout:       15 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {
-		dlog.Error().Err(err).Msg("http server ListenAndServe error")
+		logger.Error().Err(err).Msg("http server ListenAndServe error")
 		return
 	}
-	dlog.Info().Any("port", port).Any("path", path).Msg("doptime http server started!")
+	logger.Info().Any("port", port).Any("path", path).Msg("doptime http server started!")
 }
 
 func init() {
@@ -769,6 +769,6 @@ func init() {
 		time.Sleep(time.Millisecond * 10)
 	}
 	//wait, till all the apis are loaded
-	dlog.Info().Any("port", cfghttp.Port).Any("path", cfghttp.Path).Msg("doptime http server is starting")
+	logger.Info().Any("port", cfghttp.Port).Any("path", cfghttp.Path).Msg("doptime http server is starting")
 	go httpStart(cfghttp.Path, cfghttp.Port)
 }

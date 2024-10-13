@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgapi"
-	"github.com/doptime/doptime/dlog"
 	"github.com/doptime/doptime/specification"
+	"github.com/doptime/logger"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -51,7 +51,7 @@ func RpcOverHttp[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 
 	httpServer, exists := cfgapi.Servers.Get(option.ApiSourceHttp)
 	if !exists {
-		dlog.Error().Str("DataSource not defined in enviroment", option.ApiSourceHttp).Send()
+		logger.Error().Str("DataSource not defined in enviroment", option.ApiSourceHttp).Send()
 		return nil
 	}
 	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceHttp: httpServer, Ctx: context.Background(),

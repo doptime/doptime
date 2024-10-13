@@ -7,7 +7,7 @@ import (
 
 	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/api"
-	"github.com/doptime/doptime/dlog"
+	"github.com/doptime/logger"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -26,7 +26,7 @@ var ApiLockKey = api.Api(func(req *InLockKey) (ok bool, err error) {
 		rds    *redis.Client
 	)
 	if rds, ok = cfgredis.Servers.Get("default"); !ok {
-		dlog.Error().Err(err).Str("DataSource name not defined in enviroment while calling ApiLockKey", "default").Send()
+		logger.Error().Err(err).Str("DataSource name not defined in enviroment while calling ApiLockKey", "default").Send()
 		return false, err
 	}
 	if score, err = rds.ZScore(context.Background(), "KeyLocker", req.Key).Result(); err != nil {

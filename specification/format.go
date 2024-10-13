@@ -3,7 +3,7 @@ package specification
 import (
 	"reflect"
 
-	"github.com/doptime/doptime/dlog"
+	"github.com/doptime/logger"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -14,7 +14,7 @@ func MarshalApiInput(paramIn interface{}) (output []byte, err error) {
 	} else if paramType.Kind() == reflect.Map {
 	} else if paramType.Kind() == reflect.Ptr && (paramType.Elem().Kind() == reflect.Struct || paramType.Elem().Kind() == reflect.Map) {
 	} else {
-		dlog.Info().Msg("RdsApiBasic param should be a map or struct")
+		logger.Info().Msg("RdsApiBasic param should be a map or struct")
 		return nil, err
 	}
 
