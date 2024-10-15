@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/doptime/doptime/tools"
+	"github.com/doptime/doptime/utils"
 	"github.com/doptime/logger"
 )
 
-var apiCounter tools.Counter = tools.Counter{}
+var apiCounter utils.Counter = utils.Counter{}
 
 func reportApiStates() {
 	//wait till all apis are loaded
