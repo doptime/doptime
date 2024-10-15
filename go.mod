@@ -3,7 +3,7 @@ module github.com/doptime/doptime
 go 1.22.3
 
 require (
-	github.com/doptime/config v0.0.0-20241013091416-8c7144a99b42
+	github.com/doptime/config v0.0.0-20241015043405-cbb9321a2744
 	github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17
 	github.com/doptime/redisdb v0.0.0-20241013030654-46edf87832d7
 	github.com/go-playground/validator/v10 v10.20.0
@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/redis/go-redis/v9 v9.6.1
+	github.com/redis/go-redis/v9 v9.6.2
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 )
 

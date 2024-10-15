@@ -13,6 +13,8 @@ github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/r
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/doptime/config v0.0.0-20241013091416-8c7144a99b42 h1:LcCNOVT5MV2rfq1qdqPiaryDcXaRW4SgUgdOTxtuM54=
 github.com/doptime/config v0.0.0-20241013091416-8c7144a99b42/go.mod h1:/WWdYOF8R1FVqIhPmlmX90B5bbuK2k1pCeIlubt+/Fw=
+github.com/doptime/config v0.0.0-20241015043405-cbb9321a2744 h1:W9iZw4TtrnXjKujK8PTy1JCVvUTmytYkJWM/vP50Sgs=
+github.com/doptime/config v0.0.0-20241015043405-cbb9321a2744/go.mod h1:/WWdYOF8R1FVqIhPmlmX90B5bbuK2k1pCeIlubt+/Fw=
 github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17 h1:2NEAL69piCy6nwkA7kskW2tvkfSj8oh3drzv+LA59AM=
 github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17/go.mod h1:ilMlBlMQF0rCOpoxzQm5pDHAAdBH3v+3H+urGUEo27I=
 github.com/doptime/redisdb v0.0.0-20241013030654-46edf87832d7 h1:y8CFi5pVcHA4BAauqRO6U8IAIHtFoaCmKKsput7fbgI=
@@ -54,6 +56,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/redis/go-redis/v9 v9.6.1 h1:HHDteefn6ZkTtY5fGUE8tj8uy85AHk6zP7CpzIAM0y4=
 github.com/redis/go-redis/v9 v9.6.1/go.mod h1:0C0c6ycQsdpVNQpxb1njEQIqkx5UcsM8FJCQLgE9+RA=
+github.com/redis/go-redis/v9 v9.6.2 h1:w0uvkRbc9KpgD98zcvo5IrVUsn0lXpRMuhNgiHDJzdk=
+github.com/redis/go-redis/v9 v9.6.2/go.mod h1:0C0c6ycQsdpVNQpxb1njEQIqkx5UcsM8FJCQLgE9+RA=
 github.com/rs/xid v1.5.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
 github.com/rs/zerolog v1.33.0 h1:1cU2KZkvPxNyfgEmhHAz/1A9Bz+llsdYzklWFzgp0r8=
 github.com/rs/zerolog v1.33.0/go.mod h1:/7mN4D5sKwJLZQ2b/znpjC3/GQWY/xaDXUM0kKWRHss=
