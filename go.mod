@@ -3,7 +3,7 @@ module github.com/doptime/doptime
 go 1.22.3
 
 require (
-	github.com/doptime/config v0.0.0-20241015113110-d5c52222ac5b
+	github.com/doptime/config v0.0.0-20241015113746-206e77af224f
 	github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17
 	github.com/doptime/redisdb v0.0.0-20241013030654-46edf87832d7
 	github.com/go-playground/validator/v10 v10.20.0
