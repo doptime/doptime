@@ -5,7 +5,7 @@ go 1.22.3
 require (
 	github.com/doptime/config v0.0.0-20241016061441-7c988e656682
 	github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17
-	github.com/doptime/redisdb v0.0.0-20241016092239-9fce9fe22b56
+	github.com/doptime/redisdb v0.0.0-20241016093316-185265c3ca63
 	github.com/go-playground/validator/v10 v10.20.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/gorilla/websocket v1.5.3

@@ -47,6 +47,9 @@ func GetDataDocs() (string, error) {
 		if v.UpdateAt < now-20*60 {
 			continue
 		}
+		if len(v.KeyName) < 1 {
+			continue
+		}
 		keyWithFirstCharUpper := strings.ToUpper(v.KeyName[0:1]) + v.KeyName[1:]
 		keyWithFirstCharUpper = strings.Split(keyWithFirstCharUpper, ":")[0]
 		jsBytes, _ := json.Marshal(v.Instance)
