@@ -5,16 +5,16 @@ import (
 	"github.com/doptime/doptime/apiinfo"
 )
 
-type APIDocs struct {
+type ApiDocs struct {
 }
 
 type DataDocs struct {
 }
 
-var ApiDocsAPI = api.Api(func(req *APIDocs) (r string, err error) {
+var ApiApiDocs = api.Api(func(req *ApiDocs) (r string, err error) {
 	return apiinfo.GetApiDocs()
 }).Func
 
-var ApiDocs = api.Api(func(req *DataDocs) (r string, err error) {
+var ApiDataDocs = api.Api(func(req *DataDocs) (r string, err error) {
 	return apiinfo.GetDataDocs()
 }).Func

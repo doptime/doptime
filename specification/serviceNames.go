@@ -66,12 +66,8 @@ func ApiName(nameOld string) (nameNew string) {
 		logger.Error().Msg("Service created failed when calling ApiNamed, service name " + nameOld + " is invalid , it's renamed to " + nameNew)
 	}
 
-	//first byte of ServiceName should be lower case
-	if nameNew[0] >= 'A' && nameNew[0] <= 'Z' {
-		nameNew = string(nameNew[0]+32) + nameNew[1:]
-	}
 	//ensure ServiceKey start with "api:"
-	return "api:" + nameNew
+	return "api:" + strings.ToLower(nameNew)
 }
 
 func ApiNameByType(i interface{}) (name string) {
