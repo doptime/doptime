@@ -41,8 +41,6 @@ func ApiName(nameOld string) (nameNew string) {
 		nameNew = nameOld[:len(nameOld)-6]
 	} else if p := nameLowercase[len(nameLowercase)-5:]; p == "input" || p == "param" {
 		nameNew = nameOld[:len(nameOld)-5]
-	} else if p := nameLowercase[len(nameLowercase)-4:]; p == "data" {
-		nameNew = nameOld[:len(nameOld)-4]
 	} else if p := nameLowercase[len(nameLowercase)-3:]; p == "arg" || p == "req" || p == "src" || p == "out" {
 		nameNew = nameOld[:len(nameOld)-3]
 	} else if p := nameLowercase[len(nameLowercase)-2:]; p == "in" {
@@ -53,7 +51,7 @@ func ApiName(nameOld string) (nameNew string) {
 	nameLowercase = strings.ToLower(nameNew) + "      "
 	if p := nameLowercase[:5]; p == "input" || p == "param" {
 		nameNew = nameNew[5:]
-	} else if p := nameLowercase[:4]; p == "api:" || p == "data" {
+	} else if p := nameLowercase[:4]; p == "api:" {
 		nameNew = nameNew[4:]
 	} else if p := nameLowercase[:3]; p == "arg" || p == "req" || p == "src" {
 		nameNew = nameNew[3:]
