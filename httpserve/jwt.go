@@ -50,18 +50,23 @@ func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 	var ok bool
 	jwtStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if len(jwtStr) == 0 {
-		return errors.New("no JWT token")
+		return nil
 	}
+	//fast return from cache
 	if svc.Claims, ok = mapClaims.Get(jwtStr); ok {
 		exp := svc.Claims["exp"].(int64)
 		if exp < time.Now().Unix() {
+			mapClaims.Remove(jwtStr)
 			return errors.New("JWT token is expired")
 		}
-	} else if svc.Claims, err = Jwt2Claim(jwtStr, cfghttp.JWTSecret); err != nil {
-		return fmt.Errorf("invalid JWT token: %v", err)
-	} else {
-		mapClaims.Set(jwtStr, svc.Claims)
+		return nil
 	}
+	//parse jwt token
+	if svc.Claims, err = Jwt2Claim(jwtStr, cfghttp.JWTSecret); err != nil {
+		return fmt.Errorf("invalid JWT token: %v", err)
+	}
+	//save jwt token to cache
+	mapClaims.Set(jwtStr, svc.Claims)
 	return nil
 }
 
