@@ -6,12 +6,17 @@ import (
 )
 
 func (svc *DoptimeReqCtx) UpdateKeyFieldWithJwtClaims() (operation string, err error) {
-	if svc.Claims == nil {
-		return operation, fmt.Errorf("JWT token is nil")
-	}
 	skey := strings.Split(svc.Key, ":")[0]
 	skey = strings.Split(skey, "@")[0]
 	operation = strings.ToLower(svc.Cmd) + "::" + skey
+	//return if no @ in key or field to be replaced
+	if !strings.Contains(svc.Key, "@") && !strings.Contains(svc.Field, "@") {
+		return operation, nil
+	}
+
+	if svc.Claims == nil {
+		return operation, fmt.Errorf("JWT token is nil")
+	}
 
 	// Field contains @*, replace @* with jwt value
 	// 只要设置的时候，有@id,@pub，可以确保写不越权，因为 是"@" + operation
