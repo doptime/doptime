@@ -1,0 +1,4 @@
+package libapi
+
+func EnableLibapi() {
+}

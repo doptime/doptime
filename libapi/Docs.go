@@ -5,16 +5,16 @@ import (
 	"github.com/doptime/doptime/apiinfo"
 )
 
-type DocsIn struct {
-	// type of "api" or "data"
-	T string `msgpack:"t"`
+type APIDocs struct {
 }
 
-var ApiDocs = api.Api(func(req *DocsIn) (r string, err error) {
-	if req.T == "api" {
-		return apiinfo.GetApiDocs()
-	} else if req.T == "data" {
-		return apiinfo.GetDataDocs()
-	}
-	return "you should specify a type in your url '?t=api' or '?t=data'", nil
+type DataDocs struct {
+}
+
+var ApiDocsAPI = api.Api(func(req *APIDocs) (r string, err error) {
+	return apiinfo.GetApiDocs()
+}).Func
+
+var ApiDocs = api.Api(func(req *DataDocs) (r string, err error) {
+	return apiinfo.GetDataDocs()
 }).Func
