@@ -27,6 +27,8 @@ github.com/doptime/config v0.0.0-20241015122332-c4e930d258f4 h1:5v+xwUJdrobb6RcV
 github.com/doptime/config v0.0.0-20241015122332-c4e930d258f4/go.mod h1:/WWdYOF8R1FVqIhPmlmX90B5bbuK2k1pCeIlubt+/Fw=
 github.com/doptime/config v0.0.0-20241015125028-e10cd4b4bdd4 h1:2P02V3o+54dqcQV6HQjXvAw6Y3w5a+YvhlCAsWeOg3g=
 github.com/doptime/config v0.0.0-20241015125028-e10cd4b4bdd4/go.mod h1:/WWdYOF8R1FVqIhPmlmX90B5bbuK2k1pCeIlubt+/Fw=
+github.com/doptime/config v0.0.0-20241016061441-7c988e656682 h1:BFUWInDQnA+QfAn47+4RduaNTfJi2zGY5LtP1X/clYc=
+github.com/doptime/config v0.0.0-20241016061441-7c988e656682/go.mod h1:/WWdYOF8R1FVqIhPmlmX90B5bbuK2k1pCeIlubt+/Fw=
 github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17 h1:2NEAL69piCy6nwkA7kskW2tvkfSj8oh3drzv+LA59AM=
 github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17/go.mod h1:ilMlBlMQF0rCOpoxzQm5pDHAAdBH3v+3H+urGUEo27I=
 github.com/doptime/redisdb v0.0.0-20241013030654-46edf87832d7 h1:y8CFi5pVcHA4BAauqRO6U8IAIHtFoaCmKKsput7fbgI=

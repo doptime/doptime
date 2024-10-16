@@ -15,7 +15,7 @@ var permitmap cmap.ConcurrentMap[string, bool] = cmap.New[bool]()
 // this version of IsPermitted is design for fast searching & modifying
 func IsPermitted(operation string) (ok bool) {
 	var (
-		autoPermit                            bool   = cfghttp.AutoDataAuth
+		autoPermit                            bool   = cfghttp.DangerousAutoWhitelist
 		permitKey                             string = operation
 		permitKeyAllowed, permitKeyDisallowed string = permitKey + "::on", permitKey + "::off"
 	)
