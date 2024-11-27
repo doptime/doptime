@@ -1,5 +1,7 @@
 package httpserve
 
+import "errors"
+
 const (
 	HGET             string = "HGET"
 	HSET             string = "HSET"
@@ -369,4 +371,17 @@ var DataCmdRequireField = map[string]bool{
 	ZUNIONSTORE:      false,
 	XRANGEN:          false,
 	XREVRANGE:        false,
+}
+
+func (httpCtx *DoptimeReqCtx) EnsureKeyFieldIsValid() error {
+
+	// ensure there's a key for certain cmds
+	needed, ok := DataCmdRequireKey[httpCtx.Cmd]
+	if ok && needed && httpCtx.Key == "" {
+		return errors.New("url  key required")
+	}
+	needed, ok = DataCmdRequireField[httpCtx.Cmd]
+	if ok && needed && httpCtx.Field == "" {
+		return errors.New("url  field required")
+	}
 }

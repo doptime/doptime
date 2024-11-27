@@ -74,6 +74,11 @@ func httpStart(path string, port int64) {
 			httpStatus = http.StatusBadRequest
 			goto responseHttp
 		}
+		//there should be a valid cmd & key if needed
+		if err = svcCtx.EnsureKeyFieldIsValid(); err != nil {
+			httpStatus = http.StatusBadRequest
+			goto responseHttp
+		}
 
 		//RedisDataSource should be valid
 		if rds, ok = cfgredis.Servers.Get(RedisDataSource); !ok {
@@ -305,9 +310,7 @@ func httpStart(path string, port int64) {
 
 		case HSET:
 			result = "false"
-			if svcCtx.Key == "" || svcCtx.Field == "" {
-				err = ErrEmptyKeyOrField
-			} else if bs, err = svcCtx.MsgpackBody(r, true, nil); err != nil {
+			if bs, err = svcCtx.MsgpackBody(r, true, nil); err != nil {
 			} else if hkey, result, err = redisdb.HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = hkey.HSet(svcCtx.Field, result)
@@ -316,9 +319,7 @@ func httpStart(path string, port int64) {
 		case HDEL:
 			result = "false"
 			//error if empty Key or Field
-			if svcCtx.Field == "" {
-				err = ErrEmptyKeyOrField
-			} else if err = rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Err(); err == nil {
+			if err = rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Err(); err == nil {
 				result = "true"
 			}
 		case HKEYS:
@@ -575,9 +576,7 @@ func httpStart(path string, port int64) {
 
 		case SET:
 			result = "false"
-			if svcCtx.Key == "" || svcCtx.Field == "" {
-				err = ErrEmptyKeyOrField
-			} else if strKey, result, err = redisdb.StringCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
+			if strKey, result, err = redisdb.StringCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
 			} else {
 				err = strKey.Set(svcCtx.Key+":"+svcCtx.Field, result, 0)
 			}
