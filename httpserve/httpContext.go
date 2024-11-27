@@ -59,12 +59,12 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 	if len(CmdKeyFields) > 1 {
 		svcContext.Key = CmdKeyFields[1]
 	}
-	if b, ok := DataCmdShouldHaveKey[dataCMD(svcContext.Cmd)]; ok && b && svcContext.Key == "" {
+	if b, ok := DataCmdRequireKey[svcContext.Cmd]; ok && b && svcContext.Key == "" {
 		return nil, errors.New("url  key required")
 	}
 
 	svcContext.Field = r.FormValue("f")
-	if b, ok := DataCmdShouldHaveField[dataCMD(svcContext.Cmd)]; ok && b && svcContext.Field == "" {
+	if b, ok := DataCmdRequireField[svcContext.Cmd]; ok && b && svcContext.Field == "" {
 		return nil, errors.New("url  field required")
 	}
 
