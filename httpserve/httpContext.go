@@ -27,35 +27,46 @@ type DoptimeReqCtx struct {
 	ReqID   string
 }
 
-var ErrIncompleteRequest = errors.New("incomplete request")
-
 func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter) (httpCtx *DoptimeReqCtx, err error) {
 	var (
 		CmdKeyFields                           []string
 		CmdKeyFieldsStr, pathStr, pathLastPart string
 	)
 	svcContext := &DoptimeReqCtx{Ctx: ctx}
-
+	//case redis data access
 	//i.g. https://url.com/rSvc/HGET-UserAvatar=fa4Y3oyQk2swURaJ?Queries=*&RspType=image/jpeg
+	//case api command
+	//i.g. https://url.com/ApiDocs
 	if pathStr = r.URL.Path; r.URL.RawPath != "" {
 		pathStr = r.URL.RawPath
 	}
 	if pathLastPart = path.Base(pathStr); pathLastPart == "" {
-		return nil, ErrIncompleteRequest
+		return nil, errors.New("url missing api_name or data_command")
 	}
 	if CmdKeyFieldsStr, err = url.QueryUnescape(pathLastPart); err != nil {
 		return nil, err
 	}
-	if CmdKeyFields = strings.SplitN(CmdKeyFieldsStr, "-", 2); len(CmdKeyFields) != 2 {
-		return nil, ErrIncompleteRequest
+	if CmdKeyFields = strings.SplitN(CmdKeyFieldsStr, "-", 2); len(CmdKeyFields) < 1 {
+		return nil, errors.New("url missing api_name or data_command")
 	}
+
+	if svcContext.Cmd = strings.ToUpper(CmdKeyFields[0]); svcContext.Cmd == "" {
+		return nil, errors.New("url missing api_name or data_command")
+	}
+
 	// cmd and key and field, i.g. /HGET/UserAvatar?F=fa4Y3oyQk2swURaJ
 	// both cmd and key are required
-	if svcContext.Cmd, svcContext.Key = strings.ToUpper(CmdKeyFields[0]), CmdKeyFields[1]; svcContext.Cmd == "" || svcContext.Key == "" {
-		return nil, ErrIncompleteRequest
+	if len(CmdKeyFields) > 1 {
+		svcContext.Key = CmdKeyFields[1]
 	}
-	//url decoded already
+	if b, ok := DataCmdShouldHaveKey[dataCMD(svcContext.Cmd)]; ok && b && svcContext.Key == "" {
+		return nil, errors.New("url  key required")
+	}
+
 	svcContext.Field = r.FormValue("f")
+	if b, ok := DataCmdShouldHaveField[dataCMD(svcContext.Cmd)]; ok && b && svcContext.Field == "" {
+		return nil, errors.New("url  field required")
+	}
 
 	if err = svcContext.ParseJwtClaim(r); err != nil {
 		return svcContext, err
