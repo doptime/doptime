@@ -384,4 +384,5 @@ func (httpCtx *DoptimeReqCtx) EnsureKeyFieldIsValid() error {
 	if ok && needed && httpCtx.Field == "" {
 		return errors.New("url  field required")
 	}
+	return nil
 }
