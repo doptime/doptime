@@ -15,7 +15,6 @@ import (
 	"github.com/doptime/config/cfghttp"
 	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/api"
-	"github.com/doptime/doptime/permission"
 	"github.com/doptime/logger"
 	"github.com/doptime/redisdb"
 	"github.com/redis/go-redis/v9"
@@ -96,7 +95,7 @@ func httpStart(path string, port int64) {
 			httpStatus = http.StatusForbidden
 			err = ErrSUNotMatch
 			goto responseHttp
-		} else if DataOpSuperUserToken == "" && !permission.IsPermitted(operation) {
+		} else if DataOpSuperUserToken == "" && !IsPermitted(operation) {
 			httpStatus = http.StatusForbidden
 			err = ErrOperationNotPermited
 			goto responseHttp
@@ -764,7 +763,7 @@ func httpStart(path string, port int64) {
 
 func init() {
 	//wait 1s, till the permission table is loaded
-	for i := 0; !permission.ConfigurationLoaded && i < 100; i++ {
+	for i := 0; !redisdbPermissionTableLoaded && i < 100; i++ {
 		time.Sleep(time.Millisecond * 10)
 	}
 	//wait, till all the apis are loaded

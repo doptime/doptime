@@ -1,4 +1,4 @@
-package permission
+package httpserve
 
 import (
 	"time"
@@ -33,7 +33,7 @@ func IsPermitted(operation string) (ok bool) {
 	return autoPermit
 }
 
-var ConfigurationLoaded bool = false
+var redisdbPermissionTableLoaded bool = false
 
 func LoadPermissionTable() {
 	var (
@@ -41,7 +41,7 @@ func LoadPermissionTable() {
 	)
 	keys, err := rdsPermit.HKeys()
 	// show log if it is the first time to load
-	for ; !ConfigurationLoaded; ConfigurationLoaded = true {
+	for ; !redisdbPermissionTableLoaded; redisdbPermissionTableLoaded = true {
 		if err != nil {
 			logger.Warn().AnErr("Step2.1: start permission loading from redis failed", err).Send()
 		} else {
