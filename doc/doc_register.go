@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgredis"
-	"github.com/doptime/doptime/specification"
 	"github.com/doptime/redisdb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/vmihailenco/msgpack/v5"
@@ -37,11 +36,11 @@ func RegisterApi(Name string, paramInType reflect.Type, paramOutType reflect.Typ
 	}
 
 	//vType := reflect.TypeOf((*i)(nil)).Elem()
-	if webdata.ParamIn, err = specification.InstantiateType(paramInType); err != nil {
+	if webdata.ParamIn, err = InstantiateType(paramInType); err != nil {
 		return err
 	}
 	//oType := reflect.TypeOf((*o)(nil)).Elem()
-	if webdata.ParamOut, err = specification.InstantiateType(paramOutType); err != nil {
+	if webdata.ParamOut, err = InstantiateType(paramOutType); err != nil {
 		return err
 	}
 	ApiDocsMap.Set(Name, webdata)

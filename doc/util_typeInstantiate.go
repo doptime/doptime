@@ -1,4 +1,4 @@
-package specification
+package doc
 
 import (
 	"fmt"
