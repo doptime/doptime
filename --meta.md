@@ -4,7 +4,7 @@ the Goal of the project:
 1. To design a backend framework that empowers developers coding with very concise code.
 - Without the need to write CRUD operations.
 - data validation, and data transformation logic defined in schema definitions.
-2. Provide a wide range of APIs defined in the librpc to meet development needs.
+2. Provide a wide range of APIs defined in the dopapi to meet development needs.
 - Most of the logic can be implemented in the shared API layer.
   Including the data visualization
 - Allow APIs shared between the world to minimiza the development necessities

@@ -1,4 +1,4 @@
-package libapi
+package httpserve
 
 import (
 	"github.com/doptime/doptime/api"

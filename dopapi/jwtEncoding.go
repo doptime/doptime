@@ -1,4 +1,4 @@
-package libapi
+package dopapi
 
 import (
 	"errors"

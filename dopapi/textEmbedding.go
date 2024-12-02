@@ -1,4 +1,4 @@
-package librpc
+package dopapi
 
 type EmbeddingModel string
 
