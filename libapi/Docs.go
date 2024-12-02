@@ -2,7 +2,7 @@ package libapi
 
 import (
 	"github.com/doptime/doptime/api"
-	"github.com/doptime/doptime/apiinfo"
+	"github.com/doptime/doptime/doc"
 )
 
 type ApiDocs struct {
@@ -12,9 +12,9 @@ type DataDocs struct {
 }
 
 var ApiApiDocs = api.Api(func(req *ApiDocs) (r string, err error) {
-	return apiinfo.GetApiDocs()
+	return doc.GetApiDocs()
 }).Func
 
 var ApiDataDocs = api.Api(func(req *DataDocs) (r string, err error) {
-	return apiinfo.GetDataDocs()
+	return doc.GetDataDocs()
 }).Func

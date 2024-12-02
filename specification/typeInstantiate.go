@@ -50,7 +50,7 @@ func InstantiateFields(value reflect.Value) {
 					var elemValue reflect.Value
 					switch elemType.Kind() {
 					case reflect.String:
-						elemValue = reflect.ValueOf("")
+						elemValue = reflect.ValueOf("string")
 					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 						elemValue = reflect.ValueOf(0)
 					case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
