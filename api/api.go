@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/doptime/doptime/doc"
+	"github.com/doptime/doptime/httpdoc"
 	"github.com/doptime/doptime/specification"
 	"github.com/doptime/doptime/vars"
 	"github.com/doptime/logger"
@@ -44,7 +44,7 @@ func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...opti
 
 	iType := reflect.TypeOf((*i)(nil)).Elem()
 	oType := reflect.TypeOf((*o)(nil)).Elem()
-	doc.RegisterApi(out.Name, iType, oType)
+	httpdoc.RegisterApi(out.Name, iType, oType)
 
 	logger.Debug().Str("ApiNamed service created completed!", out.Name).Send()
 	return out
