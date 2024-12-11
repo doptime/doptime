@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfghttp"
-	"github.com/doptime/doptime/api"
+	"github.com/doptime/doptime/httpserve/httpapi"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"github.com/vmihailenco/msgpack/v5"
@@ -77,7 +77,7 @@ func websocketAPICallback(w http.ResponseWriter, r *http.Request) {
 		}
 		if mt == websocket.BinaryMessage {
 			var reqCtx DoptimeReqCtx
-			var _api api.ApiInterface
+			var _api httpapi.ApiInterface
 			var result interface{}
 			reqCtx.UpdateKeyFieldWithJwtClaims()
 			if err = msgpack.Unmarshal(message, &reqCtx); err != nil {
@@ -100,7 +100,7 @@ func websocketAPICallback(w http.ResponseWriter, r *http.Request) {
 			}
 			//always response with msgpack format
 
-			if _api, ok = api.GetApiByName(reqCtx.Key); !ok {
+			if _api, ok = httpapi.GetApiByName(reqCtx.Key); !ok {
 				rsp.Response(ws, &mu, "err no such api")
 			}
 			_api.MergeHeaderParam(r, paramIn)

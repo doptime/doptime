@@ -1,4 +1,4 @@
-package api
+package utils
 
 import (
 	"reflect"
@@ -84,7 +84,7 @@ func mapToStructDecodHook(f reflect.Type, t reflect.Type, data interface{}) (int
 		return data, nil
 	}
 }
-func mapToStructDecoder(pIn interface{}) (decoder *mapstructure.Decoder, err error) {
+func MapToStructDecoder(pIn interface{}) (decoder *mapstructure.Decoder, err error) {
 	// mapstructure support type conversion
 	config := &mapstructure.DecoderConfig{
 		Metadata:   nil,

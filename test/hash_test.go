@@ -20,7 +20,7 @@ func TestStringKey(t *testing.T) {
 	)
 	//create a http context
 
-	var keyTestInDemo = redisdb.HashKey[string, *TestHash]()
+	var keyTestInDemo = redisdb.NewHashKey[string, *TestHash]()
 	if err = keyTestInDemo.HSet("field1", &TestHash{Name: "value1"}); err != nil {
 		t.Error(err)
 	}
@@ -67,7 +67,7 @@ func TestStringKey2(t *testing.T) {
 	)
 	//create a http context
 
-	var keyTestInDemo = redisdb.HashKey[*string, *TestHash]()
+	var keyTestInDemo = redisdb.NewHashKey[*string, *TestHash]()
 	if err = keyTestInDemo.HSet(&k1, v1); err != nil {
 		t.Error(err)
 	}
@@ -116,7 +116,7 @@ func TestObjectKey(t *testing.T) {
 	)
 	//create a http context
 
-	var keyTestInDemo = redisdb.HashKey[*Key, *TestHash]()
+	var keyTestInDemo = redisdb.NewHashKey[*Key, *TestHash]()
 	if err = keyTestInDemo.HSet(k1, v1); err != nil {
 		t.Error(err)
 	}

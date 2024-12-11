@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgredis"
+	"github.com/doptime/doptime/httpserve/httpapi"
 	"github.com/doptime/logger"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -20,6 +22,18 @@ type TaskAtFuture struct {
 
 var TasksAtFutureList = []*TaskAtFuture{}
 var mut sync.Mutex = sync.Mutex{}
+
+func GetServiceDB(serviceName string) (db *redis.Client, ok bool) {
+	var (
+		exists bool
+	)
+	serviceInfo, _ := httpapi.ApiViaHttp.Get(serviceName)
+	DataSource := serviceInfo.GetDataSource()
+	if db, exists = cfgredis.Servers.Get(DataSource); !exists {
+		logger.Error().Str("DataSource not defined in enviroment. Please check the configuration", DataSource).Send()
+	}
+	return db, exists
+}
 
 // the reason why rpc can be removed locally is that the when doing rpc. api will recheck the data. only non empty data will be processed
 func rpcCallAtTaskRemoveOne(serviceName string, timeAtStr string) {
@@ -124,6 +138,8 @@ func rpcCallAtDispatcher() {
 		CallApiLocallyAndSendBackResult(task.ServiceName, strconv.FormatInt(TaskAtFutureNs, 10), []byte(data))
 	}
 }
+
+var APIGroupByRdsToReceiveJob = cmap.New[[]string]()
 
 func rpcCallAtTasksLoad() {
 	var (

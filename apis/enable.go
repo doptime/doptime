@@ -1,4 +1,4 @@
-package dopapi
+package apis
 
 func EnableLibapi() {
 }

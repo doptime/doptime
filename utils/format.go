@@ -1,4 +1,4 @@
-package specification
+package utils
 
 import (
 	"reflect"

@@ -1,26 +1,9 @@
-package specification
+package utils
 
 import (
 	"fmt"
 	"reflect"
 )
-
-var DisAllowedDataKeyNames = map[string]bool{
-	"":           true,
-	"string":     true,
-	"int32":      true,
-	"int64":      true,
-	"float32":    true,
-	"float64":    true,
-	"int":        true,
-	"uint":       true,
-	"float":      true,
-	"bool":       true,
-	"byte":       true,
-	"rune":       true,
-	"complex64":  true,
-	"complex128": true,
-}
 
 func GetValidDataKeyName(value interface{}) (Key string, err error) {
 	if len(Key) == 0 {
@@ -31,7 +14,7 @@ func GetValidDataKeyName(value interface{}) (Key string, err error) {
 		}
 		Key = _type.Name()
 	}
-	if _, ok := DisAllowedDataKeyNames[Key]; ok {
+	if invalid := IsInvalidStructName(Key); invalid || len(Key) == 0 {
 		err = fmt.Errorf("invalid keyname infered from type: " + Key)
 		return "", err
 	}

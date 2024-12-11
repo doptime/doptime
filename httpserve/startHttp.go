@@ -14,7 +14,7 @@ import (
 
 	"github.com/doptime/config/cfghttp"
 	"github.com/doptime/config/cfgredis"
-	"github.com/doptime/doptime/api"
+	"github.com/doptime/doptime/httpserve/httpapi"
 	"github.com/doptime/logger"
 	"github.com/doptime/redisdb"
 	"github.com/redis/go-redis/v9"
@@ -25,11 +25,11 @@ func Debug() {
 
 }
 
-var hashKey = redisdb.HashKey[string, interface{}](redisdb.WithKey("_"))
-var zsetKey = redisdb.ZSetKey[string, interface{}](redisdb.WithKey("_"))
-var listKey = redisdb.ListKey[string, interface{}](redisdb.WithKey("_"))
-var setKey = redisdb.SetKey[string, interface{}](redisdb.WithKey("_"))
-var stringKey = redisdb.StringKey[string, interface{}](redisdb.WithKey("_"))
+var hashKey = redisdb.NewHashKey[string, interface{}](redisdb.WithKey("_"))
+var zsetKey = redisdb.NewZSetKey[string, interface{}](redisdb.WithKey("_"))
+var listKey = redisdb.NewListKey[string, interface{}](redisdb.WithKey("_"))
+var setKey = redisdb.NewSetKey[string, interface{}](redisdb.WithKey("_"))
+var stringKey = redisdb.NewStringKey[string, interface{}](redisdb.WithKey("_"))
 
 // listten to a port and start http server
 func httpStart(path string, port int64) {
@@ -44,9 +44,9 @@ func httpStart(path string, port int64) {
 			httpStatus   int = http.StatusOK
 			svcCtx       *DoptimeReqCtx
 			rds          *redis.Client
-			hkey         *redisdb.CtxHash[string, interface{}]
-			lkey         *redisdb.CtxList[string, interface{}]
-			strKey       *redisdb.CtxString[string, interface{}]
+			hkey         *redisdb.HashKey[string, interface{}]
+			lkey         *redisdb.ListKey[string, interface{}]
+			strKey       *redisdb.StringKey[string, interface{}]
 			operation, s string = "", ""
 			//load redis datasource value from form
 			RedisDataSource            = r.FormValue("ds")
@@ -106,7 +106,7 @@ func httpStart(path string, port int64) {
 			var (
 				paramIn     map[string]interface{} = map[string]interface{}{}
 				ServiceName string                 = svcCtx.Key
-				_api        api.ApiInterface
+				_api        httpapi.ApiInterface
 				ok          bool
 			)
 
@@ -123,7 +123,7 @@ func httpStart(path string, port int64) {
 				}
 			}
 
-			if _api, ok = api.GetApiByName(ServiceName); !ok {
+			if _api, ok = httpapi.GetApiByName(ServiceName); !ok {
 				result, err = nil, fmt.Errorf("err no such api")
 				goto responseHttp
 			}
@@ -163,7 +163,7 @@ func httpStart(path string, port int64) {
 				match  string
 			)
 			result = ""
-			db_ := redisdb.CtxSet[string, interface{}]{Ctx: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.SetKey[string, interface{}]{RedisKey: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
 			} else if match = r.FormValue("Match"); match == "" {
@@ -178,7 +178,7 @@ func httpStart(path string, port int64) {
 				keys   []string
 				match  string
 			)
-			db_ := redisdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.HashKey[string, interface{}]{RedisKey: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			result = ""
 			if err = db_.Validate(); err != nil {
 			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
@@ -201,7 +201,7 @@ func httpStart(path string, port int64) {
 				values []interface{}
 				match  string
 			)
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			result = ""
 			if err = db_.Validate(); err != nil {
 			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
@@ -285,7 +285,7 @@ func httpStart(path string, port int64) {
 			}
 
 		case GET:
-			db_ := redisdb.CtxString[string, interface{}]{Ctx: stringKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.StringKey[string, interface{}]{RedisKey: stringKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				result, err = db_.Get(svcCtx.Field)
 			}
@@ -295,7 +295,7 @@ func httpStart(path string, port int64) {
 				result, err = hkey.HGet(svcCtx.Field)
 			}
 		case HGETALL:
-			db_ := redisdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.HashKey[string, interface{}]{RedisKey: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				result, err = db_.HGetAll()
 			}
@@ -322,17 +322,17 @@ func httpStart(path string, port int64) {
 				result = "true"
 			}
 		case HKEYS:
-			db_ := redisdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.HashKey[string, interface{}]{RedisKey: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				result, err = db_.HKeys()
 			}
 		case HEXISTS:
-			db_ := redisdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.HashKey[string, interface{}]{RedisKey: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				result, err = db_.HExists(svcCtx.Field)
 			}
 		case HRANDFIELD:
-			db_ := redisdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.HashKey[string, interface{}]{RedisKey: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				var count int
 				if count, err = strconv.Atoi(r.FormValue("Count")); err != nil {
@@ -342,12 +342,12 @@ func httpStart(path string, port int64) {
 				}
 			}
 		case HVALS:
-			db_ := redisdb.CtxHash[string, interface{}]{Ctx: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.HashKey[string, interface{}]{RedisKey: hashKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				result, err = db_.HVals()
 			}
 		case SISMEMBER:
-			db_ := redisdb.CtxSet[string, interface{}]{Ctx: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.SetKey[string, interface{}]{RedisKey: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				result, err = db_.SIsMember(r.FormValue("Member"))
 			}
@@ -364,7 +364,7 @@ func httpStart(path string, port int64) {
 				start, stop int64 = 0, -1
 			)
 			result = ""
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
@@ -384,7 +384,7 @@ func httpStart(path string, port int64) {
 				scores        []float64
 			)
 			result = ""
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else if Min := r.FormValue("Min"); Min == "" {
 				result, err = "false", errors.New("no Min")
@@ -408,7 +408,7 @@ func httpStart(path string, port int64) {
 				start, stop int64 = 0, -1
 			)
 			result = ""
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
@@ -431,7 +431,7 @@ func httpStart(path string, port int64) {
 			var (
 				offset, count int64 = 0, -1
 			)
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else if Min, Max := r.FormValue("Min"), r.FormValue("Max"); Min == "" || Max == "" {
 				result, err = "", errors.New("no Min or Max")
@@ -454,26 +454,26 @@ func httpStart(path string, port int64) {
 				result, err = db_.ZRevRangeByScore(&redis.ZRangeBy{Min: Min, Max: Max, Offset: offset, Count: count})
 			}
 		case ZRANK:
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else {
 				result, err = db_.ZRank(r.FormValue("Member"))
 			}
 		case ZCOUNT:
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else {
 				result, err = db_.ZCount(r.FormValue("Min"), r.FormValue("Max"))
 			}
 		case ZSCORE:
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else {
 				result, err = db_.ZScore(r.FormValue("Member"))
 			}
 		case SCAN:
 			result = ""
-			db_ := redisdb.CtxSet[string, interface{}]{Ctx: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.SetKey[string, interface{}]{RedisKey: setKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				var (
 					cursor uint64
@@ -491,7 +491,7 @@ func httpStart(path string, port int64) {
 			}
 		case LINDEX:
 			//db := listKey.Duplicate(svcCtx.Key, RedisDataSource)
-			db_ := redisdb.CtxList[string, interface{}]{Ctx: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ListKey[string, interface{}]{RedisKey: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				var index int64
 				if index, err = strconv.ParseInt(r.FormValue("Index"), 10, 64); err != nil {
@@ -502,7 +502,7 @@ func httpStart(path string, port int64) {
 			}
 
 		case LPOP:
-			db_ := redisdb.CtxList[string, interface{}]{Ctx: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ListKey[string, interface{}]{RedisKey: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				result, err = db_.LPop()
 			}
@@ -540,7 +540,7 @@ func httpStart(path string, port int64) {
 				result = "true"
 			}
 		case RPOP:
-			db_ := redisdb.CtxList[string, interface{}]{Ctx: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ListKey[string, interface{}]{RedisKey: listKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if db_.Validate() == nil {
 				result, err = db_.RPop()
 			}
@@ -563,7 +563,7 @@ func httpStart(path string, port int64) {
 		case ZADD:
 			var Score float64
 			var obj interface{}
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else if Score, err = strconv.ParseFloat(r.FormValue("Score"), 64); err != nil {
 				result, err = "false", errors.New("parameter Score shoule be float")
@@ -592,7 +592,7 @@ func httpStart(path string, port int64) {
 			for i, v := range MemberStr {
 				Member[i] = v
 			}
-			db_ := redisdb.CtxZSet[string, interface{}]{Ctx: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			db_ := redisdb.ZSetKey[string, interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if err = db_.Validate(); err != nil {
 			} else if len(Member) == 0 {
 				err = errors.New("no Member")

@@ -1,16 +1,11 @@
-package api
+package rpc
 
 import (
 	"net/http"
 	"reflect"
-)
 
-type ApiInterface interface {
-	GetName() string
-	GetDataSource() string
-	CallByMap(_map map[string]interface{}) (ret interface{}, err error)
-	MergeHeaderParam(req *http.Request, paramIn map[string]interface{})
-}
+	"github.com/doptime/doptime/utils"
+)
 
 func (a *Context[i, o]) GetName() string {
 	return a.Name
@@ -56,7 +51,7 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 		in = *pIn.(*i)
 	}
 
-	if decoder, errMapTostruct := mapToStructDecoder(pIn); errMapTostruct != nil {
+	if decoder, errMapTostruct := utils.MapToStructDecoder(pIn); errMapTostruct != nil {
 		return nil, errMapTostruct
 	} else if err = decoder.Decode(_map); err != nil {
 		return nil, err

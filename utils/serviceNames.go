@@ -1,4 +1,4 @@
-package specification
+package utils
 
 import (
 	"math/big"
@@ -9,22 +9,10 @@ import (
 	"github.com/doptime/logger"
 )
 
-var DisAllowedServiceNames = map[string]bool{
-	"":           true,
-	"string":     true,
-	"int32":      true,
-	"int64":      true,
-	"float32":    true,
-	"float64":    true,
-	"int":        true,
-	"uint":       true,
-	"float":      true,
-	"bool":       true,
-	"byte":       true,
-	"rune":       true,
-	"complex64":  true,
-	"complex128": true,
-	"map":        true,
+// 判断服务名是否被禁止
+func IsInvalidStructName(serviceName string) bool {
+	const DisAllowedServiceNames = ",string,int32,int64,float32,float64,int,uint,float,bool,byte,rune,complex64,complex128,map,"
+	return strings.Contains(DisAllowedServiceNames, ","+serviceName+",")
 }
 
 // return the api name of the service
@@ -59,7 +47,7 @@ func ApiName(nameOld string) (nameNew string) {
 		nameNew = nameNew[2:]
 	}
 
-	if _, ok := DisAllowedServiceNames[nameNew]; ok || len(nameNew) == 0 {
+	if invalid := IsInvalidStructName(nameNew); invalid || len(nameNew) == 0 {
 		nameNew = big.NewInt(rand.Int63()).String()
 		logger.Error().Msg("Service created failed when calling ApiNamed, service name " + nameOld + " is invalid , it's renamed to " + nameNew)
 	}

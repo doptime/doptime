@@ -1,4 +1,4 @@
-package api
+package rpc
 
 import (
 	"context"
@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgredis"
-	"github.com/doptime/doptime/specification"
+	"github.com/doptime/doptime/httpserve/httpapi"
+	"github.com/doptime/doptime/utils"
 	"github.com/doptime/logger"
 	"github.com/redis/go-redis/v9"
 )
@@ -16,13 +17,13 @@ import (
 func CallAtCancel[i any](f func(timeAt time.Time, InParam i) (err error), timeAt time.Time) (err error) {
 	var (
 		Rds    *redis.Client
-		api    ApiInterface
+		api    httpapi.ApiInterface
 		Values []string
 		exists bool
 	)
 	funcPtr := reflect.ValueOf(f).Pointer()
 	if api, exists = callAtfun2Api.Get(funcPtr); !exists {
-		logger.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
+		logger.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", utils.ApiNameByType((*i)(nil))).Send()
 	}
 	if Rds, exists = cfgredis.Servers.Get(api.GetDataSource()); !exists {
 		logger.Info().Str("DataSource not defined in enviroment", api.GetDataSource()).Send()

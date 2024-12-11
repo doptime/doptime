@@ -1,4 +1,4 @@
-package api
+package rpc
 
 import (
 	"context"
@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgredis"
-	"github.com/doptime/doptime/specification"
+	"github.com/doptime/doptime/httpserve/httpapi"
+	"github.com/doptime/doptime/utils"
 	"github.com/doptime/logger"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/redis/go-redis/v9"
@@ -23,11 +24,11 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error)) (callAtFun func(
 		db      *redis.Client
 		exists  bool
 		ctx     = context.Background()
-		apiInfo ApiInterface
+		apiInfo httpapi.ApiInterface
 	)
 	funcPtr := reflect.ValueOf(f).Pointer()
-	if apiInfo, exists = GetApiByFunc(funcPtr); !exists {
-		logger.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", specification.ApiNameByType((*i)(nil))).Send()
+	if apiInfo, exists = httpapi.GetApiByFunc(funcPtr); !exists {
+		logger.Fatal().Str("service function should be defined By Api or Rpc before used in CallAt", utils.ApiNameByType((*i)(nil))).Send()
 	}
 	dataSource, apiName := apiInfo.GetDataSource(), apiInfo.GetName()
 	if db, exists = cfgredis.Servers.Get(dataSource); !exists {
@@ -41,7 +42,7 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error)) (callAtFun func(
 			cmd    *redis.StringCmd
 			Values []string
 		)
-		if b, err = specification.MarshalApiInput(InParam); err != nil {
+		if b, err = utils.MarshalApiInput(InParam); err != nil {
 			return err
 		}
 		fmt.Println("CallAt", apiName, timeAt.UnixNano())
@@ -58,7 +59,7 @@ func CallAt[i any, o any](f func(InParam i) (ret o, err error)) (callAtFun func(
 	return callAtFun
 }
 
-var callAtfun2Api cmap.ConcurrentMap[uintptr, ApiInterface] = cmap.NewWithCustomShardingFunction[uintptr, ApiInterface](func(key uintptr) uint32 {
+var callAtfun2Api cmap.ConcurrentMap[uintptr, httpapi.ApiInterface] = cmap.NewWithCustomShardingFunction[uintptr, httpapi.ApiInterface](func(key uintptr) uint32 {
 	hash := uint32(2166136261)
 	const prime32 = uint32(16777619)
 	return ((hash*prime32)^uint32(key))*prime32 ^ uint32(key>>32)

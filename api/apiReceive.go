@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgredis"
+	"github.com/doptime/doptime/httpserve/httpapi"
 	"github.com/doptime/logger"
 	"github.com/redis/go-redis/v9"
 	"github.com/vmihailenco/msgpack/v5"
@@ -19,7 +20,7 @@ var ApiStartingWaiter func() = func() func() {
 	//if the count of apis is not changing, then all apis are loaded
 	Checker := func() {
 		//if ApiServices.Count() no longer changed, then all apis are loaded
-		for _cnt := ApiServices.Count(); _cnt == 0 || LastApiCnt != _cnt; _cnt = ApiServices.Count() {
+		for _cnt := httpapi.ApiViaHttp.Count(); _cnt == 0 || LastApiCnt != _cnt; _cnt = httpapi.ApiViaHttp.Count() {
 			time.Sleep(time.Millisecond * 30)
 			LastApiCnt = _cnt
 		}
@@ -96,7 +97,7 @@ func rpcReceiveOneDatasource(serviceNames []string, rds *redis.Client) {
 				} else {
 					go CallApiLocallyAndSendBackResult(apiName, message.ID, []byte(data))
 				}
-				apiCounter.Add(apiName, 1)
+				httpapi.ApiCounter.Add(apiName, 1)
 			}
 		}
 	}
@@ -105,11 +106,11 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 	var (
 		msgPackResult []byte
 		ret           interface{}
-		service       ApiInterface
+		service       httpapi.ApiInterface
 		rds           *redis.Client
 		exists        bool
 	)
-	if service, exists = ApiServices.Get(apiName); !exists {
+	if service, exists = httpapi.ApiViaHttp.Get(apiName); !exists {
 		return fmt.Errorf("service %s not found", apiName)
 	}
 	var _map = map[string]interface{}{}

@@ -1,21 +1,20 @@
-package api
+package rpc
 
 import (
 	"context"
 
-	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/doptime/config/cfgapi"
 )
 
-var ApiServiceBatchSize = cmap.New[int64]()
-
 // ApiOption is parameter to create an API, RPC, or CallAt
-type ApiCtx[i any, o any] struct {
-	Name         string
-	ApiSourceRds string
-	WithHeader   bool
-	Ctx          context.Context
-	Func         func(InParameter i) (ret o, err error)
-	Validate     func(pIn interface{}) error
+type Context[i any, o any] struct {
+	Name          string
+	ApiSourceRds  string
+	ApiSourceHttp *cfgapi.ApiSourceHttp
+	WithHeader    bool
+	Ctx           context.Context
+	Func          func(InParameter i) (ret o, err error)
+	Validate      func(pIn interface{}) error
 	// you can rewrite input parameter before excecute the service
 	ParamEnhancer func(param i) (out i, err error)
 

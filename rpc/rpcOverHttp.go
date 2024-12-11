@@ -1,4 +1,4 @@
-package api
+package rpc
 
 import (
 	"bytes"
@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgapi"
-	"github.com/doptime/doptime/specification"
+	"github.com/doptime/doptime/httpserve/httpapi"
+	"github.com/doptime/doptime/utils"
 	"github.com/doptime/logger"
+	"github.com/doptime/redisdb"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -20,7 +22,7 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 		req         *http.Request
 		resp        *http.Response
 	)
-	if b, err = specification.MarshalApiInput(InParam); err != nil {
+	if b, err = utils.MarshalApiInput(InParam); err != nil {
 		return err
 	}
 
@@ -54,9 +56,9 @@ func RpcOverHttp[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 		logger.Error().Str("DataSource not defined in enviroment", option.ApiSourceHttp).Send()
 		return nil
 	}
-	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceHttp: httpServer, Ctx: context.Background(),
+	rpc = &Context[i, o]{Name: utils.ApiNameByType((*i)(nil)), ApiSourceHttp: httpServer, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
+		Validate:   redisdb.NeedValidate(reflect.TypeOf(new(i)).Elem()),
 	}
 	rpc.Func = func(InParam i) (ret o, err error) {
 		oType := reflect.TypeOf((*o)(nil)).Elem()
@@ -70,8 +72,8 @@ func RpcOverHttp[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 
 	}
 
-	ApiServices.Set(rpc.Name, rpc)
+	httpapi.ApiViaHttp.Set(rpc.Name, rpc)
 	funcPtr := reflect.ValueOf(rpc.Func).Pointer()
-	fun2Api.Set(funcPtr, rpc)
+	httpapi.Fun2Api.Set(funcPtr, rpc)
 	return rpc
 }

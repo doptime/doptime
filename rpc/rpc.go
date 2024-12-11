@@ -1,4 +1,4 @@
-package api
+package rpc
 
 import (
 	"context"
@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfgredis"
-	"github.com/doptime/doptime/specification"
+	"github.com/doptime/doptime/httpserve/httpapi"
+	"github.com/doptime/doptime/utils"
 	"github.com/doptime/logger"
+	"github.com/doptime/redisdb"
 	"github.com/redis/go-redis/v9"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -20,9 +22,9 @@ func Rpc[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 
 	var option *Option = Option{ApiSourceRds: "default"}.mergeNewOptions(options...)
 
-	rpc = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
+	rpc = &Context[i, o]{Name: utils.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
+		Validate:   redisdb.NeedValidate(reflect.TypeOf(new(i)).Elem()),
 	}
 
 	rpc.Func = func(InParam i) (ret o, err error) {
@@ -34,7 +36,7 @@ func Rpc[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 			db      *redis.Client
 			exists  bool
 		)
-		if b, err = specification.MarshalApiInput(InParam); err != nil {
+		if b, err = utils.MarshalApiInput(InParam); err != nil {
 			return ret, err
 		}
 		var Values = []string{"data", string(b)}
@@ -77,9 +79,9 @@ func Rpc[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 		return *oValueWithPointer, msgpack.Unmarshal(b, oValueWithPointer)
 	}
 
-	ApiServices.Set(rpc.Name, rpc)
+	httpapi.ApiViaHttp.Set(rpc.Name, rpc)
 
 	funcPtr := reflect.ValueOf(rpc.Func).Pointer()
-	fun2Api.Set(funcPtr, rpc)
+	httpapi.Fun2Api.Set(funcPtr, rpc)
 	return rpc
 }

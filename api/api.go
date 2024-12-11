@@ -4,19 +4,20 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/doptime/doptime/httpdoc"
-	"github.com/doptime/doptime/specification"
+	"github.com/doptime/doptime/httpserve/httpapi"
+	"github.com/doptime/doptime/httpserve/httpdoc"
+	"github.com/doptime/doptime/utils"
 	"github.com/doptime/doptime/vars"
 	"github.com/doptime/logger"
+	"github.com/doptime/redisdb"
 )
 
-func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...optionSetter) (out *Context[i, o]) {
+func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...optionSetter) (out *ApiCtx[i, o]) {
 	var option *Option = Option{ApiSourceRds: "default"}.mergeNewOptions(options...)
 
-	out = &Context[i, o]{Name: specification.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
-		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		Validate:   needValidate(reflect.TypeOf(new(i)).Elem()),
-		Func:       f,
+	out = &ApiCtx[i, o]{Name: utils.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
+		Validate: redisdb.NeedValidate(reflect.TypeOf(new(i)).Elem()),
+		Func:     f,
 	}
 
 	if len(out.Name) == 0 {
@@ -28,15 +29,15 @@ func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...opti
 	}
 
 	// Error handling: Check for naming conflicts
-	if _, exists := ApiServices.Get(out.Name); exists {
+	if _, exists := httpapi.ApiViaHttp.Get(out.Name); exists {
 		logger.Panic().Str("same service not allowed to defined twice!", out.Name).Send()
 		return out
 	}
 
-	ApiServices.Set(out.Name, out)
+	httpapi.ApiViaHttp.Set(out.Name, out)
 
 	funcPtr := reflect.ValueOf(f).Pointer()
-	fun2Api.Set(funcPtr, out)
+	httpapi.Fun2Api.Set(funcPtr, out)
 
 	apis, _ := APIGroupByRdsToReceiveJob.Get(out.ApiSourceRds)
 	apis = append(apis, out.Name)

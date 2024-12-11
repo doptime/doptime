@@ -7,6 +7,7 @@ import (
 
 	"github.com/doptime/doptime/api"
 	_ "github.com/doptime/doptime/httpserve"
+	"github.com/doptime/doptime/rpc"
 )
 
 type Demo struct {
@@ -39,7 +40,7 @@ func TestApiDemo(t *testing.T) {
 	}
 }
 
-var DemoRpc = api.Rpc[*Demo1, string]().Func
+var DemoRpc = rpc.Rpc[*Demo1, string]().Func
 
 func TestRPC(t *testing.T) {
 
@@ -56,7 +57,7 @@ func TestRPC(t *testing.T) {
 
 }
 
-var callDemoAt = api.CallAt(DemoRpc)
+var callDemoAt = rpc.CallAt(DemoRpc)
 
 func TestCallAt(t *testing.T) {
 	var (
@@ -83,7 +84,7 @@ func TestCallAtCancel(t *testing.T) {
 	if err = callDemoAt(timeToRun, param); err != nil {
 		t.Error(err)
 	}
-	if err = api.CallAtCancel(callDemoAt, timeToRun); err != nil {
+	if err = rpc.CallAtCancel(callDemoAt, timeToRun); err != nil {
 		t.Error("cancel failed")
 	}
 	time.Sleep(30 * time.Second)

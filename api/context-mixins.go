@@ -19,26 +19,26 @@ func ReplaceTagsInKeyField(key string, field string, paramTable map[string]inter
 	return key, field
 }
 
-func (ctx *Context[i, o]) HookParamEnhancer(
+func (ctx *ApiCtx[i, o]) HookParamEnhancer(
 	paramEnhancer func(param i) (out i, err error),
-) *Context[i, o] {
+) *ApiCtx[i, o] {
 	ctx.ParamEnhancer = paramEnhancer
 	return ctx
 }
 
 // HookResultSaver is a hook function to save result to db
 // The resultSaver is a function used to save the result excuted by the service. & response the value to the web client. (hide the fields if you need)
-func (ctx *Context[i, o]) HookResultSaver(
+func (ctx *ApiCtx[i, o]) HookResultSaver(
 	resultSaver func(param i, ret o) (err error),
-) *Context[i, o] {
+) *ApiCtx[i, o] {
 	ctx.ResultSaver = resultSaver
 	return ctx
 }
 
 // HookResponseModifier is a hook function to modify the response  value to the web client.
-func (ctx *Context[i, o]) HookResponseModifier(
+func (ctx *ApiCtx[i, o]) HookResponseModifier(
 	ResponseModifier func(param i, ret o) (valueToWebclient interface{}, err error),
-) *Context[i, o] {
+) *ApiCtx[i, o] {
 	ctx.ResponseModifier = ResponseModifier
 	return ctx
 }

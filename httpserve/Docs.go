@@ -2,7 +2,7 @@ package httpserve
 
 import (
 	"github.com/doptime/doptime/api"
-	"github.com/doptime/doptime/httpdoc"
+	"github.com/doptime/doptime/httpserve/httpdoc"
 )
 
 type ApiDocs struct {

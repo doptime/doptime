@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"fmt"
@@ -8,15 +8,15 @@ import (
 	"github.com/doptime/logger"
 )
 
-var apiCounter utils.Counter = utils.Counter{}
+var ApiCounter utils.Counter = utils.Counter{}
 
 func reportApiStates() {
 	//wait till all apis are loaded
-	if ApiServices.Count() == 0 {
+	if ApiViaHttp.Count() == 0 {
 		logger.Info().Msg("waiting for apis to load")
 	}
-	for i, lastCnt := 0, 0; (ApiServices.Count() == 0 || lastCnt != ApiServices.Count()) && i < 100; i++ {
-		lastCnt = ApiServices.Count()
+	for i, lastCnt := 0, 0; (ApiViaHttp.Count() == 0 || lastCnt != ApiViaHttp.Count()) && i < 100; i++ {
+		lastCnt = ApiViaHttp.Count()
 		fmt.Print(".")
 		time.Sleep(time.Millisecond * 100)
 	}
@@ -28,20 +28,13 @@ func reportApiStates() {
 		time.Sleep(time.Second * 60)
 		serviceNames = apiServiceNames()
 		for _, serviceName := range serviceNames {
-			if num, _ := apiCounter.Get(serviceName); num > 0 {
+			if num, _ := ApiCounter.Get(serviceName); num > 0 {
 				logger.Info().Any("serviceName", serviceName).Any("proccessed", num).Msg("Tasks processed.")
 			}
-			apiCounter.DeleteAndGetLastValue(serviceName)
+			ApiCounter.DeleteAndGetLastValue(serviceName)
 		}
 	}
 }
 func init() {
 	go reportApiStates()
-	go StarApis()
-}
-
-func StarApis() {
-	logger.Info().Msg("Step Last: API is starting")
-	rpcCallAtTasksLoad()
-	rpcReceive()
 }
