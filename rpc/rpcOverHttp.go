@@ -27,7 +27,17 @@ func callViaHttp(url string, jwt string, InParam interface{}, retValueWithPointe
 	}
 
 	//set timeout to 10s
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{
+		Transport: &http.Transport{
+			// 设置最大空闲连接数
+			MaxIdleConns: 1,
+			// 设置每个host的最大连接数
+			MaxIdleConnsPerHost: 10,
+			// 设置最大连接时间
+			IdleConnTimeout: 30 * time.Second,
+		},
+		Timeout: 10 * time.Second,
+	}
 
 	if req, err = http.NewRequest("POST", url, bytes.NewBuffer(b)); err != nil {
 		return err
