@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/doptime/config/cfghttp"
@@ -31,11 +32,19 @@ var listKey = redisdb.NewListKey[string, interface{}](redisdb.WithKey("_"))
 var setKey = redisdb.NewSetKey[string, interface{}](redisdb.WithKey("_"))
 var stringKey = redisdb.NewStringKey[string, interface{}](redisdb.WithKey("_"))
 
+// get item
+var httpRoter = http.NewServeMux()
+var mu sync.Mutex // 创建一个互斥锁，确保多路复用器的操作是线程安全的
+// 动态添加路由的函数
+func AddRoute(path string, handlerFunc http.HandlerFunc) {
+	mu.Lock() // 锁定，确保修改路由时不会发生并发冲突
+	defer mu.Unlock()
+	httpRoter.HandleFunc(path, handlerFunc)
+}
+
 // listten to a port and start http server
 func httpStart(path string, port int64) {
-	//get item
-	router := http.NewServeMux()
-	router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+	httpRoter.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		var (
 			result       interface{}
 			bs           []byte
@@ -744,11 +753,9 @@ func httpStart(path string, port int64) {
 		w.Write(bs)
 
 	})
-	router.HandleFunc("/wsapi", websocketAPICallback)
-
 	server := &http.Server{
 		Addr:              ":" + strconv.FormatInt(port, 10),
-		Handler:           router,
+		Handler:           httpRoter,
 		ReadTimeout:       50 * time.Second,
 		ReadHeaderTimeout: 50 * time.Second,
 		WriteTimeout:      50 * time.Second, //10ms Redundant time
