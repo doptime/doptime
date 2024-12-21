@@ -1,0 +1,74 @@
+---
+slug: CONFIG_URL
+title: 后端 - 配置 - CONFIG_URL
+type:  docs
+sidebar_position: 13
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+
+:::tip 通过url加载配置文件
+## doptime 配置模板
+:::
+
+<Tabs> 
+<TabItem value="docker-compose" label="docker-compose">
+```yaml title="docker-compose.yml"
+version: '3'
+services:
+  doptimeBackend:
+    image:  yangkequn/your-doptime-app:latest
+    ports:
+      - "8001:80"  
+    restart: always  # Automatically restart the container if it stops
+    environment:
+      - CONFIG_URL=https://gist.githubusercontent.com/doptime/39da1f98236be1148c3f009308aada03/raw/b8b41ee13cfe2e34cd4e82129569918233d2203d/config.toml
+    networks:
+      - my-shared-network
+networks:
+  my-shared-network:
+    external: true
+```
+</TabItem>
+
+
+<TabItem value="VSCode">
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Package",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${fileDirname}",
+            "env": {
+                "CONFIG_URL": "https://gist.githubusercontent.com/doptime/39da1f98236be1148c3f009308aada03/raw/b8b41ee13cfe2e34cd4e82129569918233d2203d/config.toml"
+            },
+        }
+    ]
+}
+```
+</TabItem>
+</Tabs>
+
+## **CONFIG_URL 说明**
+环境变量中，有且只有一个变量CONFIG_URL。  
+它的值是一个http(s)的url，指向一个toml格式的配置文件。  
+这个配置文件的格式和本地的配置文件的格式一样。  
+
+## **doptime 配置文件的加载顺序**  
+1. 加载配置文件config.toml  如果成功
+2. 如果环境变量中有CONFIG_URL，则覆盖配置文件中的CONFIG_URL。
+3. 从CONFIG_URL加载配置, 如果成功，则：
+   -  旧的配置文件会被删除！  
+   -  新的配置会覆盖本地文件，成为下次启动的默认值。这是为了避免配置服务器宕机。  
+   -  覆盖本地config.toml 加载的环境变量，成为新的运行时环境变量  
+ CONFIG_URL 会被每分钟检查一次，如果有变化则会重新加载配置。  
+
+&nbsp;&nbsp;&nbsp;&nbsp;  
+可以使用gist创建远程配置文件。 这是一个典型的[**http配置文件**](https://gist.githubusercontent.com/doptime/39da1f98236be1148c3f009308aada03/raw/b8b41ee13cfe2e34cd4e82129569918233d2203d/config.toml)
+

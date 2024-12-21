@@ -1,0 +1,129 @@
+---
+slug: config.toml
+title: 后端 - 配置 - config.toml
+type:  docs
+sidebar_position: 10
+---
+
+:::tip 配置doptime后端
+## 通过配置文件配置
+:::
+编译后的后端程序会在相同的路径下, 寻找名为config.toml的配置文件并加载。  
+
+### 这是一个典型的配置文件。
+你可以通过修改这个文件来配置你的后端。
+
+```text  title="config.toml"
+ConfigUrl = ""
+
+[[Redis]]
+  Name = "default"
+  Username = "redis-username"
+  Password = "yourpasswordhere"
+  Host = "drangonflydb.local"
+  Port = 6379
+  DB = 0
+
+[Http]
+  CORES = "*"
+  Port = 80
+  Path = "/"
+  MaxBufferSize = 10485760
+  AutoAuth = false
+
+[[HttpRPC]]
+  Name = "doptime"
+  UrlBase = "https://api.doptime.com"
+  Jwt = ""
+
+[Settings]
+  LogLevel = 1
+```
+
+
+## 配置文件 参数 详细解释
+
+:::info 配置URL: 从指定的URL加载配置
+### CONFIG_URL 参数
+:::
+```text  
+ConfigUrl = ""
+```
+是否从一个远程的http页面加载配置。  
+如果指定了远程配置网址。则每分钟动态加载一次该配置。
+
+:::info 定义 一个或多个 redis datasource 
+### Redis 参数
+:::
+```text  
+[[Redis]]
+  Name = "default"
+  Username = "redis-username"
+  Password = "yourpasswordhere"
+  Host = "drangonflydb.local"
+  Port = 6379
+  DB = 0
+```
+- Name: Redis配置名. 有且仅有1个为default的默认值。
+- Username, Password, Host, Port, DB: Redis的连接配置
+
+这个Name :
+- 在Api 中配置名通过 api.Api(yourApiFunc,api.Option.WithSourceRds(Name)) 使用  
+- 在Rpc 中配置名通过 api.Rpc(yourApiFunc,api.Option.WithSourceRds(Name)) 使用  
+- 在data 中配置名通过 data.New[k_type,v_type]\(data.Option.WithRds(Name)) 使用  
+如果不指定Option.WithSourceRds(redisDatasource)，则使用名为default的redisDatasource。  
+多个配置必须使用不同的Name，否则会被覆盖
+
+:::info http 服务配置
+### Http 参数
+:::
+```text  
+[Http]
+  CORES = "*"
+  Port = 80
+  Path = "/"
+  MaxBufferSize = 10485760
+  AutoAuth = false
+```
+- CORES: 跨域资源共享。* 允许所有域名访问
+- Port: doptime服务端的端口
+- Path: doptime服务端的路径
+- MaxBufferSize: 最大缓冲区大小
+- AutoAuth:   **[参看: http操作自动授权  ](../guides/data-access-security)**  
+若为true，则所有客户端的操作都会被添加到授权白名单，以实现权限的自动化配置。  
+若为false，则使用已有的权限配置。同时会拒绝所有未授权的操作。  
+你应该确保在安全的开发环境中使用，而不是生产环境。  
+你可以在default数据库中 _permissions主键下修改权限。
+
+
+:::info 定义 一个或多个 HttpRPC
+### HttpRPC 参数
+:::
+```text  
+[[HttpRPC]]
+  Name = "doptime"
+  UrlBase = "https://api.doptime.com"
+  Jwt = ""
+```
+- Name:  HttpRPC 名称
+ 在Api 中配置名通过 api.RpcOverHttp(yourApiFunc,api.Option.WithSourceHttp(Name)) 使用  
+- UrlBase:  HttpRPC基址。用来生成完整的URL
+- Jwt:  JWT令牌。用来验证请求的合法性。
+
+
+
+:::info 全局配置
+### Settings  参数
+:::
+```text  
+LogLevel = 1
+```
+- [**ZeroLog的日志级别**](https://github.com/rs/zerolog#:~:text=zerolog%20allows%20for%20logging%20at%20the%20following%20levels) ，默认为1，不显示debug信息  
+  - 0: DebugLevel
+  - 1: InfoLevel
+  - 2: WarnLevel
+  - 3: ErrorLevel
+  - 4: FatalLevel
+  - 5: PanicLevel
+  - 6: NoLevel
+  - 7: Disabled
