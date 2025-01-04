@@ -3,7 +3,7 @@ module github.com/doptime/doptime
 go 1.22.3
 
 require (
-	github.com/doptime/config v0.0.0-20241128070237-d4a91663b9a3
+	github.com/doptime/config v0.0.0-20250104025038-3812e600cf8e
 	github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17
 	github.com/doptime/redisdb v0.0.0-20241211034335-1bfee2516599
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -29,8 +29,8 @@ require (
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	golang.org/x/crypto v0.30.0 // indirect
-	golang.org/x/net v0.32.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
