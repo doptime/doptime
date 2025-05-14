@@ -46,7 +46,10 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 	if CmdKeyFieldsStr, err = url.QueryUnescape(pathLastPart); err != nil {
 		return nil, err
 	}
-	if CmdKeyFields = strings.SplitN(CmdKeyFieldsStr, "-", 2); len(CmdKeyFields) < 1 {
+	//we regard the unknow command or data operation as api command
+	if CmdKeyFields = strings.SplitN(CmdKeyFieldsStr, "-", 2); len(CmdKeyFields) == 1 {
+		CmdKeyFields = []string{"api", CmdKeyFieldsStr}
+	} else if len(CmdKeyFields) == 0 {
 		return nil, errors.New("url missing api_name or data_command")
 	}
 
