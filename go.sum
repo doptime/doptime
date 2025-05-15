@@ -17,6 +17,8 @@ github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17 h1:2NEAL69piCy6nwkA
 github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17/go.mod h1:ilMlBlMQF0rCOpoxzQm5pDHAAdBH3v+3H+urGUEo27I=
 github.com/doptime/redisdb v0.0.0-20250515035721-dbdca75861e2 h1:pX4JznOputE2baT/rpX/aMyj4TUuHO3gL8o/S/G/uZ0=
 github.com/doptime/redisdb v0.0.0-20250515035721-dbdca75861e2/go.mod h1:B6zdA6w8FI91OWSRCj1Y0mErUCCNW+CDSsjBJMHZBcg=
+github.com/doptime/redisdb v0.0.0-20250515042223-adf44f0f6841 h1:iwjKCMdE3zqoKkOb/QRlH+8H4SJu92sCZ1KNapPDEZk=
+github.com/doptime/redisdb v0.0.0-20250515042223-adf44f0f6841/go.mod h1:B6zdA6w8FI91OWSRCj1Y0mErUCCNW+CDSsjBJMHZBcg=
 github.com/gabriel-vasile/mimetype v1.4.9 h1:5k+WDwEsD9eTLL8Tz3L0VnmVh9QxGjRmjBvAG7U/oYY=
 github.com/gabriel-vasile/mimetype v1.4.9/go.mod h1:WnSQhFKJuBlRyLiKohA/2DtIlPFAbguNaG7QCHcyGok=
 github.com/go-ping/ping v1.2.0 h1:vsJ8slZBZAXNCK4dPcI2PEE9eM9n9RbXbGouVQ/Y4yQ=
