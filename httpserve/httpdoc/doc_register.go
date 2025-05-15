@@ -19,7 +19,7 @@ type DocsOfApi struct {
 	UpdateAt int64
 }
 
-var KeyApiDataDocs = redisdb.NewHashKey[string, *DocsOfApi](redisdb.WithKey("Docs:Api"))
+var KeyApiDataDocs = redisdb.NewHashKey[string, *DocsOfApi](redisdb.Opt.Key("Docs:Api"))
 
 var ApiDocsMap cmap.ConcurrentMap[string, *DocsOfApi] = cmap.New[*DocsOfApi]()
 

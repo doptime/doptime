@@ -71,9 +71,6 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 
 	return svcContext, nil
 }
-func (svc *DoptimeReqCtx) isValid() bool {
-	return svc.Cmd != "" && svc.Key != ""
-}
 func (svc *DoptimeReqCtx) MergeJwtParam(paramIn map[string]interface{}) {
 	for k := range paramIn {
 		if strings.HasPrefix(k, "Jwt") {
