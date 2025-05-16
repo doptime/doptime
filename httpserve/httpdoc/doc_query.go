@@ -56,17 +56,17 @@ func GetDataDocs() (string, error) {
 		keyWithFirstCharUpper = strings.Split(keyWithFirstCharUpper, ":")[0]
 		ret.WriteString(v.TSInterface + "\n")
 		if v.KeyType == "hash" {
-			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new hashKey<" + v.KeyName + ">(\"" + k + "\")")
+			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new hashKey<" + v.ValueTypeName + ">(\"" + k + "\")")
 		} else if v.KeyType == "string" {
-			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new stringKey<" + v.KeyName + ">(\"" + k + "\")")
+			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new stringKey<" + v.ValueTypeName + ">(\"" + k + "\")")
 		} else if v.KeyType == "list" {
-			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new listKey<" + v.KeyName + ">(\"" + k + "\")")
+			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new listKey<" + v.ValueTypeName + ">(\"" + k + "\")")
 		} else if v.KeyType == "set" {
-			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new setKey<" + v.KeyName + ">(\"" + k + "\")")
+			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new setKey<" + v.ValueTypeName + ">(\"" + k + "\")")
 		} else if v.KeyType == "zset" {
-			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new zsetKey<" + v.KeyName + ">(\"" + k + "\")")
+			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new zsetKey<" + v.ValueTypeName + ">(\"" + k + "\")")
 		} else if v.KeyType == "stream" {
-			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new streamKey<" + v.KeyName + ">(\"" + k + "\")")
+			ret.WriteString("export const key" + keyWithFirstCharUpper + " = new streamKey<" + v.ValueTypeName + ">(\"" + k + "\")")
 		}
 		ret.WriteString("\n\n")
 	}
