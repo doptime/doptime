@@ -53,20 +53,19 @@ func GetDataDocs() (string, error) {
 
 		keyWithFirstCharUpper := strings.ToUpper(v.KeyName[0:1]) + v.KeyName[1:]
 		keyWithFirstCharUpper = strings.Split(keyWithFirstCharUpper, ":")[0]
-		jsBytes, _ := json.Marshal(v.Instance)
-		ret.WriteString(v.TSInterface)
+		ret.WriteString(v.TSInterface + "\n")
 		if v.KeyType == "hash" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new hashKey[" + v.KeyName + "](\"" + k + "\", " + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new hashKey[" + v.KeyName + "](\"" + k + "\")")
 		} else if v.KeyType == "string" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new stringKey[" + v.KeyName + "](\"" + k + "\", " + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new stringKey[" + v.KeyName + "](\"" + k + "\")")
 		} else if v.KeyType == "list" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new listKey[" + v.KeyName + "](\"" + k + "\", " + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new listKey[" + v.KeyName + "](\"" + k + "\")")
 		} else if v.KeyType == "set" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new setKey[" + v.KeyName + "](\"" + k + "\", " + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new setKey[" + v.KeyName + "](\"" + k + "\")")
 		} else if v.KeyType == "zset" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new zsetKey[" + v.KeyName + "](\"" + k + "\", " + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new zsetKey[" + v.KeyName + "](\"" + k + "\")")
 		} else if v.KeyType == "stream" {
-			ret.WriteString("var key" + keyWithFirstCharUpper + " = new streamKey[" + v.KeyName + "](\"" + k + "\", " + string(jsBytes) + ")")
+			ret.WriteString("var key" + keyWithFirstCharUpper + " = new streamKey[" + v.KeyName + "](\"" + k + "\")")
 		}
 		ret.WriteString("\n\n")
 	}
