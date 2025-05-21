@@ -223,12 +223,13 @@ func httpStart(path string, port int64) {
 			var (
 				start, stop int64 = 0, -1
 			)
+			db_ := redisdb.ListKey[interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
 			if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 				result, err = "", errors.New("parse start error:"+err.Error())
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 				result, err = "", errors.New("parse stop error:"+err.Error())
-			} else if result, err = rds.LRange(context.Background(), svcCtx.Key, start, stop).Result(); err == nil {
-				result = convertKeysToBytes(result.([]string))
+			} else {
+				result, err = db_.LRange(start, stop)
 			}
 		case XRANGE:
 			var (
