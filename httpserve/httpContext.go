@@ -3,7 +3,6 @@ package httpserve
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -11,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 type DoptimeReqCtx struct {
@@ -95,26 +93,13 @@ func (svc *DoptimeReqCtx) MergeFormParam(Form url.Values, paramIn map[string]int
 }
 
 // Ensure the body is msgpack format
-func (svc *DoptimeReqCtx) MsgpackBody(r *http.Request, checkContentType bool, interfaceToUnmarshal interface{}) (MsgPack []byte, err error) {
+func (svc *DoptimeReqCtx) MsgpackBody(r *http.Request, checkContentType bool) (MsgPack []byte) {
+	var err error
 	if checkContentType && r.Header.Get("Content-Type") != "application/octet-stream" {
-		return nil, fmt.Errorf("invalid content type")
+		return nil
 	}
 	if MsgPack, err = io.ReadAll(r.Body); len(MsgPack) == 0 || err != nil {
-		return nil, fmt.Errorf("empty msgpack body")
+		return nil
 	}
-	if interfaceToUnmarshal != nil {
-		//dataStructToUnmarshal should be a pointer to interface{}, else return err
-		if _, ok := interfaceToUnmarshal.(*interface{}); !ok {
-			return nil, fmt.Errorf("invalid dataStructToUnmarshal")
-		}
-		//should make sure the data is msgpack format
-		if err = msgpack.Unmarshal(MsgPack, interfaceToUnmarshal); err != nil {
-			return nil, err
-		}
-		if MsgPack, err = msgpack.Marshal(interfaceToUnmarshal); err != nil {
-			return nil, err
-		}
-	}
-	//return remarshaled MsgPack, because golang MsgPack is better fullfill than javascript MsgPack
-	return MsgPack, nil
+	return MsgPack
 }
