@@ -222,14 +222,18 @@ func httpStart(path string, port int64) {
 		case LRANGE:
 			var (
 				start, stop int64 = 0, -1
+				hkey        *redisdb.ListKey[interface{}]
 			)
-			db_ := redisdb.ListKey[interface{}]{RedisKey: zsetKey.Duplicate(svcCtx.Key, RedisDataSource)}
+			hkey, _, err = redisdb.ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil)
+			if err != nil {
+				return
+			}
 			if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 				result, err = "", errors.New("parse start error:"+err.Error())
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 				result, err = "", errors.New("parse stop error:"+err.Error())
 			} else {
-				result, err = db_.LRange(start, stop)
+				result, err = hkey.LRange(start, stop)
 			}
 		case XRANGE:
 			var (
