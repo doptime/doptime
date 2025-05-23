@@ -25,7 +25,7 @@ func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgp
 		if err != nil {
 			return nil, nil, err
 		} else if exists {
-			hashInterface.TimestampFill(&value)
+			hashInterface.TimestampFill(value)
 		}
 	}
 
