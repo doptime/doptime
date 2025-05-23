@@ -24,6 +24,8 @@ func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgp
 		value, err = hashInterface.UnmarshalValue(msgpackData)
 		if err != nil {
 			return nil, nil, err
+		} else if exists {
+			hashInterface.TimestampFill(&value)
 		}
 	}
 
