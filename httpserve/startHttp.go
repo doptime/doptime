@@ -514,7 +514,7 @@ func httpStart(path string, port int64) {
 			result = "false"
 			if lKey, result, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
-				err = lKey.LPush(svcCtx.Ctx, svcCtx.Key, result)
+				err = lKey.LPush(result)
 			}
 		case LREM:
 			var count int64
