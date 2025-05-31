@@ -323,24 +323,21 @@ func httpStart(path string, port int64) {
 			}
 
 		case HSET:
-			result = "false"
+			result = 0
 			if hkey, result, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
-				err = hkey.HSet(svcCtx.Field, result)
+				result, err = hkey.HSet(svcCtx.Field, result)
 			}
 
 		case HDEL:
-			result = "false"
-			//error if empty Key or Field
-			if err = rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Err(); err == nil {
-				result = "true"
-			}
+			result, err = rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Result()
 		case HKEYS:
 			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
 			} else {
 				result, err = hkey.HKeys()
 			}
 		case HEXISTS:
+			result = false
 			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
 			} else {
 				result, err = hkey.HExists(svcCtx.Field)

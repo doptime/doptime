@@ -21,7 +21,7 @@ func TestStringKey(t *testing.T) {
 	//create a http context
 
 	var keyTestInDemo = redisdb.NewHashKey[string, *TestHash]()
-	if err = keyTestInDemo.HSet("field1", &TestHash{Name: "value1"}); err != nil {
+	if _, err = keyTestInDemo.HSet("field1", &TestHash{Name: "value1"}); err != nil {
 		t.Error(err)
 	}
 	if value, err = keyTestInDemo.HGet("field1"); err != nil {
@@ -68,7 +68,7 @@ func TestStringKey2(t *testing.T) {
 	//create a http context
 
 	var keyTestInDemo = redisdb.NewHashKey[*string, *TestHash]()
-	if err = keyTestInDemo.HSet(&k1, v1); err != nil {
+	if _, err = keyTestInDemo.HSet(&k1, v1); err != nil {
 		t.Error(err)
 	}
 	if value, err = keyTestInDemo.HGet(&k1); err != nil {
@@ -77,7 +77,7 @@ func TestStringKey2(t *testing.T) {
 		t.Error("value.Name != value1")
 	}
 
-	if err = keyTestInDemo.HSet(&k2, v2); err != nil {
+	if _, err = keyTestInDemo.HSet(&k2, v2); err != nil {
 		t.Error(err)
 	}
 	values, err = keyTestInDemo.HMGET(k1, k2)
@@ -117,7 +117,7 @@ func TestObjectKey(t *testing.T) {
 	//create a http context
 
 	var keyTestInDemo = redisdb.NewHashKey[*Key, *TestHash]()
-	if err = keyTestInDemo.HSet(k1, v1); err != nil {
+	if _, err = keyTestInDemo.HSet(k1, v1); err != nil {
 		t.Error(err)
 	}
 	if value, err = keyTestInDemo.HGet(k1); err != nil {
@@ -126,7 +126,7 @@ func TestObjectKey(t *testing.T) {
 		t.Error("value.Name != value1")
 	}
 
-	if err = keyTestInDemo.HSet(k1, v1, k2, v2); err != nil {
+	if _, err = keyTestInDemo.HSet(k1, v1, k2, v2); err != nil {
 		t.Error(err)
 	}
 
@@ -137,7 +137,7 @@ func TestObjectKey(t *testing.T) {
 	if keys, _ = keyTestInDemo.HKeys(); len(keys) != 0 {
 		t.Error(fmt.Errorf("len(keys) != 0, len(keys) = %d", len(keys)))
 	}
-	if err = keyTestInDemo.HSet(map[*Key]*TestHash{k1: v1, k2: v2}); err != nil {
+	if _, err = keyTestInDemo.HSet(map[*Key]*TestHash{k1: v1, k2: v2}); err != nil {
 		t.Error(err)
 	}
 	if keys, _ = keyTestInDemo.HKeys(); len(keys) != 2 {
