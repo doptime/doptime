@@ -13,9 +13,9 @@ import (
 )
 
 func Api[i any, o any](f func(InParameter i) (ret o, err error), options ...optionSetter) (out *ApiCtx[i, o]) {
-	var option *Option = Option{ApiSourceRds: "default"}.mergeNewOptions(options...)
+	var option *Option = Option{ApiSourceRds: "default", ApiKey: utils.ApiNameByType((*i)(nil))}.mergeNewOptions(options...)
 
-	out = &ApiCtx[i, o]{Name: utils.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
+	out = &ApiCtx[i, o]{Name: option.ApiKey, ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
 		Validate: redisdb.NeedValidate(reflect.TypeOf(new(i)).Elem()),
 		Func:     f,
 	}

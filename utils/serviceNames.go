@@ -60,7 +60,7 @@ func ApiNameByType(i interface{}) (name string) {
 	//get default ServiceName
 	var _type reflect.Type
 	//take name of type v as key
-	for _type = reflect.TypeOf(i); _type.Kind() == reflect.Ptr || _type.Kind() == reflect.Array; _type = _type.Elem() {
+	for _type = reflect.TypeOf(i); _type.Kind() == reflect.Ptr || _type.Kind() == reflect.Array || _type.Kind() == reflect.Slice; _type = _type.Elem() {
 	}
 	return ApiName(_type.Name())
 
