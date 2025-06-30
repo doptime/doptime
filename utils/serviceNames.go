@@ -61,6 +61,10 @@ func ApiNameByType(i interface{}) (name string) {
 	var _type reflect.Type
 	//take name of type v as key
 	for _type = reflect.TypeOf(i); _type.Kind() == reflect.Ptr || _type.Kind() == reflect.Array || _type.Kind() == reflect.Slice; _type = _type.Elem() {
+		if _type == nil {
+			return ""
+		}
+
 	}
 	return ApiName(_type.Name())
 
