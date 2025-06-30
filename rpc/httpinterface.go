@@ -1,10 +1,12 @@
 package rpc
 
 import (
+	"encoding/json"
 	"net/http"
 	"reflect"
 
 	"github.com/doptime/doptime/utils"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 func (a *Context[i, o]) GetName() string {
@@ -51,9 +53,18 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 		in = *pIn.(*i)
 	}
 
-	if decoder, errMapTostruct := utils.MapToStructDecoder(pIn); errMapTostruct != nil {
+	_msgpack, msgpackok := _map["_msgpack"]
+	_jsonpack, jsonok := _map["_jsonpack"]
+	if msgpackok {
+		err = msgpack.Unmarshal(_msgpack.([]byte), pIn)
+	} else if jsonok {
+		err = json.Unmarshal(_jsonpack.([]byte), pIn)
+	} else if decoder, errMapTostruct := utils.MapToStructDecoder(pIn); errMapTostruct != nil {
 		return nil, errMapTostruct
-	} else if err = decoder.Decode(_map); err != nil {
+	} else {
+		err = decoder.Decode(_map)
+	}
+	if err != nil {
 		return nil, err
 	}
 	//load fill the left fields from db
