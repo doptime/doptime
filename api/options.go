@@ -1,5 +1,7 @@
 package api
 
+import "github.com/doptime/doptime/utils"
+
 // Option is parameter to create an API, RPC, or CallAt
 type Option struct {
 	ApiSourceRds string
@@ -15,7 +17,7 @@ func WithApiRds(rdsSource string) optionSetter {
 
 func WithApiKey(apiKey string) optionSetter {
 	return func(o *Option) {
-		o.ApiKey = apiKey
+		o.ApiKey = utils.ApiName(apiKey)
 	}
 }
 
