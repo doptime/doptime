@@ -50,7 +50,6 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 		isTypeInPtr = true
 	} else {
 		pIn = reflect.New(vType).Interface()
-		in = *pIn.(*i)
 	}
 
 	if _msgpack, msgpackok := _map["_msgpack-nonstruct"]; msgpackok {
@@ -62,8 +61,11 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 	} else {
 		err = decoder.Decode(_map)
 	}
+
 	if err != nil {
 		return nil, err
+	} else if !isTypeInPtr {
+		in = *pIn.(*i)
 	}
 
 	//load fill the left fields from db
