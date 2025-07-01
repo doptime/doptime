@@ -130,7 +130,7 @@ func httpStart(path string, port int64) {
 					if err != nil {
 						var interfaceIn interface{}
 						if err = msgpack.Unmarshal(svcCtx.ParamIn, &interfaceIn); err == nil {
-							paramIn["_msgpack"] = svcCtx.ParamIn
+							paramIn["_msgpack-nonstruct"] = svcCtx.ParamIn
 						}
 					}
 				case "application/json":
@@ -138,7 +138,7 @@ func httpStart(path string, port int64) {
 					if err != nil {
 						var interfaceIn interface{}
 						if err = json.Unmarshal(svcCtx.ParamIn, &interfaceIn); err == nil {
-							paramIn["_jsonpack"] = svcCtx.ParamIn
+							paramIn["_jsonpack-nonstruct"] = svcCtx.ParamIn
 						}
 					}
 				}

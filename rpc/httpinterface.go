@@ -53,11 +53,9 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 		in = *pIn.(*i)
 	}
 
-	_msgpack, msgpackok := _map["_msgpack"]
-	_jsonpack, jsonok := _map["_jsonpack"]
-	if msgpackok {
+	if _msgpack, msgpackok := _map["_msgpack-nonstruct"]; msgpackok {
 		err = msgpack.Unmarshal(_msgpack.([]byte), pIn)
-	} else if jsonok {
+	} else if _jsonpack, jsonok := _map["_jsonpack-nonstruct"]; jsonok {
 		err = json.Unmarshal(_jsonpack.([]byte), pIn)
 	} else if decoder, errMapTostruct := utils.MapToStructDecoder(pIn); errMapTostruct != nil {
 		return nil, errMapTostruct
@@ -67,6 +65,7 @@ func (a *Context[i, o]) CallByMap(_map map[string]interface{}) (ret interface{},
 	if err != nil {
 		return nil, err
 	}
+
 	//load fill the left fields from db
 	if a.ParamEnhancer != nil {
 		if out, err := a.ParamEnhancer(in); err != nil {
