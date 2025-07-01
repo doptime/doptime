@@ -16,7 +16,6 @@ import (
 	"github.com/doptime/config/cfghttp"
 	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/httpserve/httpapi"
-	"github.com/doptime/doptime/utils"
 	"github.com/doptime/logger"
 	"github.com/doptime/redisdb"
 	"github.com/redis/go-redis/v9"
@@ -148,7 +147,7 @@ func httpStart(path string, port int64) {
 				}
 			}
 
-			if _api, ok = httpapi.GetApiByName(utils.ApiName(ServiceName)); !ok {
+			if _api, ok = httpapi.GetApiByName(ServiceName); !ok {
 				result, err = nil, fmt.Errorf("err no such api")
 				goto responseHttp
 			}
