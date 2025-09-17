@@ -11,6 +11,9 @@ import (
 var nonKey = redisdb.NewRedisKey[string, interface{}]()
 
 func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (db *redisdb.RedisKey[string, interface{}], value interface{}, err error) {
+	if !redisdb.IsValidKeyType(keyType) {
+		return nil, nil, fmt.Errorf("key type is invalid: " + keyType)
+	}
 	useModer, originalKey := false, key
 	originalKey = strings.SplitN(key, "@", 2)[0]
 	originalKey = strings.SplitN(originalKey, ":", 2)[0]
@@ -36,7 +39,7 @@ func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgp
 	if ctx.ValidDataKey() != nil {
 		return nil, nil, fmt.Errorf("key name is invalid: " + key)
 	}
-	ctx.KeyType = keyType
+	ctx.KeyType = redisdb.KeyType(keyType)
 	ctx.UseModer = useModer
 	ctx.DeserializeValue = hashInterface.UnmarshalValue
 
