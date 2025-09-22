@@ -7,7 +7,7 @@ toolchain go1.24.5
 require (
 	github.com/doptime/config v0.0.0-20250322030901-0115e7134058
 	github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17
-	github.com/doptime/redisdb v0.0.0-20250917030832-fee848f06ff1
+	github.com/doptime/redisdb v0.0.0-20250922064655-447b4b321ea5
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
