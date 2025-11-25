@@ -19,7 +19,7 @@ func GetApiDocs() (string, error) {
 
 	var sb strings.Builder
 	// 1. 头部引入 createApi
-	sb.WriteString("import createApi from \"./api\";\n\n")
+	sb.WriteString("import createApi from \"doptime-client\";\n\n")
 
 	var now = time.Now().Unix()
 
