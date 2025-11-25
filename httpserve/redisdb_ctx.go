@@ -12,7 +12,7 @@ var nonKey = redisdb.NewRedisKey[string, interface{}]()
 
 func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (db *redisdb.RedisKey[string, interface{}], value interface{}, err error) {
 	if !redisdb.IsValidKeyType(keyType) {
-		return nil, nil, fmt.Errorf("key type is invalid: " + keyType)
+		return nil, nil, fmt.Errorf("%s", "key type is invalid: "+keyType)
 	}
 	useModer, originalKey := false, key
 	originalKey = strings.SplitN(key, "@", 2)[0]
@@ -33,18 +33,18 @@ func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgp
 	}
 
 	if disallowed, found := redisdb.DisAllowedDataKeyNames[key]; found && disallowed {
-		return nil, nil, fmt.Errorf("key name is disallowed: " + key)
+		return nil, nil, fmt.Errorf("key name is disallowed: %s", key)
 	}
 	ctx := nonKey.Duplicate(key, RedisDataSource)
 	if ctx.ValidDataKey() != nil {
-		return nil, nil, fmt.Errorf("key name is invalid: " + key)
+		return nil, nil, fmt.Errorf("key name is invalid: %s", key)
 	}
 	ctx.KeyType = redisdb.KeyType(keyType)
 	ctx.UseModer = useModer
 	ctx.DeserializeValue = hashInterface.UnmarshalValue
 
 	if ctx.Rds, exists = cfgredis.Servers.Get(RedisDataSource); !exists {
-		return nil, nil, fmt.Errorf("rds item unconfigured: " + RedisDataSource)
+		return nil, nil, fmt.Errorf("rds item unconfigured: %s", RedisDataSource)
 	}
 	return &ctx, value, nil
 }

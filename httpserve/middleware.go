@@ -49,7 +49,7 @@ func replaceAtWithJwtClaims(claims map[string]interface{}, KeyParts []string) (n
 	for i, l := 1, len(KeyParts); i < l; i++ {
 		keyPart := KeyParts[i]
 		if obj, ok = claims[keyPart]; !ok {
-			return "", fmt.Errorf("jwt missing key " + keyPart[1:])
+			return "", fmt.Errorf("jwt missing key: %s", keyPart[1:])
 		} else {
 			// if 64 is int, convert to int
 			if f64, ok = obj.(float64); ok && f64 == float64(int64(f64)) {

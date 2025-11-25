@@ -26,12 +26,6 @@ func Debug() {
 
 }
 
-var hashKey = redisdb.NewHashKey[string, interface{}](redisdb.Opt.Key("_"))
-var zsetKey = redisdb.NewZSetKey[string, interface{}](redisdb.Opt.Key("_"))
-var listKey = redisdb.NewListKey[interface{}](redisdb.Opt.Key("_"))
-var setKey = redisdb.NewSetKey[string, interface{}](redisdb.Opt.Key("_"))
-var stringKey = redisdb.NewStringKey[string, interface{}](redisdb.Opt.Key("_"))
-
 // get item
 var httpRoter = http.NewServeMux()
 var mu sync.Mutex // 创建一个互斥锁，确保多路复用器的操作是线程安全的
