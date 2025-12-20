@@ -18,7 +18,7 @@ import (
 )
 
 type InDemo struct {
-	Id   string `mapstructure:"JwtId" validate:"required"`
+	Id   string `mapstructure:"@Id" validate:"required"`
 	Other      map[string]interface{} `mapstructure:",remain" msgpack:"-" `
 }
 //RpcOverHttp 默认使用 doptime 作为目标服务器

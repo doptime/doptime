@@ -71,7 +71,7 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 }
 func (svc *DoptimeReqCtx) MergeJwtParam(paramIn map[string]interface{}) {
 	for k := range paramIn {
-		if strings.HasPrefix(k, "Jwt") {
+		if strings.HasPrefix(k, "@") {
 			delete(paramIn, k)
 		}
 	}
@@ -79,7 +79,7 @@ func (svc *DoptimeReqCtx) MergeJwtParam(paramIn map[string]interface{}) {
 	for k, v := range svc.Claims {
 		//convert first letter of k to upper case
 		k = strings.ToUpper(k[:1]) + k[1:]
-		paramIn["Jwt"+k] = v
+		paramIn["@"+k] = v
 	}
 
 }

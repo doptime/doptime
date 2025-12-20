@@ -38,12 +38,12 @@ type Person struct {
 }
 type InDemo struct {
     //要求不能是零值,否则返回错误
-    Id   string `mapstructure:"JwtId" validate:"required,min=16,max=64"`
+    Id   string `mapstructure:"@Id" validate:"required,min=16,max=64"`
     //相当于 `mapstructure:"HeaderRemoteAddr"`   
     HeaderRemoteAddr        string  
     HeaderUserAgent string
     Username  string `validate:"required,min=5,max=20"`
-    Email     string `mapstructure:"email" validate:"required,email"`
+    Email     string `mapstructure:"@email" validate:"required,email"`
     FavouriteColor string     `validate:"hexcolor|rgb|rgba"`
     Addresses      []*Address `validate:"required,dive,required"` 
     //squash 嵌入结构
@@ -71,12 +71,9 @@ type InDemo struct {
 - 入参如无Header打头的字段，不会在Other字段中看到header信息。  
 - 入参含有Header打头的字段，则会在Other中看到其它未使用的header信息。
 
-### **特殊的约定之二: Jwt 前缀**
-- **JwtXxx**  
-  JWT中的每一个属性名xxx, 会被修改为JwtXxx(CamelCase格式)作为新的属性名称。例如 id 修改为JwtId
+### **特殊的约定之二: Jwt 前缀 @xxx**
+  JWT中的每一个属性名xxx, 会被修改为@xxx作为新的属性名称。例如 id 修改为@Id
 
--  **阻止Jwt伪造**   
-    在客户端直接传递Jwt*参数（比如 Jwtid）是无效的，会被认为是试图伪造Jwt.请换成其它名称。
 
     
 :::tip 从api 返回值到http响应

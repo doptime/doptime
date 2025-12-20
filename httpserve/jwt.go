@@ -60,25 +60,25 @@ var mapClaims cmap.ConcurrentMap[string, jwt.MapClaims] = cmap.New[jwt.MapClaims
 
 func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 	var ok bool
-	jwtStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if len(jwtStr) == 0 {
+	jwtToken := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if len(jwtToken) == 0 {
 		return nil
 	}
 	//fast return from cache
-	if svc.Claims, ok = mapClaims.Get(jwtStr); ok {
+	if svc.Claims, ok = mapClaims.Get(jwtToken); ok {
 		exp := svc.Claims["exp"].(int64)
 		if exp < time.Now().Unix() {
-			mapClaims.Remove(jwtStr)
+			mapClaims.Remove(jwtToken)
 			return errors.New("JWT token is expired")
 		}
 		return nil
 	}
 	//parse jwt token
-	if svc.Claims, err = ParseAndValidateToken(jwtStr, cfghttp.JWTSecret); err != nil {
+	if svc.Claims, err = ParseAndValidateToken(jwtToken, cfghttp.JWTSecret); err != nil {
 		return fmt.Errorf("invalid JWT token: %v", err)
 	}
 	//save jwt token to cache
-	mapClaims.Set(jwtStr, svc.Claims)
+	mapClaims.Set(jwtToken, svc.Claims)
 	return nil
 }
 
