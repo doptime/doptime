@@ -37,7 +37,7 @@ import (
 )
 
 type InDemo struct {
-	Id   string `mapstructure:"@Id"`
+	Id   string `json:"@Id"`
 }
 
 var keyInDemo = data.New[string, *InDemo]()

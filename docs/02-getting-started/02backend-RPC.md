@@ -18,7 +18,7 @@ import (
 )
 
 type InDemo struct {
-	Id   string `mapstructure:"@Id" validate:"required"`
+	Id   string `json:"@Id" validate:"required"`
 }
 
 //var DemoRpc = api.Rpc[*InDemo, string](options ...*api.ApiOption)
@@ -61,7 +61,7 @@ import (
 )
 
 type InDemo struct {
-	Id   string `mapstructure:"@Id" validate:"required"`
+	Id   string `json:"@Id" validate:"required"`
 }
 
 var DemoRpc = api.Rpc[*InDemo, string](

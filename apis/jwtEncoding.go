@@ -14,7 +14,7 @@ type JwtEncodingIn struct {
 	// Possible values are HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512
 	SignMethod string
 	Duration   int64                  // seconds of expire time, format is unix time
-	Other      map[string]interface{} `json:"remain" msgpack:"-" `
+	Remain     map[string]interface{} `msgpack:"-" `
 }
 
 func ApiJwtSign(in *JwtEncodingIn) (AccessToken string, err error) {

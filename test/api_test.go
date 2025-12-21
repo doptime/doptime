@@ -14,9 +14,9 @@ type Demo struct {
 	Text string
 }
 type Demo1 struct {
-	Text       string `mapstructure:"Text,nonempty"`
+	Text       string `json:"Text" validate:"required"`
 	Attach     *Demo
-	RemoteAddr string `mapstructure:"HeaderRemoteAddr,nonempty"`
+	RemoteAddr string `json:"HeaderRemoteAddr" validate:"required"`
 }
 
 var ApiDemo = api.Api(func(InParam *Demo1) (ret string, err error) {

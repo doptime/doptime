@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Decode 对外入口
+// Decode is the external entry point
 func Decode(input interface{}, output interface{}) error {
 	config := &DecoderConfig{
 		Result:           output,
@@ -75,7 +75,7 @@ func (d *Decoder) decode(name string, input interface{}, outVal reflect.Value) e
 		return nil
 	}
 
-	// 弱类型 Hook (增强：支持 json.Number)
+	// Weakly typed hook (Enhanced: supports json.Number)
 	if d.config.WeaklyTypedInput {
 		input = d.weaklyTypedHook(input, outVal.Type())
 	}
@@ -106,16 +106,16 @@ func (d *Decoder) decode(name string, input interface{}, outVal reflect.Value) e
 	}
 }
 
-// FIX #3: 增加 AssignableTo 检查，防止 interface{} 赋值 Panic
+// FIX #3: Add AssignableTo check to prevent interface{} assignment panic
 func (d *Decoder) decodeBasic(data interface{}, val reflect.Value) error {
 	dataVal := reflect.ValueOf(data)
 	if !dataVal.Type().AssignableTo(val.Type()) {
-		// 如果不能直接赋值，尝试做一次暴力转换（针对自定义类型）
+		// If direct assignment is not possible, try a brute-force conversion (for custom types)
 		if dataVal.Type().ConvertibleTo(val.Type()) {
 			val.Set(dataVal.Convert(val.Type()))
 			return nil
 		}
-		// 如果完全无法赋值，忽略而不是 Panic
+		// If completely impossible to assign, ignore instead of Panic
 		return nil
 	}
 	val.Set(dataVal)
@@ -205,10 +205,9 @@ func (d *Decoder) decodeBool(data interface{}, val reflect.Value) error {
 	return nil
 }
 
-// decodeStruct V4: 支持 remain 功能
-// decodeStruct V5: 工业级健壮版 (修复 Panic 隐患)
+// decodeStruct V7: Final minimalist version (Convention over Configuration)
 func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Value) error {
-	// 防御性处理 Input，确保拿到实体
+	// --- 1. Defensive Input Processing ---
 	var dataVal reflect.Value
 	if input != nil {
 		dataVal = reflect.ValueOf(input)
@@ -222,7 +221,6 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 		return nil
 	}
 
-	// 1. 如果输入是 Struct，尝试直接赋值
 	if dataVal.Kind() == reflect.Struct {
 		if dataVal.Type().AssignableTo(outVal.Type()) {
 			outVal.Set(dataVal)
@@ -230,20 +228,17 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 		}
 		return nil
 	}
-	// 2. 必须是 Map
 	if dataVal.Kind() != reflect.Map {
 		return nil
 	}
 
-	// 准备 Map Keys (ToLower) 用于匹配
+	// --- 2. Prepare Metadata ---
 	dataMapLower := make(map[string]reflect.Value, dataVal.Len())
-	// 追踪哪些 Key 被用掉了
 	usedKeys := make(map[string]bool)
 
 	iter := dataVal.MapRange()
 	for iter.Next() {
 		k := iter.Key()
-		// 只处理 string 类型的 key，防止奇怪的 map[int]any 导致 panic
 		if k.Kind() == reflect.String {
 			dataMapLower[strings.ToLower(k.String())] = iter.Value()
 		}
@@ -252,31 +247,39 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 	outType := outVal.Type()
 	var remainFieldVal reflect.Value
 
+	// --- 3. Iterate Fields ---
 	for i := 0; i < outType.NumField(); i++ {
 		field := outType.Field(i)
 		fieldVal := outVal.Field(i)
 
-		if field.PkgPath != "" { // 忽略未导出字段
+		if field.PkgPath != "" {
 			continue
 		}
 
-		// --- Tag 解析 ---
-		tagParts := strings.Split(field.Tag.Get(d.config.TagName), ",")
+		// Get Tag
+		tagVal := field.Tag.Get(d.config.TagName)
+		tagParts := strings.Split(tagVal, ",")
 		tagName := tagParts[0]
 
+		// === Core: Remain convention recognition (Highest Priority) ===
+		// Rule: Field name is "Remain" and type is map[string]interface{}
+		// Or json:"remain" (Compatible syntax)
 		isRemain := false
-		for _, opt := range tagParts[1:] {
-			if opt == "remain" {
+		if fieldVal.Kind() == reflect.Map && fieldVal.Type().Key().Kind() == reflect.String {
+			if field.Name == "Remain" || tagName == "remain" {
 				isRemain = true
-				break
 			}
 		}
 
 		if isRemain {
 			remainFieldVal = fieldVal
+			// Note: continue here, even if tag is "-", it will be treated as Remain
+			// This allows advanced usage like Remain map... json:"-" (Input only)
 			continue
 		}
+		// ==========================================
 
+		// Handle ignored fields
 		if tagName == "-" {
 			continue
 		}
@@ -284,11 +287,10 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 			tagName = field.Name
 		}
 
-		// --- 匹配逻辑 ---
 		lowerTagName := strings.ToLower(tagName)
 		val, ok := dataMapLower[lowerTagName]
 
-		// 嵌入结构体 (Anonymous) 处理
+		// Recursive processing for embedded structs
 		if !ok && field.Anonymous && fieldVal.Kind() == reflect.Struct {
 			if err := d.decode(name, input, fieldVal); err != nil {
 				return err
@@ -296,6 +298,7 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 			continue
 		}
 
+		// Standard field decoding
 		if ok {
 			usedKeys[lowerTagName] = true
 			if err := d.decode(name+"."+field.Name, val.Interface(), fieldVal); err != nil {
@@ -304,9 +307,8 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 		}
 	}
 
-	// --- Remain 处理逻辑 (V5 修复核心) ---
-	if remainFieldVal.IsValid() && remainFieldVal.Kind() == reflect.Map {
-		// FIX Bug 1: 如果 map 是 nil 才 Make，否则复用，防止覆盖用户初始化的数据
+	// --- 4. Fill Remain Data ---
+	if remainFieldVal.IsValid() {
 		if remainFieldVal.IsNil() {
 			remainFieldVal.Set(reflect.MakeMap(remainFieldVal.Type()))
 		}
@@ -317,19 +319,18 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 		iter := dataVal.MapRange()
 		for iter.Next() {
 			k := iter.Key()
-			// 必须是 string key 才能判断是否 used
 			if k.Kind() == reflect.String {
+				// If not consumed by standard fields, add to Remain
 				if !usedKeys[strings.ToLower(k.String())] {
-					// FIX Bug 2: 类型安全检查
-					// 确保 Key 可以赋值给 remain map 的 key (通常都是 string，但以防万一)
+
+					// Type check (Prevent Panic)
 					if !k.Type().AssignableTo(remainKeyType) {
 						continue
 					}
 
-					// 尝试解码 Value
+					// Decode and store
 					newVal := reflect.New(remainElemType).Elem()
 					if err := d.decode("remainVal", iter.Value().Interface(), newVal); err == nil {
-						// 再次检查 Value 是否可赋值 (decode 内部虽然处理了，但多一层保险)
 						remainFieldVal.SetMapIndex(k, newVal)
 					}
 				}
@@ -409,7 +410,7 @@ func (d *Decoder) decodePtr(name string, input interface{}, val reflect.Value) e
 func (d *Decoder) weaklyTypedHook(data interface{}, targetType reflect.Type) interface{} {
 	dataVal := reflect.ValueOf(data)
 
-	// FIX #6: 优先处理 json.Number (必须在其他 convert 之前)
+	// FIX #6: Prioritize json.Number processing (Must be before other conversions)
 	if _, ok := data.(json.Number); ok {
 		return d.decodeJsonNumber(data.(json.Number), targetType)
 	}
@@ -425,7 +426,7 @@ func (d *Decoder) weaklyTypedHook(data interface{}, targetType reflect.Type) int
 		}
 	}
 
-	// Map Key 兼容
+	// Map Key compatibility
 	if targetType.Kind() == reflect.Map && targetType.Key().Kind() == reflect.String {
 		if dataVal.Kind() == reflect.Map && dataVal.Type().Key().Kind() == reflect.Interface {
 			m := make(map[string]interface{})
@@ -440,7 +441,7 @@ func (d *Decoder) weaklyTypedHook(data interface{}, targetType reflect.Type) int
 	return data
 }
 
-// FIX #6: 专门处理 json.Number
+// FIX #6: Dedicated handling for json.Number
 func (d *Decoder) decodeJsonNumber(jn json.Number, targetType reflect.Type) interface{} {
 	switch targetType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -458,6 +459,6 @@ func (d *Decoder) decodeJsonNumber(jn json.Number, targetType reflect.Type) inte
 	case reflect.String:
 		return string(jn)
 	}
-	// 默认返回 string 以防万一
+	// Default return string just in case
 	return string(jn)
 }

@@ -66,12 +66,12 @@ func (ctx *Context[i, o]) HookResponseModifier(
 ```
    需要说明的是 修改给客户端的响应数据 通常是不需要的，因为rpc 中通常已经考虑了 json tag ,来避免返回数据中存在敏感数据的泄露。如果你需要返回空值等，可以在这里修改。
 
-### 使用Other字段
-doptime librpc 中的 入参，都存在 Other map[string]interface{} 的字段，用来存放web-client的其它请求参数。  
+### 使用Remain字段
+doptime librpc 中的 入参，都存在 Remain map[string]interface{} 的字段，用来存放web-client的其它请求参数。  
 
 那些并没有在入参中出现的参数，如果你又需要使用，可以从这个map中取出来。  
 
-如果多个hook函数之间要通信，可以通过 Other 字段 来传递。
+如果多个hook函数之间要通信，可以通过 Remain 字段 来传递。
 
 ## 调用第三方RPC函数示例
 ```go   title="main.go"

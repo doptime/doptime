@@ -54,7 +54,7 @@ func HeaderFieldsUsed(vType reflect.Type) bool {
 	}
 
 	for i := 0; i < vType.NumField(); i++ {
-		fieldName, tagLowercase := vType.Field(i).Name, strings.ToLower(vType.Field(i).Tag.Get("mapstructure"))
+		fieldName, tagLowercase := vType.Field(i).Name, strings.ToLower(vType.Field(i).Tag.Get("json"))
 		if strings.HasPrefix(fieldName, "Header") || strings.Contains(tagLowercase, "header") {
 			return true
 		}

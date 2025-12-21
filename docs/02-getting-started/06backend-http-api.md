@@ -7,14 +7,14 @@ sidebar_position: 6
 
 
 :::tip 入参映射 - 从http、rpc参数到api入参
-## 使用 mapstructure tag 定义api入参
+## 使用 json tag 定义api入参
 ::: 
-doptime 采用 **mapstructure** 用于定义http的入参，它可以实现入参的别名和类型转化。   
-1. mapstructure可帮助你免于类型转换和变量名大小写转换等繁琐工作。    
-2. mapstructure 可以将string 自动转化为int*,uint*, float*, bool等类型。同样，也可以把int*, float*, bool*等类型转化为string。  
+doptime 采用 **json** 用于定义http的入参，它可以实现入参的别名和类型转化。   
+1. json可帮助你免于类型转换和变量名大小写转换等繁琐工作。    
+2. json 可以将string 自动转化为int*,uint*, float*, bool等类型。同样，也可以把int*, float*, bool*等类型转化为string。  
 3. 注意，从string 转化 int*时，采用10进制转化。如果你期望不同进制，请使用string类型来接受数据。然后再自行转化。
-4. mapstructure 的匹配和转化适用用 http请求和rpc请求。  
-> **[[查看mapstructure文档]](https://pkg.go.dev/github.com/mitchellh/mapstructure?utm_source=godoc#hdr-Field_Tags)**  
+4. json 的匹配和转化适用用 http请求和rpc请求。  
+5. json 实际上是通过 mapstructure 库和json 库 的合并库来实现的。
 
 
 
@@ -28,8 +28,8 @@ doptime 采用 **validator** 用于验证http的入参。
 
 
 
-:::tip 使用mapstructure 和validator的示例代码:
-## 使用 mapstructure validator的 示例代码
+:::tip 使用json 和validator的示例代码:
+## 使用 json validator的 示例代码
 ::: 
 
 ```go   title="main.go"
@@ -38,24 +38,24 @@ type Person struct {
 }
 type InDemo struct {
     //要求不能是零值,否则返回错误
-    Id   string `mapstructure:"@Id" validate:"required,min=16,max=64"`
-    //相当于 `mapstructure:"HeaderRemoteAddr"`   
+    Id   string `json:"@Id" validate:"required,min=16,max=64"`
+    //相当于 `json:"HeaderRemoteAddr"`   
     HeaderRemoteAddr        string  
     HeaderUserAgent string
     Username  string `validate:"required,min=5,max=20"`
-    Email     string `mapstructure:"@email" validate:"required,email"`
+    Email     string `json:"@email" validate:"required,email"`
     FavouriteColor string     `validate:"hexcolor|rgb|rgba"`
     Addresses      []*Address `validate:"required,dive,required"` 
     //squash 嵌入结构
-    Person `mapstructure:",squash"`
+    Person `json:",squash"`
     //omitempty. if 
-    Age int `mapstructure:""  validate:"gte=18,lte=120`
-    //相当于 `mapstructure:"Text"` 或是 `mapstructure:"text"`
-    //mapstructure tag is not always needed
+    Age int `json:""  validate:"gte=18,lte=120`
+    //相当于 `json:"Text"` 或是 `json:"text"`
+    //json tag is not always needed
     Text string 
     Discount  float64 `json:"discount" validate:"percentage"`
     //other param will be kept as map
-    Other map[string]interface{} `mapstructure:",remain"`
+    Remain map[string]interface{} 
 }
 ```
 

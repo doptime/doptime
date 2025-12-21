@@ -18,8 +18,8 @@ import (
 )
 
 type InDemo struct {
-	Id   string `mapstructure:"@Id" validate:"required"`
-	Other      map[string]interface{} `mapstructure:",remain" msgpack:"-" `
+	Id   string `json:"@Id" validate:"required"`
+	Remain      map[string]interface{} `msgpack:"-" `
 }
 //RpcOverHttp 默认使用 doptime 作为目标服务器
 var DemoRpc = api.RpcOverHttp[*InDemo, string]().Func
