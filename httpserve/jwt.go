@@ -2,6 +2,7 @@ package httpserve
 
 import (
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -81,6 +82,8 @@ func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 			exp = v
 		case string:
 			exp, err = strconv.ParseInt(v, 10, 64)
+		case json.Number:
+			exp, err = strconv.ParseInt(v.String(), 10, 64)
 		default:
 			goto parsecontinue
 		}
