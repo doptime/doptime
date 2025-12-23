@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfghttp"
-	cmap "github.com/orcaman/concurrent-map/v2"
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+var tokenKeyRSA interface{}
 
 func ParseAndValidateToken(jwtToken string, secret string) (jwt.MapClaims, error) {
 	// 1. Configure parser: UseJSONNumber prevents float64 precision issues
@@ -28,6 +30,9 @@ func ParseAndValidateToken(jwtToken string, secret string) (jwt.MapClaims, error
 
 		case *jwt.SigningMethodRSA:
 			// RS256: secret is the PEM Public Key
+			if tokenKeyRSA != nil {
+				return tokenKeyRSA, nil
+			}
 			block, _ := pem.Decode([]byte(secret))
 			if block == nil {
 				return nil, errors.New("failed to parse PEM block")
@@ -36,6 +41,7 @@ func ParseAndValidateToken(jwtToken string, secret string) (jwt.MapClaims, error
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse DER key: %v", err)
 			}
+			tokenKeyRSA = pub
 			return pub, nil
 
 		default:
@@ -56,7 +62,7 @@ func ParseAndValidateToken(jwtToken string, secret string) (jwt.MapClaims, error
 	return nil, errors.New("invalid token claims")
 }
 
-var mapClaims cmap.ConcurrentMap[string, jwt.MapClaims] = cmap.New[jwt.MapClaims]()
+var tokenCache, _ = lru.New[string, jwt.MapClaims](10000)
 
 func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 	var ok bool
@@ -65,20 +71,28 @@ func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 		return nil
 	}
 	//fast return from cache
-	if svc.Claims, ok = mapClaims.Get(jwtToken); ok {
-		exp := svc.Claims["exp"].(int64)
+	if svc.Claims, ok = tokenCache.Get(jwtToken); ok {
+		var exp int64
+		switch v := svc.Claims["exp"].(type) {
+		case float64:
+			exp = int64(v)
+		case int64:
+			exp = v
+		default:
+			goto parsecontinue
+		}
 		if exp < time.Now().Unix() {
-			mapClaims.Remove(jwtToken)
 			return errors.New("JWT token is expired")
 		}
 		return nil
 	}
+parsecontinue:
 	//parse jwt token
 	if svc.Claims, err = ParseAndValidateToken(jwtToken, cfghttp.JWTSecret); err != nil {
 		return fmt.Errorf("invalid JWT token: %v", err)
 	}
 	//save jwt token to cache
-	mapClaims.Set(jwtToken, svc.Claims)
+	tokenCache.Add(jwtToken, svc.Claims)
 	return nil
 }
 

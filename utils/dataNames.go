@@ -15,7 +15,7 @@ func GetValidDataKeyName(value interface{}) (Key string, err error) {
 		Key = _type.Name()
 	}
 	if invalid := IsInvalidStructName(Key); invalid || len(Key) == 0 {
-		err = fmt.Errorf("invalid keyname infered from type: " + Key)
+		err = fmt.Errorf("invalid keyname infered from type: %s", Key)
 		return "", err
 	}
 	return Key, nil
