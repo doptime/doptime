@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -78,6 +79,8 @@ func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 			exp = int64(v)
 		case int64:
 			exp = v
+		case string:
+			exp, err = strconv.ParseInt(v, 10, 64)
 		default:
 			goto parsecontinue
 		}
