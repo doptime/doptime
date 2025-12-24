@@ -1,5 +1,7 @@
 github.com/BurntSushi/toml v1.5.0 h1:W5quZX/G/csjUnuI8SUYlsHs9M38FC7znL0lIO+DvMg=
 github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
+github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
+github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=
@@ -17,6 +19,10 @@ github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17 h1:2NEAL69piCy6nwkA
 github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17/go.mod h1:ilMlBlMQF0rCOpoxzQm5pDHAAdBH3v+3H+urGUEo27I=
 github.com/doptime/redisdb v0.0.0-20251218073809-8639a0c07d22 h1:ihtc813faOlykcQl1yEYcyENROFPHJnFYIIUHKtIBhQ=
 github.com/doptime/redisdb v0.0.0-20251218073809-8639a0c07d22/go.mod h1:+gmOkKJsHd7Xtggrrf9GD4jTYlkWAJ240P4O8D7bRN8=
+github.com/doptime/redisdb v0.0.0-20251224014311-c661f1213d06 h1:67O1pGlpQ/m9uA5ibf7+iLMnlvsZL/tiVkzhWCT/5KI=
+github.com/doptime/redisdb v0.0.0-20251224014311-c661f1213d06/go.mod h1:+gmOkKJsHd7Xtggrrf9GD4jTYlkWAJ240P4O8D7bRN8=
+github.com/doptime/redisdb v0.0.0-20251224015514-6e26321b6726 h1:dZ5Scz6J3jDMgTcmHaKzZYNUCKpH6xmxg1TL9qoTLHM=
+github.com/doptime/redisdb v0.0.0-20251224015514-6e26321b6726/go.mod h1:+gmOkKJsHd7Xtggrrf9GD4jTYlkWAJ240P4O8D7bRN8=
 github.com/gabriel-vasile/mimetype v1.4.12 h1:e9hWvmLYvtp846tLHam2o++qitpguFiYCKbn0w9jyqw=
 github.com/gabriel-vasile/mimetype v1.4.12/go.mod h1:d+9Oxyo1wTzWdyVUPMmXFvp4F9tea18J8ufA774AB3s=
 github.com/go-ping/ping v1.2.0 h1:vsJ8slZBZAXNCK4dPcI2PEE9eM9n9RbXbGouVQ/Y4yQ=
@@ -29,6 +35,8 @@ github.com/go-playground/universal-translator v0.18.1 h1:Bcnm0ZwsGyWbCzImXv+pAJn
 github.com/go-playground/universal-translator v0.18.1/go.mod h1:xekY+UJKNuX9WP91TpwSH2VMlDf28Uj24BCp08ZFTUY=
 github.com/go-playground/validator/v10 v10.29.0 h1:lQlF5VNJWNlRbRZNeOIkWElR+1LL/OuHcc0Kp14w1xk=
 github.com/go-playground/validator/v10 v10.29.0/go.mod h1:D6QxqeMlgIPuT02L66f2ccrZ7AGgHkzKmmTMZhk/Kc4=
+github.com/go-playground/validator/v10 v10.30.0 h1:5YBPNs273uzsZJD1I8uiB4Aqg9sN6sMDVX3s6LxmhWU=
+github.com/go-playground/validator/v10 v10.30.0/go.mod h1:oSuBIQzuJxL//3MelwSLD5hc2Tu889bF0Idm9Dg26cM=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
 github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=

@@ -2,7 +2,6 @@ package httpserve
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/redisdb"
@@ -11,16 +10,17 @@ import (
 var nonKey = redisdb.NewRedisKey[string, interface{}]()
 
 func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (db *redisdb.RedisKey[string, interface{}], value interface{}, err error) {
+
 	if !redisdb.IsValidKeyType(keyType) {
 		return nil, nil, fmt.Errorf("%s", "key type is invalid: "+keyType)
 	}
-	useModer, originalKey := false, key
-	originalKey = strings.SplitN(key, "@", 2)[0]
-	originalKey = strings.SplitN(originalKey, ":", 2)[0]
-
-	hashInterface, exists := redisdb.RediskeyForWeb.Get(originalKey + ":" + RedisDataSource)
-	if hashInterface != nil && exists {
-		useModer = hashInterface.GetUseModer()
+	keyScope := redisdb.KeyScope(key)
+	hashInterface, exists := redisdb.RediskeyForWeb.Get(keyScope + ":" + RedisDataSource)
+	if hashInterface == nil && !exists {
+		return nil, nil, fmt.Errorf("key schema is unconfigured: %s", keyScope)
+	}
+	if hashInterface.ValidDataKey() != nil {
+		return nil, nil, hashInterface.ValidDataKey()
 	}
 
 	if len(msgpackData) > 0 {
@@ -32,17 +32,13 @@ func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgp
 		}
 	}
 
-	if disallowed, found := redisdb.DisAllowedDataKeyNames[key]; found && disallowed {
-		return nil, nil, fmt.Errorf("key name is disallowed: %s", key)
-	}
 	ctx := nonKey.Duplicate(key, RedisDataSource)
 	if ctx.ValidDataKey() != nil {
 		return nil, nil, fmt.Errorf("key name is invalid: %s", key)
 	}
 	ctx.KeyType = redisdb.KeyType(keyType)
-	ctx.UseModer = useModer
+	ctx.UseModer = hashInterface.GetUseModer()
 	ctx.DeserializeValue = hashInterface.UnmarshalValue
-
 	if ctx.Rds, exists = cfgredis.Servers.Get(RedisDataSource); !exists {
 		return nil, nil, fmt.Errorf("rds item unconfigured: %s", RedisDataSource)
 	}
