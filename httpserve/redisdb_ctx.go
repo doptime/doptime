@@ -3,13 +3,10 @@ package httpserve
 import (
 	"fmt"
 
-	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/redisdb"
 )
 
-var nonKey = redisdb.NewRedisKey[string, interface{}]()
-
-func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (db *redisdb.RedisKey[string, interface{}], value interface{}, err error) {
+func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (newkey *redisdb.RedisKey[string, interface{}], value interface{}, err error) {
 
 	if !redisdb.IsValidKeyType(keyType) {
 		return nil, nil, fmt.Errorf("%s", "key type is invalid: "+keyType)
@@ -24,25 +21,19 @@ func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgp
 	}
 
 	if len(msgpackData) > 0 {
-		value, err = hashInterface.UnmarshalValue(msgpackData)
+		value, err = hashInterface.DeserializeToInterface(msgpackData)
 		if err != nil {
 			return nil, nil, err
 		} else if exists {
-			hashInterface.TimestampFill(value)
+			hashInterface.TimestampFiller(value)
 		}
 	}
 
-	ctx := nonKey.Duplicate(key, RedisDataSource)
-	if ctx.ValidDataKey() != nil {
+	newkey = hashInterface.CloneToRedisKey(key, RedisDataSource)
+	if newkey.ValidDataKey() != nil {
 		return nil, nil, fmt.Errorf("key name is invalid: %s", key)
 	}
-	ctx.KeyType = redisdb.KeyType(keyType)
-	ctx.UseModer = hashInterface.GetUseModer()
-	ctx.DeserializeValue = hashInterface.UnmarshalValue
-	if ctx.Rds, exists = cfgredis.Servers.Get(RedisDataSource); !exists {
-		return nil, nil, fmt.Errorf("rds item unconfigured: %s", RedisDataSource)
-	}
-	return &ctx, value, nil
+	return newkey, value, nil
 }
 
 func HashCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *redisdb.HashKey[string, interface{}], value interface{}, err error) {

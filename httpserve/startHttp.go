@@ -848,8 +848,8 @@ func httpStart(path string, port int64) {
 			}
 			result = ""
 			var tm time.Time
-			if nonKey, _, err = CtxWithValueSchemaChecked(svcCtx.Key, "nonkey", RedisDataSource, nil); err != nil {
-			} else if tm, err = nonKey.Time(); err == nil {
+			var nonKey = redisdb.NewRedisKey[string, interface{}](redisdb.Opt.Key("nonkey"), redisdb.Opt.Rds(RedisDataSource))
+			if tm, err = nonKey.Time(); err == nil {
 				result = tm.UnixMilli()
 			}
 		case KEYS:
