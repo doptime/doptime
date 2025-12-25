@@ -841,15 +841,19 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedCommon(svcCtx.Key, redisdb.Exists) {
 				goto disallowedPermission
 			}
-			result, err = rds.Exists(svcCtx.Ctx, svcCtx.Key).Result()
+			existResult := rds.Exists(svcCtx.Ctx, svcCtx.Key)
+			if existResult == nil {
+				result, err = "false", errors.New("EXISTS command return nil")
+				goto responseHttp
+			}
+			result, err = existResult.Result()
 		case TIME:
 			if !redisdb.IsAllowedDBOp(redisdb.DBTime) {
 				goto disallowedPermission
 			}
 			result = ""
 			var tm time.Time
-			var nonKey = redisdb.NewRedisKey[string, interface{}](redisdb.Opt.Key("nonkey"), redisdb.Opt.Rds(RedisDataSource))
-			if tm, err = nonKey.Time(); err == nil {
+			if tm, err = rds.Time(svcCtx.Ctx).Result(); err == nil {
 				result = tm.UnixMilli()
 			}
 		case KEYS:
