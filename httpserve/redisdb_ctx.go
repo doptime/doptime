@@ -6,11 +6,8 @@ import (
 	"github.com/doptime/redisdb"
 )
 
-func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgpackData []byte) (newkey *redisdb.RedisKey[string, interface{}], value interface{}, err error) {
+func CtxWithValueSchemaChecked(key string, keyType redisdb.KeyType, RedisDataSource string, msgpackData []byte) (newkey *redisdb.RedisKey[string, interface{}], value interface{}, err error) {
 
-	if !redisdb.IsValidKeyType(keyType) {
-		return nil, nil, fmt.Errorf("%s", "key type is invalid: "+keyType)
-	}
 	keyScope := redisdb.KeyScope(key)
 	hashInterface, exists := redisdb.RediskeyForWeb.Get(keyScope + ":" + RedisDataSource)
 	if hashInterface == nil && !exists {
@@ -18,6 +15,9 @@ func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgp
 	}
 	if hashInterface.ValidDataKey() != nil {
 		return nil, nil, hashInterface.ValidDataKey()
+	}
+	if hashInterface.GetKeyType() != keyType {
+		return nil, nil, fmt.Errorf("key type is mismatched: %s != %s", string(hashInterface.GetKeyType()), keyType)
 	}
 
 	if len(msgpackData) > 0 {
@@ -38,7 +38,7 @@ func CtxWithValueSchemaChecked(key, keyType string, RedisDataSource string, msgp
 
 func HashCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *redisdb.HashKey[string, interface{}], value interface{}, err error) {
 	var ctx *redisdb.RedisKey[string, interface{}]
-	ctx, value, err = CtxWithValueSchemaChecked(key, "hash", RedisDataSource, msgpackData)
+	ctx, value, err = CtxWithValueSchemaChecked(key, redisdb.KeyTypeHash, RedisDataSource, msgpackData)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -46,7 +46,7 @@ func HashCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackD
 }
 func StringCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *redisdb.StringKey[string, interface{}], value interface{}, err error) {
 	var ctx *redisdb.RedisKey[string, interface{}]
-	ctx, value, err = CtxWithValueSchemaChecked(key, "string", RedisDataSource, msgpackData)
+	ctx, value, err = CtxWithValueSchemaChecked(key, redisdb.KeyTypeString, RedisDataSource, msgpackData)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -54,7 +54,7 @@ func StringCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpac
 }
 func ListCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *redisdb.ListKey[interface{}], value interface{}, err error) {
 	var ctx *redisdb.RedisKey[string, interface{}]
-	ctx, value, err = CtxWithValueSchemaChecked(key, "list", RedisDataSource, msgpackData)
+	ctx, value, err = CtxWithValueSchemaChecked(key, redisdb.KeyTypeList, RedisDataSource, msgpackData)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -62,7 +62,7 @@ func ListCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackD
 }
 func ZSetCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *redisdb.ZSetKey[string, interface{}], value interface{}, err error) {
 	var ctx *redisdb.RedisKey[string, interface{}]
-	ctx, value, err = CtxWithValueSchemaChecked(key, "zset", RedisDataSource, msgpackData)
+	ctx, value, err = CtxWithValueSchemaChecked(key, redisdb.KeyTypeZSet, RedisDataSource, msgpackData)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -71,7 +71,7 @@ func ZSetCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackD
 
 func SetCtxWitchValueSchemaChecked(key string, RedisDataSource string, msgpackData []byte) (db *redisdb.SetKey[string, interface{}], value interface{}, err error) {
 	var ctx *redisdb.RedisKey[string, interface{}]
-	ctx, value, err = CtxWithValueSchemaChecked(key, "set", RedisDataSource, msgpackData)
+	ctx, value, err = CtxWithValueSchemaChecked(key, redisdb.KeyTypeSet, RedisDataSource, msgpackData)
 	if err != nil {
 		return nil, nil, err
 	}
