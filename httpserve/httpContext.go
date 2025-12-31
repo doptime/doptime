@@ -149,22 +149,19 @@ func (svc *DoptimeReqCtx) BuildParamIn(r *http.Request) {
 		}
 	}
 
+	//add key and field to paramIn
+	svc.Params["@key"] = svc.Key
+	svc.Params["@field"] = svc.Field
 	// copy request info
-	svc.Params["@RemoteAddr"] = r.RemoteAddr
-	svc.Params["@Host"] = r.Host
-	svc.Params["@Method"] = r.Method
-	svc.Params["@Path"] = r.URL.Path
-	svc.Params["@RawQuery"] = r.URL.RawQuery
-
+	svc.Params["@remoteAddr"] = r.RemoteAddr
+	svc.Params["@host"] = r.Host
+	svc.Params["@method"] = r.Method
+	svc.Params["@path"] = r.URL.Path
+	svc.Params["@rawQuery"] = r.URL.RawQuery
 	//add all Jwt fields to paramIn
 	for k, v := range svc.JwtClaims {
-		//convert first letter of k to upper case
-		k = strings.ToUpper(k[:1]) + k[1:]
 		svc.Params["@"+k] = v
 	}
-	//add key and field to paramIn
-	svc.Params["@Key"] = svc.Key
-	svc.Params["@Field"] = svc.Field
 }
 
 // Ensure the body is msgpack format
