@@ -290,8 +290,19 @@ func httpStart(path string, port int64) {
 			result = 0
 			if hkey, result, err = svcCtx.HashCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
-				result, err = hkey.HSet(svcCtx.Field, result)
+				_, err = hkey.HSet(svcCtx.Field, result)
 			}
+		case HMSET:
+			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HSet) {
+				goto disallowedPermission
+			}
+			result = 0
+			// not implemented yet
+
+			// if hkey, result, err = svcCtx.HashCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true)); err != nil {
+			// } else {
+			// 	n, err = hkey.HMSet(svcCtx.Field, result)
+			// }
 
 		case HDEL:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HDel) {

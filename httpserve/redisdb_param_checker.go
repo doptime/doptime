@@ -3,6 +3,7 @@ package httpserve
 const (
 	HGET             string = "HGET"
 	HSET             string = "HSET"
+	HMSET            string = "HMSET"
 	HDEL             string = "HDEL"
 	HGETALL          string = "HGETALL"
 	HMGET            string = "HMGET"
@@ -135,6 +136,7 @@ const (
 var DataCmdRequireKey = map[string]bool{
 	HGET:             true,
 	HSET:             true,
+	HMSET:            true,
 	HDEL:             true,
 	HGETALL:          true,
 	HKEY:             true,
