@@ -10,7 +10,10 @@ import (
 	"time"
 )
 
-// Decode is the external entry point
+// 哨兵错误：用于性能优化流程控制
+var errAssignedDirectly = errors.New("assigned directly")
+
+// Decode 是外部入口
 func Decode(input interface{}, output interface{}) error {
 	config := &DecoderConfig{
 		Result:           output,
@@ -49,19 +52,16 @@ func NewDecoder(config *DecoderConfig) (*Decoder, error) {
 
 type Decoder struct {
 	config *DecoderConfig
-	// refTracker is used to prevent potential circular dependencies if default values
-	// ever support chaining or complex computed logic.
-	// Currently used as a defensive mechanism.
+	// refTracker 用于防止直接引用的循环
 	refTracker map[string]bool
 }
 
 func (d *Decoder) Decode(input interface{}) error {
-	// Reset tracker for each fresh decode call
 	d.refTracker = make(map[string]bool)
 	return d.decode("root", input, reflect.ValueOf(d.config.Result).Elem())
 }
 
-// inputWrapper holds the value and the original key to preserve case sensitivity in Remain
+// inputWrapper 用于保留原始 Key 的大小写
 type inputWrapper struct {
 	val         reflect.Value
 	originalKey string
@@ -77,7 +77,6 @@ func (d *Decoder) decode(name string, input interface{}, outVal reflect.Value) e
 	}
 
 	if input == nil {
-		// If input is nil, we still proceed because defaults might need to be applied
 		if outVal.Kind() == reflect.Ptr {
 			if !outVal.IsNil() && outVal.CanSet() {
 				outVal.Set(reflect.Zero(outVal.Type()))
@@ -89,7 +88,6 @@ func (d *Decoder) decode(name string, input interface{}, outVal reflect.Value) e
 		}
 	}
 
-	// Weakly typed hook
 	if d.config.WeaklyTypedInput && input != nil {
 		input = d.weaklyTypedHook(input, outVal.Type())
 	}
@@ -121,14 +119,13 @@ func (d *Decoder) decode(name string, input interface{}, outVal reflect.Value) e
 }
 
 // ============================================================================
-// Core Logic: Struct Decoding
+// 核心逻辑: 结构体解码
 // ============================================================================
 
 func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Value) error {
-	// 1. Prepare Input Data Map
 	dataMap, err := d.prepareInputMap(input, outVal)
 	if err != nil {
-		if err.Error() == "assigned directly" {
+		if errors.Is(err, errAssignedDirectly) {
 			return nil
 		}
 		return nil
@@ -138,20 +135,18 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 	usedKeys := make(map[string]bool)
 	var remainFieldVal reflect.Value
 
-	// 2. Iterate over Struct Fields
 	for i := 0; i < outType.NumField(); i++ {
 		field := outType.Field(i)
 		fieldVal := outVal.Field(i)
 
 		if field.PkgPath != "" {
-			continue // Skip unexported fields
+			continue
 		}
 
-		// 2.1 Parse Tag
+		// 2.1 解析 Tag (Space Separator Only)
 		tagVal := field.Tag.Get(d.config.TagName)
-		tagName, defaultParam := d.parseTag(tagVal)
+		tagName, defaultDirective := d.parseTag(tagVal)
 
-		// 2.2 Identify "Remain" field
 		isRemain := (field.Name == "Remain" || tagName == "remain") &&
 			fieldVal.Kind() == reflect.Map &&
 			fieldVal.Type().Key().Kind() == reflect.String
@@ -168,8 +163,8 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 			tagName = field.Name
 		}
 
-		// 2.3 Resolve Value
-		val, keyUsed, exists := d.resolveValue(tagName, defaultParam, dataMap)
+		// 2.3 决议值 (引用 OR 字面量)
+		val, keyUsed, exists := d.resolveValue(tagName, defaultDirective, dataMap)
 
 		if exists {
 			if keyUsed != "" {
@@ -180,14 +175,12 @@ func (d *Decoder) decodeStruct(name string, input interface{}, outVal reflect.Va
 				return err
 			}
 		} else if field.Anonymous && fieldVal.Kind() == reflect.Struct {
-			// Embedded struct: pass original input down
 			if err := d.decode(name, input, fieldVal); err != nil {
 				return err
 			}
 		}
 	}
 
-	// 3. Fill Remain Field
 	if remainFieldVal.IsValid() {
 		d.fillRemain(remainFieldVal, dataMap, usedKeys)
 	}
@@ -213,7 +206,7 @@ func (d *Decoder) prepareInputMap(input interface{}, outVal reflect.Value) (map[
 
 	if dataVal.Kind() == reflect.Struct && dataVal.Type().AssignableTo(outVal.Type()) {
 		outVal.Set(dataVal)
-		return nil, errors.New("assigned directly")
+		return nil, errAssignedDirectly
 	}
 
 	if dataVal.Kind() != reflect.Map {
@@ -236,59 +229,57 @@ func (d *Decoder) prepareInputMap(input interface{}, outVal reflect.Value) (map[
 	return dataMap, nil
 }
 
-// resolveValue determines the value to use (Input -> Ref Default -> Literal Default)
-func (d *Decoder) resolveValue(tagName, defaultParam string, dataMap map[string]inputWrapper) (interface{}, string, bool) {
-	lowerTagName := strings.ToLower(tagName)
+func (d *Decoder) resolveValue(lookupKey, defaultDirective string, dataMap map[string]inputWrapper) (interface{}, string, bool) {
+	lowerKey := strings.ToLower(lookupKey)
 
-	// 1. Direct lookup
-	if wrapper, ok := dataMap[lowerTagName]; ok {
-		return wrapper.val.Interface(), lowerTagName, true
+	// 1. 直接查找
+	if wrapper, ok := dataMap[lowerKey]; ok {
+		return wrapper.val.Interface(), lowerKey, true
 	}
 
-	// 2. Check Defaults
-	if defaultParam == "" {
+	// 2. 检查默认值指令
+	if defaultDirective == "" {
 		return nil, "", false
 	}
 
-	// 2a. Reference Default (@ref)
-	if strings.HasPrefix(defaultParam, "@") {
-		refKey := strings.ToLower(defaultParam[1:])
-
-		// Cycle detection (Defensive)
-		if d.refTracker[refKey] {
-			return nil, "", false // Cycle detected or already visited in a chain
-		}
-		d.refTracker[refKey] = true
-		defer func() { delete(d.refTracker, refKey) }()
-
-		if wrapper, ok := dataMap[refKey]; ok {
-			return wrapper.val.Interface(), refKey, true
-		}
+	// 去掉 '@' 前缀
+	candidateContent := defaultDirective[1:]
+	if candidateContent == "" {
 		return nil, "", false
 	}
+	lowerCandidate := strings.ToLower(candidateContent)
 
-	// 2b. Literal Default
-	// Improvement: Try to parse literal into basic types (int, bool, float)
-	// This helps when the target field is interface{}
-	parsedVal := d.parseDefaultLiteral(defaultParam)
+	// 2a. 引用检查: 指令内容是否是 map 中的 key?
+	if wrapper, ok := dataMap[lowerCandidate]; ok {
+		// 循环引用检测
+		if d.refTracker[lowerCandidate] {
+			return nil, "", false
+		}
+		d.refTracker[lowerCandidate] = true
+		defer func() { delete(d.refTracker, lowerCandidate) }()
+
+		return wrapper.val.Interface(), lowerCandidate, true
+	}
+
+	// 2b. 字面量回退: map 中没有，则当作字面量处理
+	parsedVal := d.parseDefaultLiteral(candidateContent)
 	return parsedVal, "", true
 }
 
-// parseDefaultLiteral attempts to convert string defaults into specific types
+// 核心修复点 1: 调整解析顺序，优先 Int/Float，避免 "1" 被解析为 bool
 func (d *Decoder) parseDefaultLiteral(s string) interface{} {
-	// Try Bool
-	if b, err := strconv.ParseBool(s); err == nil {
-		return b
-	}
-	// Try Int
+	// 1. Try Int first (handles "1", "0", "123")
 	if i, err := strconv.ParseInt(s, 10, 64); err == nil {
-		return i // JSON usually prefers float64, but Int is safer for strict mapping
+		return i
 	}
-	// Try Float
+	// 2. Try Float (handles "1.5")
 	if f, err := strconv.ParseFloat(s, 64); err == nil {
 		return f
 	}
-	// Fallback to String
+	// 3. Try Bool (handles "true", "false")
+	if b, err := strconv.ParseBool(s); err == nil {
+		return b
+	}
 	return s
 }
 
@@ -296,20 +287,16 @@ func (d *Decoder) fillRemain(remainField reflect.Value, dataMap map[string]input
 	if remainField.IsNil() {
 		remainField.Set(reflect.MakeMap(remainField.Type()))
 	}
-
 	remainElemType := remainField.Type().Elem()
 
 	for kLower, wrapper := range dataMap {
 		if usedKeys[kLower] {
 			continue
 		}
-
 		keyVal := reflect.ValueOf(wrapper.originalKey)
-
 		if !keyVal.Type().AssignableTo(remainField.Type().Key()) {
 			continue
 		}
-
 		newVal := reflect.New(remainElemType).Elem()
 		if err := d.decode("remainVal", wrapper.val.Interface(), newVal); err == nil {
 			remainField.SetMapIndex(keyVal, newVal)
@@ -317,21 +304,21 @@ func (d *Decoder) fillRemain(remainField reflect.Value, dataMap map[string]input
 	}
 }
 
-func (d *Decoder) parseTag(tag string) (name string, defaultVal string) {
+func (d *Decoder) parseTag(tag string) (name string, defaultDirective string) {
 	if tag == "" {
 		return "", ""
 	}
-	parts := strings.Split(tag, ",")
-	name = strings.TrimSpace(parts[0])
-
-	for _, part := range parts[1:] {
-		part = strings.TrimSpace(part)
-		if strings.HasPrefix(part, "default=") {
-			defaultVal = strings.TrimPrefix(part, "default=")
-			// Note: This simple parser does not support commas inside the default value.
+	parts := strings.Fields(tag)
+	for i, part := range parts {
+		if strings.HasPrefix(part, "@") {
+			defaultDirective = part
+			continue
+		}
+		if i == 0 {
+			name = part
 		}
 	}
-	return name, defaultVal
+	return name, defaultDirective
 }
 
 // ============================================================================
@@ -345,15 +332,12 @@ func (d *Decoder) decodeBasic(data interface{}, val reflect.Value) error {
 			val.Set(dataVal.Convert(val.Type()))
 			return nil
 		}
-		// Special handling for numeric conversions if types differ (e.g. int -> float)
-		// This happens often with default values (parsed as int) assigned to float fields
 		return d.decodeNumericBridge(dataVal, val)
 	}
 	val.Set(dataVal)
 	return nil
 }
 
-// decodeNumericBridge attempts to bridge int/float/uint mismatches for basic interface decoding
 func (d *Decoder) decodeNumericBridge(dataVal reflect.Value, val reflect.Value) error {
 	kind := val.Kind()
 	switch {
@@ -379,6 +363,7 @@ func (d *Decoder) decodeString(data interface{}, val reflect.Value) error {
 	return nil
 }
 
+// 核心修复点 2: 增加对 reflect.Bool 的支持，防止上游真的传来了 bool
 func (d *Decoder) decodeInt(data interface{}, val reflect.Value) error {
 	if data == nil {
 		return nil
@@ -391,6 +376,12 @@ func (d *Decoder) decodeInt(data interface{}, val reflect.Value) error {
 		val.SetInt(int64(dataVal.Uint()))
 	case reflect.Float32, reflect.Float64:
 		val.SetInt(int64(dataVal.Float()))
+	case reflect.Bool: // Added robustness
+		if dataVal.Bool() {
+			val.SetInt(1)
+		} else {
+			val.SetInt(0)
+		}
 	case reflect.String:
 		s := dataVal.String()
 		if s == "" {
@@ -419,6 +410,12 @@ func (d *Decoder) decodeUint(data interface{}, val reflect.Value) error {
 		val.SetUint(dataVal.Uint())
 	case reflect.Float32, reflect.Float64:
 		val.SetUint(uint64(dataVal.Float()))
+	case reflect.Bool: // Added robustness
+		if dataVal.Bool() {
+			val.SetUint(1)
+		} else {
+			val.SetUint(0)
+		}
 	case reflect.String:
 		s := dataVal.String()
 		if s == "" {
@@ -447,6 +444,12 @@ func (d *Decoder) decodeFloat(data interface{}, val reflect.Value) error {
 		val.SetFloat(float64(dataVal.Uint()))
 	case reflect.Float32, reflect.Float64:
 		val.SetFloat(dataVal.Float())
+	case reflect.Bool: // Added robustness
+		if dataVal.Bool() {
+			val.SetFloat(1.0)
+		} else {
+			val.SetFloat(0.0)
+		}
 	case reflect.String:
 		s := dataVal.String()
 		if s == "" {
