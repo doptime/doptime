@@ -19,18 +19,19 @@ Mapper 基于 Go 语言的 `reflect` 包实现，采用 **"Normalize (归一化)
 [Struct Iteration]
      ↓
    [Tag Parsing] <-------------------------------+
-     -> Normalize Separators (Comma -> Space)    |
+     -> Tokenize by Space (strings.Fields)       |
      -> Extract Name & @Directive                |
      ↓                                           |
    [Resolve Value Phase]                         |
      -> 1. Check Input (Direct Match)            |
      -> 2. Process @Directive:                   |
           -> a. Hybrid Check: Is it a Ref Key? --+ (Recursive Lookup)
-          -> b. Fallback: Parse as Literal (Int/Bool/Float)
+          -> b. Fallback: Parse as Literal       |
+               (Priority: Int -> Float -> Bool)  |
      ↓
 [Decode Phase]
      -> Type Assertion / Weakly Typed Hook
-     -> AssignableTo Check
+     -> Numeric/Bool Bridge (Robustness)
      -> Recursive Decode (for structs)
      ↓
 [Finalize]
@@ -62,89 +63,88 @@ type inputWrapper struct {
 为了防止用户配置 `json:"A @B"` 且 `json:"B @A"` 导致的无限递归与栈溢出，`Decoder` 维护了一个临时的 `map[string]bool`。
 
 * **Scope**：每次 `Decode` 调用生命周期内有效（非并发安全，单次解码独享）。
-* **逻辑**：在解析引用前检查 Key 是否存在。若存在，立即终止引用查找（视为未命中），实现非侵入式的防御。
+* **逻辑**：在解析引用前检查 Key 是否存在。若存在，立即终止引用查找（视为未命中，回退到字面量或零值），实现非侵入式的防御。
 
 ## 3. 关键算法详解
 
-### 3.1 智能值决议 (`resolveValue`)
+### 3.1 标签解析 (`parseTag`)
 
-这是 Mapper v2 的核心逻辑，采用了**混合决议策略 (Hybrid Resolution Strategy)**，统一了引用与字面量的处理入口。
+v2 版本为了解决编辑器 JSON 校验问题及统一代码风格，严格采用 **空格分隔 (Space Separator)**。
+
+* **实现**：使用 `strings.Fields(tag)` 进行分词。
+* **逻辑**：
+* 遍历分词结果。
+* 以 `@` 开头的 Token 被识别为 `defaultDirective`。
+* 第一个非 `@` 开头的 Token 被识别为 `name`。
+
+
+* **示例**：
+* `json:"id @uuid"` → Name="id", Directive="@uuid"
+* `json:"@true"` → Name="" (Fallback to field name), Directive="@true"
+
+
+* **注意**：不再支持逗号分隔。`json:"id, @val"` 会被解析为 Name="id,"，导致无法正确匹配字段。
+
+### 3.2 智能字面量解析 (`parseDefaultLiteral`)
+
+为了避免类型推断歧义（例如字符串 "1" 被 Go 的 `strconv.ParseBool` 误判为 true），v2 调整了解析优先级：
+
+1. **Try Int64**：优先尝试解析为整数。若成功，返回 `int64`。（"1" → 1）
+2. **Try Float64**：尝试解析为浮点数。（"1.5" → 1.5）
+3. **Try Bool**：最后尝试解析为布尔值。（"true" → true）
+4. **Fallback**：保持字符串原值。
+
+### 3.3 混合值决议 (`resolveValue`)
+
+这是 Mapper v2 的核心逻辑，统一了引用与字面量的处理入口。
 
 **优先级逻辑：**
 
-1. **Direct Lookup (O(1))**：
-使用字段名（Tag Name 或 Struct Field Name）的小写形式在 Map 中查找。如有，直接返回。
+1. **Direct Lookup**：使用字段名的小写形式在 Map 中查找。
 2. **Directive Processing (`@`)**：
-若第一步未命中，且存在 `@xxx` 指令，进入混合判定：
-* **Ref Check（引用检查）**：检查 `xxx` 是否存在于输入 Map 中（忽略大小写）。
-* **若存在**：视为引用。检查 `refTracker` 防循环，标记该 Key 为 `used`，递归返回其值。
+* **Ref Check（引用检查）**：去掉 `@` 后，检查剩余字符串是否对应输入 Map 中的 Key。
+* **若存在**：视为引用。递归获取值。
 
 
 * **Literal Fallback（字面量回退）**：
-* **若不存在**：视为字面量。调用 `parseDefaultLiteral` 将字符串智能转换为 `bool`, `int64`, `float64` 或保持 `string`。
+* **若不存在**：视为字面量。调用 `parseDefaultLiteral` 进行转换。
 
 
 
 
-
-### 3.2 标签解析 (`parseTag`)
-
-v2 版本对 Tag 解析进行了增强，以支持更自然的语法：
-
-* **分隔符归一化**：首先将所有逗号 `,` 替换为空格，然后使用 `strings.Fields` 进行分词。这使得 `json:"id @field"` 和 `json:"id, @field"` 均被视为合法。
-* **智能识别**：遍历分词结果，若某段以 `@` 开头，自动识别为默认值指令；否则识别为字段名。
-* **空指令防御**：自动处理 `json:"@"` 这种空指令情况，防止切片越界 Panic。
-
-### 3.3 预处理与哨兵错误 (`errAssignedDirectly`)
-
-在 `prepareInputMap` 阶段，为了性能优化，如果 Input 结构体类型直接等同于 Output 结构体类型，我们会直接赋值。
-
-* **v1 实现**：返回 `errors.New("assigned directly")`，依赖字符串匹配，脆弱。
-* **v2 实现**：引入包级哨兵错误 `var errAssignedDirectly = errors.New("assigned directly")`。调用方使用 `errors.Is` 进行判断，符合 Go 最佳实践，更加健壮。
-
-### 3.4 Remain 填充机制
-
-Remain 的填充发生在所有显式字段解析之后：
-
-1. 遍历内部的 `dataMap` (key 为小写)。
-2. 检查 Key 是否在 `usedKeys` 集合中。
-* **注意**：`usedKeys` 包含了**被直接映射**的 Key 以及**被 `@ref` 引用过**的 Key。
-
-
-3. 如果未使用，提取 `inputWrapper.originalKey`，将值写入 Remain Map。
 
 ## 4. 类型系统与弱类型转换
 
-Mapper 内置了一套轻量级转换逻辑 (`weaklyTypedHook` & `decodeBasic`)。
+Mapper 内置了一套轻量级转换逻辑。
 
-### 4.1 数值桥接 (`decodeNumericBridge`)
+### 4.1 数值与布尔值的桥接 (`decodeNumericBridge` / `decodeInt`)
 
-Go 的反射非常严格，`int` 无法直接赋值给 `float`。但在处理 `@` 字面量时，整数常被解析为 `int64`（如 `@0`）。
+在处理默认值（解析为 `int64`/`bool`）赋值给结构体字段时，Mapper 增强了鲁棒性：
 
-* **问题**：当目标字段是 `float64` 而默认值解析为 `int64` 时，直接 `Set` 会 Panic。
-* **方案**：内置 `decodeNumericBridge`，检测到 int/float 类型不匹配时，自动进行强制类型转换。
+* **问题**：目标字段为 `int`，但默认值解析出来是 `bool(true)`；或者目标是 `float64`，默认值是 `int64(1)`。
+* **方案**：
+* **Int ↔ Float**：自动进行类型转换。
+* **Bool → Numeric**：
+* `true` 转换为 `1` (int) 或 `1.0` (float)。
+* `false` 转换为 `0` (int) 或 `0.0` (float)。
+
+
+
+
 
 ### 4.2 特殊类型支持
 
 * **JSON Number**：优先处理 `json.Number`，避免大整数转 float 导致的精度丢失。
 * **Time Hook**：支持 RFC3339 及常见日期格式（`yyyy-MM-dd HH:mm:ss` 等）。
 
-## 5. 性能与局限性
+## 5. 安全设计总结
 
-### 性能考量
-
-* **反射开销**：大量使用 `reflect`，性能略低于代码生成方案。
-* **分词开销**：v2 使用 `strings.Fields` 解析 Tag，虽然增加了字符串处理，但在典型结构体规模下（<100 字段）开销可忽略不计。
-* **Map 重建**：`prepareInputMap` 会重建 Map 索引，对超大 Map 有一定内存压力。
-
-### 已知局限
-
-* **并发复用**：`Decoder` 实例包含状态（`refTracker`），因此**不是线程安全**的。请勿在并发环境下复用同一个 Decoder 实例。
-* **复杂表达式**：不支持动态计算默认值（如 `@${ENV_VAR}`），仅支持静态字面量和同级引用。
-
-## 6. 安全设计总结
-
-1. **AssignableTo 前置检查**：赋值前必检查类型兼容性，杜绝 Panic。
-2. **哨兵错误模式**：使用 `errAssignedDirectly` 控制内部流程，避免魔术字符串。
+1. **哨兵错误模式**：使用 `errAssignedDirectly` 控制“直接赋值优化”的流程，避免脆弱的字符串匹配。
+2. **AssignableTo 前置检查**：赋值前必检查类型兼容性，杜绝 Panic。
 3. **Ref 循环防御**：通过 `refTracker` 防止配置层面的无限递归。
-4. **Tag 解析防御**：对空 Tag、格式错误的 Tag 进行降级处理而非 Panic。
+4. **空指令防御**：能够正确处理 `json:"@"` 等边缘 Case。
+
+## 6. 性能与局限性
+
+* **分词开销**：`strings.Fields` 在典型结构体规模下开销极低，且比手写的逗号解析器更健壮。
+* **并发复用**：`Decoder` 实例包含状态（`refTracker`），因此**不是线程安全**的。请勿在并发环境下复用同一个 Decoder 实例。
