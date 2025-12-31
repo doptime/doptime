@@ -67,8 +67,7 @@ func RpcOverHttp[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 		return nil
 	}
 	rpc = &Context[i, o]{Name: utils.ApiNameByType((*i)(nil)), ApiSourceHttp: httpServer, Ctx: context.Background(),
-		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		Validate:   redisdb.NeedValidate(reflect.TypeOf(new(i)).Elem()),
+		Validate: redisdb.NeedValidate(reflect.TypeOf(new(i)).Elem()),
 	}
 	rpc.Func = func(InParam i) (ret o, err error) {
 		oType := reflect.TypeOf((*o)(nil)).Elem()

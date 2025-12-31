@@ -1,10 +1,5 @@
 package rpc
 
-import (
-	"reflect"
-	"strings"
-)
-
 // Option is parameter to create an API, RPC, or CallAt
 type Option struct {
 	ApiSourceRds  string
@@ -41,23 +36,4 @@ func (o Option) mergeNewOptions(optionSetters ...optionSetter) (out *Option) {
 		setter(&o)
 	}
 	return &o
-}
-
-func HeaderFieldsUsed(vType reflect.Type) bool {
-	//use reflect to detect if the param has a field start with "Header", or tag of that field contains "Header",if true return true else return false
-
-	// case double pointer decoding
-	for ; vType.Kind() == reflect.Ptr; vType = vType.Elem() {
-	}
-	if vType.Kind() != reflect.Struct {
-		return false
-	}
-
-	for i := 0; i < vType.NumField(); i++ {
-		fieldName, tagLowercase := vType.Field(i).Name, strings.ToLower(vType.Field(i).Tag.Get("json"))
-		if strings.HasPrefix(fieldName, "Header") || strings.Contains(tagLowercase, "header") {
-			return true
-		}
-	}
-	return false
 }

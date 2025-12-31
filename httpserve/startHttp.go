@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,8 +13,8 @@ import (
 	"time"
 
 	"github.com/doptime/config/cfghttp"
-	"github.com/doptime/config/cfgredis"
 	"github.com/doptime/doptime/httpserve/httpapi"
+	"github.com/doptime/doptime/lib"
 	"github.com/doptime/logger"
 	"github.com/doptime/redisdb"
 	"github.com/redis/go-redis/v9"
@@ -46,25 +45,16 @@ func httpStart(path string, port int64) {
 			err        error
 			httpStatus int = http.StatusOK
 			svcCtx     *DoptimeReqCtx
-			rds        *redis.Client
 			hkey       *redisdb.HashKey[string, interface{}]
 			skey       *redisdb.SetKey[string, interface{}]
 			zkey       *redisdb.ZSetKey[string, interface{}]
 			lKey       *redisdb.ListKey[interface{}]
 			strKey     *redisdb.StringKey[string, interface{}]
 			s          string = ""
-			//load redis datasource value from form
-			RedisDataSource            = r.FormValue("ds")
-			ResponseContentType string = "application/json"
+
+			//default response content type: application/json
+			ResponseContentType string = lib.Ternary(r.FormValue("rt") == "", "application/json", r.FormValue("rt"))
 		)
-		//default response content type: application/json
-		if rt := r.FormValue("rt"); rt != "" {
-			ResponseContentType = rt
-		}
-		//default RedisDataSource is "default"
-		if RedisDataSource == "" {
-			RedisDataSource = "default"
-		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*12000)
 		defer cancel()
@@ -74,77 +64,20 @@ func httpStart(path string, port int64) {
 		}
 
 		//should be valid http request. either data operation or api operation
-		if svcCtx, err = NewHttpContext(ctx, r, w); err != nil || svcCtx == nil {
-			httpStatus = http.StatusBadRequest
-			goto responseHttp
-		}
-		//there should be a valid cmd & key if needed
-		if err = svcCtx.EnsureKeyFieldIsValid(); err != nil {
-			httpStatus = http.StatusBadRequest
-			goto responseHttp
-		}
-
-		//RedisDataSource should be valid
-		if rds, ok = cfgredis.Servers.Get(RedisDataSource); !ok {
-			httpStatus = http.StatusInternalServerError
-			goto responseHttp
-		}
-
-		//@Tag in key or field should be replaced by value in Jwt
-		if err = svcCtx.ReplaceKeyFieldTagWithJwtClaims(); err != nil {
-			httpStatus = http.StatusInternalServerError
+		if svcCtx, err, httpStatus = NewHttpContext(ctx, r, w); httpStatus != http.StatusOK {
 			goto responseHttp
 		}
 
 		// case calling "API"
 		if _, isDataKey := DataCmdRequireKey[svcCtx.Cmd]; !isDataKey {
-			var (
-				paramIn     map[string]interface{} = map[string]interface{}{}
-				ServiceName string                 = svcCtx.Key
-				_api        httpapi.ApiInterface
-				ok          bool
-			)
-
-			svcCtx.ParamIn, err = io.ReadAll(r.Body)
-			//marshal body to map[string]interface{}
-			if contentType := r.Header.Get("Content-Type"); len(svcCtx.ParamIn) > 0 && len(contentType) > 0 && err == nil {
-				switch contentType {
-				case "application/octet-stream":
-					err = msgpack.Unmarshal(svcCtx.ParamIn, &paramIn)
-					if err != nil {
-						var interfaceIn interface{}
-						if err = msgpack.Unmarshal(svcCtx.ParamIn, &interfaceIn); err == nil {
-							paramIn["_msgpack-nonstruct"] = svcCtx.ParamIn
-						}
-					}
-				case "application/json":
-					err = json.Unmarshal(svcCtx.ParamIn, &paramIn)
-					if err != nil {
-						var interfaceIn interface{}
-						if err = json.Unmarshal(svcCtx.ParamIn, &interfaceIn); err == nil {
-							paramIn["_jsonpack-nonstruct"] = svcCtx.ParamIn
-						}
-					}
-				}
-				if err != nil {
-					goto responseHttp
-				}
-			}
-
-			if _api, ok = httpapi.GetApiByName(ServiceName); !ok {
+			ServiceName := svcCtx.Key
+			_api, ok := httpapi.GetApiByName(ServiceName)
+			if !ok {
 				result, err = nil, fmt.Errorf("err no such api")
 				goto responseHttp
 			}
-			//convert query fields to JsonPack. but ignore K field(api name )
-			r.ParseForm()
-			svcCtx.MergeFormParam(r.Form, paramIn)
 
-			_api.MergeHeaderParam(r, paramIn)
-
-			//prevent forged jwt field: remove nay field that starts with "Jwt" in paramIn
-			svcCtx.MergeJwtParam(paramIn)
-
-			result, err = _api.CallByMap(paramIn)
+			result, err = _api.CallByMap(svcCtx.Params)
 			goto responseHttp
 		}
 
@@ -154,27 +87,27 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HLen) {
 				goto disallowedPermission
 			}
-			result, err = rds.HLen(ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.HLen(ctx, svcCtx.Key).Result()
 		case LLEN:
 			if !redisdb.IsAllowedListOp(svcCtx.Key, redisdb.LLen) {
 				goto disallowedPermission
 			}
-			result, err = rds.LLen(ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.LLen(ctx, svcCtx.Key).Result()
 		case XLEN:
 			if !redisdb.IsAllowedStreamOp(svcCtx.Key, redisdb.XLen) {
 				goto disallowedPermission
 			}
-			result, err = rds.XLen(ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.XLen(ctx, svcCtx.Key).Result()
 		case ZCARD:
 			if !redisdb.IsAllowedZSetOp(svcCtx.Key, redisdb.ZCard) {
 				goto disallowedPermission
 			}
-			result, err = rds.ZCard(ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.ZCard(ctx, svcCtx.Key).Result()
 		case SCARD:
 			if !redisdb.IsAllowedSetOp(svcCtx.Key, redisdb.SCard) {
 				goto disallowedPermission
 			}
-			result, err = rds.SCard(ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.SCard(ctx, svcCtx.Key).Result()
 
 		case SSCAN:
 			if !redisdb.IsAllowedSetOp(svcCtx.Key, redisdb.SScan) {
@@ -187,7 +120,7 @@ func httpStart(path string, port int64) {
 				match  string
 			)
 			result = ""
-			skey, _, err = SetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil)
+			skey, _, err = svcCtx.SetCtxWitchValueSchemaChecked(nil)
 			if err != nil {
 			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
 			} else if match = r.FormValue("Match"); match == "" {
@@ -209,7 +142,7 @@ func httpStart(path string, port int64) {
 			)
 
 			result = ""
-			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if hkey, _, err = svcCtx.HashCtxWitchValueSchemaChecked(nil); err != nil {
 			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
 			} else if match = r.FormValue("Match"); match == "" {
 			} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
@@ -233,7 +166,7 @@ func httpStart(path string, port int64) {
 				values []interface{}
 				match  string
 			)
-			if zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
 			} else if match = r.FormValue("Match"); match == "" {
 			} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
@@ -248,7 +181,7 @@ func httpStart(path string, port int64) {
 				start, stop int64 = 0, -1
 				hkey        *redisdb.ListKey[interface{}]
 			)
-			hkey, _, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil)
+			hkey, _, err = svcCtx.ListCtxWitchValueSchemaChecked(nil)
 			if err != nil {
 				return
 			}
@@ -275,10 +208,10 @@ func httpStart(path string, port int64) {
 				if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse N error:"+err.Error())
 				} else {
-					result, err = rds.XRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, count).Result()
+					result, err = svcCtx.RdsClient.XRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, count).Result()
 				}
 			} else {
-				result, err = rds.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
+				result, err = svcCtx.RdsClient.XRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
 			}
 		case XREVRANGE, XREVRANGEN:
 			if !redisdb.IsAllowedStreamOp(svcCtx.Key, redisdb.XRange) {
@@ -296,10 +229,10 @@ func httpStart(path string, port int64) {
 				if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
 					result, err = "false", errors.New("parse N error:"+err.Error())
 				} else {
-					result, err = rds.XRevRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, count).Result()
+					result, err = svcCtx.RdsClient.XRevRangeN(svcCtx.Ctx, svcCtx.Key, start, stop, count).Result()
 				}
 			} else {
-				result, err = rds.XRevRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
+				result, err = svcCtx.RdsClient.XRevRange(svcCtx.Ctx, svcCtx.Key, start, stop).Result()
 			}
 		case XREAD:
 			if !redisdb.IsAllowedStreamOp(svcCtx.Key, redisdb.XRead) {
@@ -314,13 +247,13 @@ func httpStart(path string, port int64) {
 			} else if block, err = time.ParseDuration(r.FormValue("Block")); err != nil {
 				result, err = "false", errors.New("parse block error:"+err.Error())
 			} else {
-				result, err = rds.XRead(svcCtx.Ctx, &redis.XReadArgs{Streams: []string{svcCtx.Key, r.FormValue("ID")}, Count: count, Block: block}).Result()
+				result, err = svcCtx.RdsClient.XRead(svcCtx.Ctx, &redis.XReadArgs{Streams: []string{svcCtx.Key, r.FormValue("ID")}, Count: count, Block: block}).Result()
 			}
 		case GET:
 			if !redisdb.IsAllowedStringOp(svcCtx.Key, redisdb.Get) {
 				goto disallowedPermission
 			}
-			if strKey, _, err = StringCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if strKey, _, err = svcCtx.StringCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = strKey.Get(svcCtx.Field)
 			}
@@ -328,7 +261,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HGet) {
 				goto disallowedPermission
 			}
-			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if hkey, _, err = svcCtx.HashCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = hkey.HGet(svcCtx.Field)
 			}
@@ -336,7 +269,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HGetAll) {
 				goto disallowedPermission
 			}
-			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if hkey, _, err = svcCtx.HashCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = hkey.HGetAll()
 			}
@@ -344,7 +277,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HMGET) {
 				goto disallowedPermission
 			}
-			if hkey, result, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if hkey, result, err = svcCtx.HashCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				var fields []interface{} = sliceToInterface(strings.Split(svcCtx.Field, ","))
 				result, err = hkey.HMGET(fields...)
@@ -355,7 +288,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = 0
-			if hkey, result, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true)); err != nil {
+			if hkey, result, err = svcCtx.HashCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
 				result, err = hkey.HSet(svcCtx.Field, result)
 			}
@@ -364,12 +297,12 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HDel) {
 				goto disallowedPermission
 			}
-			result, err = rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Result()
+			result, err = svcCtx.RdsClient.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Result()
 		case HKEYS:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HKeys) {
 				goto disallowedPermission
 			}
-			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if hkey, _, err = svcCtx.HashCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = hkey.HKeys()
 			}
@@ -378,7 +311,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = false
-			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if hkey, _, err = svcCtx.HashCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = hkey.HExists(svcCtx.Field)
 			}
@@ -387,7 +320,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			var count int
-			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if hkey, _, err = svcCtx.HashCtxWitchValueSchemaChecked(nil); err != nil {
 			} else if count, err = strconv.Atoi(r.FormValue("Count")); err != nil {
 				result, err = "", errors.New("parse count error:"+err.Error())
 			} else {
@@ -397,7 +330,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HVals) {
 				goto disallowedPermission
 			}
-			if hkey, _, err = HashCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if hkey, _, err = svcCtx.HashCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = hkey.HVals()
 			}
@@ -405,7 +338,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedSetOp(svcCtx.Key, redisdb.SIsMember) {
 				goto disallowedPermission
 			}
-			if skey, _, err = SetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if skey, _, err = svcCtx.SetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = skey.SIsMember(r.FormValue("Member"))
 			}
@@ -418,7 +351,7 @@ func httpStart(path string, port int64) {
 				start, stop int64 = 0, -1
 			)
 			result = ""
-			if zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 			} else if r.FormValue("WITHSCORES") == "true" {
@@ -438,7 +371,7 @@ func httpStart(path string, port int64) {
 				scores        []float64
 			)
 			result = ""
-			if zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else if Min := r.FormValue("Min"); Min == "" {
 				result, err = "false", errors.New("no Min")
 			} else if Max := r.FormValue("Max"); Max == "" {
@@ -463,7 +396,7 @@ func httpStart(path string, port int64) {
 				rlts        []redis.Z
 			)
 			result = ""
-			if zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else if start, err = strconv.ParseInt(r.FormValue("Start"), 10, 64); err != nil {
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 			} else if r.FormValue("WITHSCORES") == "true" {
@@ -487,7 +420,7 @@ func httpStart(path string, port int64) {
 				offset, count int64 = 0, -1
 				rlts          []redis.Z
 			)
-			if zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else if Min, Max := r.FormValue("Min"), r.FormValue("Max"); Min == "" || Max == "" {
 				result, err = "", errors.New("no Min or Max")
 			} else if offset, err = strconv.ParseInt(r.FormValue("Offset"), 10, 64); err != nil {
@@ -511,7 +444,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedZSetOp(svcCtx.Key, redisdb.ZRank) {
 				goto disallowedPermission
 			}
-			if zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = zkey.ZRank(r.FormValue("Member"))
 			}
@@ -519,7 +452,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedZSetOp(svcCtx.Key, redisdb.ZCount) {
 				goto disallowedPermission
 			}
-			if zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = zkey.ZCount(r.FormValue("Min"), r.FormValue("Max"))
 			}
@@ -527,7 +460,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedZSetOp(svcCtx.Key, redisdb.ZScore) {
 				goto disallowedPermission
 			}
-			if zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = zkey.ZScore(r.FormValue("Member"))
 			}
@@ -537,7 +470,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = ""
-			if skey, _, err = SetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if skey, _, err = svcCtx.SetCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				var (
 					cursor uint64
@@ -558,7 +491,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			var index int64
-			if lKey, _, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if lKey, _, err = svcCtx.ListCtxWitchValueSchemaChecked(nil); err != nil {
 			} else if index, err = strconv.ParseInt(r.FormValue("Index"), 10, 64); err != nil {
 				result, err = "", errors.New("parse index error:"+err.Error())
 			} else {
@@ -568,7 +501,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedListOp(svcCtx.Key, redisdb.LPop) {
 				goto disallowedPermission
 			}
-			if lKey, _, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if lKey, _, err = svcCtx.ListCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = lKey.LPop()
 			}
@@ -577,7 +510,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			if lKey, result, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true)); err != nil {
+			if lKey, result, err = svcCtx.ListCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
 				err = lKey.LPush(result)
 			}
@@ -590,7 +523,7 @@ func httpStart(path string, port int64) {
 				result, err = "false", errors.New("parse count error:"+err.Error())
 				goto responseHttp
 			}
-			lKey, result, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true))
+			lKey, result, err = svcCtx.ListCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true))
 			if err != nil {
 				goto responseHttp
 			}
@@ -607,7 +540,7 @@ func httpStart(path string, port int64) {
 				err = errors.New("parse index error:" + err.Error())
 				goto responseHttp
 			}
-			lKey, result, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true))
+			lKey, result, err = svcCtx.ListCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true))
 			if err != nil {
 				goto responseHttp
 			}
@@ -623,14 +556,14 @@ func httpStart(path string, port int64) {
 				result, err = "false", errors.New("parse start error:"+err.Error())
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 				result, err = "false", errors.New("parse stop error:"+err.Error())
-			} else if err = rds.LTrim(svcCtx.Ctx, svcCtx.Key, start, stop).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.LTrim(svcCtx.Ctx, svcCtx.Key, start, stop).Err(); err == nil {
 				result = "true"
 			}
 		case RPOP:
 			if !redisdb.IsAllowedListOp(svcCtx.Key, redisdb.RPop) {
 				goto disallowedPermission
 			}
-			if lKey, _, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil); err != nil {
+			if lKey, _, err = svcCtx.ListCtxWitchValueSchemaChecked(nil); err != nil {
 			} else {
 				result, err = lKey.RPop()
 			}
@@ -639,7 +572,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			lKey, result, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true))
+			lKey, result, err = svcCtx.ListCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true))
 			if err != nil {
 				goto responseHttp
 			}
@@ -651,7 +584,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			lKey, result, err = ListCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true))
+			lKey, result, err = svcCtx.ListCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true))
 			if err != nil {
 			} else if err = lKey.RPushX(svcCtx.Ctx, svcCtx.Key, result); err == nil {
 				result = "true"
@@ -661,7 +594,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			var Score float64
-			zkey, result, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, svcCtx.MsgpackBody(r, true))
+			zkey, result, err = svcCtx.ZSetCtxWitchValueSchemaChecked(svcCtx.MsgpackBody(r, true))
 			if err != nil {
 			} else if Score, err = strconv.ParseFloat(r.FormValue("Score"), 64); err != nil {
 				result, err = "false", errors.New("parameter Score shoule be float")
@@ -675,7 +608,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			if strKey, result, err = StringCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, bs); err != nil {
+			if strKey, result, err = svcCtx.StringCtxWitchValueSchemaChecked(bs); err != nil {
 			} else {
 				err = strKey.Set(svcCtx.Key+":"+svcCtx.Field, result, 0)
 			}
@@ -684,7 +617,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			if err = rds.HDel(svcCtx.Ctx, svcCtx.Key, "del").Err(); err == nil {
+			if err = svcCtx.RdsClient.HDel(svcCtx.Ctx, svcCtx.Key, "del").Err(); err == nil {
 				result = "true"
 			}
 		case ZREM:
@@ -701,7 +634,7 @@ func httpStart(path string, port int64) {
 				err = errors.New("no Member")
 				goto responseHttp
 			}
-			zkey, _, err = ZSetCtxWitchValueSchemaChecked(svcCtx.Key, RedisDataSource, nil)
+			zkey, _, err = svcCtx.ZSetCtxWitchValueSchemaChecked(nil)
 			if err != nil {
 			} else if err = zkey.ZRem(Member...); err == nil {
 				result = "true"
@@ -714,7 +647,7 @@ func httpStart(path string, port int64) {
 			var Min, Max = r.FormValue("Min"), r.FormValue("Max")
 			if Min == "" || Max == "" {
 				err = errors.New("no Min or Max")
-			} else if err = rds.ZRemRangeByScore(svcCtx.Ctx, svcCtx.Key, Min, Max).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.ZRemRangeByScore(svcCtx.Ctx, svcCtx.Key, Min, Max).Err(); err == nil {
 				result = "true"
 			}
 		case ZINCRBY:
@@ -729,7 +662,7 @@ func httpStart(path string, port int64) {
 				result, err = "false", errors.New("no Member")
 			} else if incr, err = strconv.ParseFloat(r.FormValue("Incr"), 64); err != nil {
 				result, err = "false", errors.New("parse Incr error:"+err.Error())
-			} else if err = rds.ZIncrBy(svcCtx.Ctx, svcCtx.Key, incr, member).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.ZIncrBy(svcCtx.Ctx, svcCtx.Key, incr, member).Err(); err == nil {
 				result = "true"
 			}
 		case HINCRBY:
@@ -741,7 +674,7 @@ func httpStart(path string, port int64) {
 			)
 			if incr, err = strconv.ParseInt(r.FormValue("Incr"), 10, 64); err != nil {
 				result, err = "false", errors.New("parse Incr error:"+err.Error())
-			} else if err = rds.HIncrBy(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.HIncrBy(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
 				result = "true"
 			}
 		case HINCRBYFLOAT:
@@ -753,7 +686,7 @@ func httpStart(path string, port int64) {
 			)
 			if incr, err = strconv.ParseFloat(r.FormValue("Incr"), 64); err != nil {
 				result, err = "false", errors.New("parse Incr error:"+err.Error())
-			} else if err = rds.HIncrByFloat(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.HIncrByFloat(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
 				result = "true"
 			}
 		case XADD:
@@ -762,7 +695,7 @@ func httpStart(path string, port int64) {
 			}
 			if id := r.FormValue("ID"); id == "" {
 				result, err = "false", errors.New("no ID")
-			} else if err = rds.XAdd(svcCtx.Ctx, &redis.XAddArgs{Stream: svcCtx.Key, ID: id, Values: svcCtx.MsgpackBody(r, true)}).Err(); err != nil {
+			} else if err = svcCtx.RdsClient.XAdd(svcCtx.Ctx, &redis.XAddArgs{Stream: svcCtx.Key, ID: id, Values: svcCtx.MsgpackBody(r, true)}).Err(); err != nil {
 				result = "false"
 			}
 		case XDEL:
@@ -771,7 +704,7 @@ func httpStart(path string, port int64) {
 			}
 			if id := r.FormValue("ID"); id == "" {
 				result, err = "false", errors.New("no ID")
-			} else if err = rds.XDel(svcCtx.Ctx, svcCtx.Key, id).Err(); err != nil {
+			} else if err = svcCtx.RdsClient.XDel(svcCtx.Ctx, svcCtx.Key, id).Err(); err != nil {
 				result = "false"
 			} else {
 				result = "true"
@@ -781,7 +714,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedCommon(svcCtx.Key, redisdb.Type) {
 				goto disallowedPermission
 			}
-			result, err = rds.Type(svcCtx.Ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.Type(svcCtx.Ctx, svcCtx.Key).Result()
 		case EXPIRE:
 			if !redisdb.IsAllowedCommon(svcCtx.Key, redisdb.Expire) {
 				goto disallowedPermission
@@ -789,7 +722,7 @@ func httpStart(path string, port int64) {
 			var seconds int64
 			if seconds, err = strconv.ParseInt(r.FormValue("Seconds"), 10, 64); err != nil {
 				result, err = "false", errors.New("parse seconds error:"+err.Error())
-			} else if err = rds.Expire(svcCtx.Ctx, svcCtx.Key, time.Duration(seconds)*time.Second).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.Expire(svcCtx.Ctx, svcCtx.Key, time.Duration(seconds)*time.Second).Err(); err == nil {
 				result = "true"
 			}
 		case EXPIREAT:
@@ -799,33 +732,33 @@ func httpStart(path string, port int64) {
 			var timestamp int64
 			if timestamp, err = strconv.ParseInt(r.FormValue("Timestamp"), 10, 64); err != nil {
 				result, err = "false", errors.New("parse seconds error:"+err.Error())
-			} else if err = rds.ExpireAt(svcCtx.Ctx, svcCtx.Key, time.Unix(timestamp, 0)).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.ExpireAt(svcCtx.Ctx, svcCtx.Key, time.Unix(timestamp, 0)).Err(); err == nil {
 				result = "true"
 			}
 		case PERSIST:
 			if !redisdb.IsAllowedCommon(svcCtx.Key, redisdb.Persist) {
 				goto disallowedPermission
 			}
-			if err = rds.Persist(svcCtx.Ctx, svcCtx.Key).Err(); err == nil {
+			if err = svcCtx.RdsClient.Persist(svcCtx.Ctx, svcCtx.Key).Err(); err == nil {
 				result = "true"
 			}
 		case TTL:
 			if !redisdb.IsAllowedCommon(svcCtx.Key, redisdb.TTL) {
 				goto disallowedPermission
 			}
-			result, err = rds.TTL(svcCtx.Ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.TTL(svcCtx.Ctx, svcCtx.Key).Result()
 		case PTTL:
 			if !redisdb.IsAllowedCommon(svcCtx.Key, redisdb.TTL) {
 				goto disallowedPermission
 			}
-			result, err = rds.PTTL(svcCtx.Ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.PTTL(svcCtx.Ctx, svcCtx.Key).Result()
 		case RENAME:
 			if !redisdb.IsAllowedCommon(svcCtx.Key, redisdb.Rename) {
 				goto disallowedPermission
 			}
 			if newKey := r.FormValue("NewKey"); newKey == "" {
 				result, err = "false", errors.New("no NewKey")
-			} else if err = rds.Rename(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.Rename(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
 				result = "true"
 			}
 		case RENAMEX:
@@ -834,14 +767,14 @@ func httpStart(path string, port int64) {
 			}
 			if newKey := r.FormValue("NewKey"); newKey == "" {
 				result, err = "false", errors.New("no NewKey")
-			} else if err = rds.RenameNX(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.RenameNX(svcCtx.Ctx, svcCtx.Key, newKey).Err(); err == nil {
 				result = "true"
 			}
 		case EXISTS:
 			if !redisdb.IsAllowedCommon(svcCtx.Key, redisdb.Exists) {
 				goto disallowedPermission
 			}
-			existResult := rds.Exists(svcCtx.Ctx, svcCtx.Key)
+			existResult := svcCtx.RdsClient.Exists(svcCtx.Ctx, svcCtx.Key)
 			if existResult == nil {
 				result, err = "false", errors.New("EXISTS command return nil")
 				goto responseHttp
@@ -853,14 +786,14 @@ func httpStart(path string, port int64) {
 			}
 			result = ""
 			var tm time.Time
-			if tm, err = rds.Time(svcCtx.Ctx).Result(); err == nil {
+			if tm, err = svcCtx.RdsClient.Time(svcCtx.Ctx).Result(); err == nil {
 				result = tm.UnixMilli()
 			}
 		case KEYS:
 			if !redisdb.IsAllowedDBOp(redisdb.DBKeys) {
 				goto disallowedPermission
 			}
-			result, err = rds.Keys(svcCtx.Ctx, svcCtx.Key).Result()
+			result, err = svcCtx.RdsClient.Keys(svcCtx.Ctx, svcCtx.Key).Result()
 		//case default
 		default:
 			result, err = nil, ErrBadCommand
@@ -890,13 +823,8 @@ func httpStart(path string, port int64) {
 			}
 		}
 		//this err may be from json.marshal, so don't move it to the above else if
-		if err != nil {
-			if bs = []byte(err.Error()); bytes.Contains(bs, []byte("JWT")) {
-				httpStatus = http.StatusUnauthorized
-			} else if httpStatus == http.StatusOK {
-				// this if is needed, because  httpStatus may have already setted as StatusBadRequest
-				httpStatus = http.StatusInternalServerError
-			}
+		if err != nil && httpStatus == http.StatusOK {
+			httpStatus = http.StatusInternalServerError
 		}
 		//set Content-Type
 		if svcCtx != nil && len(ResponseContentType) > 0 {

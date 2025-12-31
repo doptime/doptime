@@ -12,7 +12,6 @@ var ApiServiceBatchSize = cmap.New[int64]()
 type ApiCtx[i any, o any] struct {
 	Name         string
 	ApiSourceRds string
-	WithHeader   bool
 	Ctx          context.Context
 	Func         func(InParameter i) (ret o, err error)
 	Validate     func(pIn interface{}) error

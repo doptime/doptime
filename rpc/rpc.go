@@ -23,8 +23,7 @@ func Rpc[i any, o any](options ...optionSetter) (rpc *Context[i, o]) {
 	var option *Option = Option{ApiSourceRds: "default"}.mergeNewOptions(options...)
 
 	rpc = &Context[i, o]{Name: utils.ApiNameByType((*i)(nil)), ApiSourceRds: option.ApiSourceRds, Ctx: context.Background(),
-		WithHeader: HeaderFieldsUsed(reflect.TypeOf(new(i)).Elem()),
-		Validate:   redisdb.NeedValidate(reflect.TypeOf(new(i)).Elem()),
+		Validate: redisdb.NeedValidate(reflect.TypeOf(new(i)).Elem()),
 	}
 
 	rpc.Func = func(InParam i) (ret o, err error) {

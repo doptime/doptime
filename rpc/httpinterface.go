@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"encoding/json"
-	"net/http"
 	"reflect"
 
 	"github.com/doptime/doptime/utils"
@@ -11,26 +10,6 @@ import (
 
 func (a *Context[i, o]) GetName() string {
 	return a.Name
-}
-func (a *Context[i, o]) MergeHeaderParam(req *http.Request, paramIn map[string]interface{}) {
-	if !a.WithHeader {
-		return
-	}
-	//copy fields from req to paramIn
-	for key, value := range req.Header {
-		if len(value) > 1 {
-			paramIn["Header"+key] = value
-		} else {
-			paramIn["Header"+key] = value[0]
-		}
-	}
-	// copy ip address from req to paramIn
-	paramIn["Header"+"RemoteAddr"] = req.RemoteAddr
-	paramIn["Header"+"Host"] = req.Host
-	paramIn["Header"+"Method"] = req.Method
-	paramIn["Header"+"Path"] = req.URL.Path
-	paramIn["Header"+"RawQuery"] = req.URL.RawQuery
-
 }
 func (a *Context[i, o]) GetDataSource() string {
 	return a.ApiSourceRds

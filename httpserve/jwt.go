@@ -73,9 +73,9 @@ func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 		return nil
 	}
 	//fast return from cache
-	if svc.Claims, ok = tokenCache.Get(jwtToken); ok {
+	if svc.JwtClaims, ok = tokenCache.Get(jwtToken); ok {
 		var exp int64
-		switch v := svc.Claims["exp"].(type) {
+		switch v := svc.JwtClaims["exp"].(type) {
 		case float64:
 			exp = int64(v)
 		case int64:
@@ -94,11 +94,11 @@ func (svc *DoptimeReqCtx) ParseJwtClaim(r *http.Request) (err error) {
 	}
 parsecontinue:
 	//parse jwt token
-	if svc.Claims, err = ParseAndValidateToken(jwtToken, cfghttp.JWTSecret); err != nil {
+	if svc.JwtClaims, err = ParseAndValidateToken(jwtToken, cfghttp.JWTSecret); err != nil {
 		return fmt.Errorf("invalid JWT token: %v", err)
 	}
 	//save jwt token to cache
-	tokenCache.Add(jwtToken, svc.Claims)
+	tokenCache.Add(jwtToken, svc.JwtClaims)
 	return nil
 }
 

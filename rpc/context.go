@@ -11,7 +11,6 @@ type Context[i any, o any] struct {
 	Name          string
 	ApiSourceRds  string
 	ApiSourceHttp *cfgapi.ApiSourceHttp
-	WithHeader    bool
 	Ctx           context.Context
 	Func          func(InParameter i) (ret o, err error)
 	Validate      func(pIn interface{}) error
