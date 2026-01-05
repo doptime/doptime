@@ -10,7 +10,7 @@ import (
 func (svcCtx *DoptimeReqCtx) DelHandler(r *http.Request, rds *redis.Client) (result interface{}, err error) {
 	switch svcCtx.Cmd {
 	case "HDEL":
-		cmd := rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field)
+		cmd := rds.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field())
 		if err = cmd.Err(); err == nil {
 			return "true", nil
 		}

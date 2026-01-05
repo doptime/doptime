@@ -33,6 +33,19 @@ func (req *DoptimeReqCtx) ToValue(key *redisdb.RedisKey[string, interface{}], ms
 	mapper.Decode(map[string]interface{}(req.Params), &value)
 	return value, err
 }
+func (req *DoptimeReqCtx) ToValues(key *redisdb.RedisKey[string, interface{}], msgpack []string) (value []interface{}, err error) {
+	value, err = key.DeserializeToInterfaceSlice(msgpack)
+	for i, v := range value {
+		//这个地方有错误，fields 的值会不断变化
+		req.Params["@field"] = req.Fields[i]
+		err = mapper.Decode(map[string]interface{}(req.Params), &v)
+		if err != nil {
+			return value, err
+		}
+	}
+
+	return value, err
+}
 
 func (req *DoptimeReqCtx) HashCtxFromSchema() (db *redisdb.HashKey[string, interface{}], err error) {
 	var ctx *redisdb.RedisKey[string, interface{}]

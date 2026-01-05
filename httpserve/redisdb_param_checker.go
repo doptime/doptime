@@ -260,6 +260,7 @@ var DataCmdRequireField = map[string]bool{
 	HGET:         true,
 	HSET:         true,
 	HDEL:         true,
+	HMGET:        true,
 	HINCRBY:      true,
 	HINCRBYFLOAT: true,
 	HSETNX:       true,

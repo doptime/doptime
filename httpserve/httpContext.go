@@ -22,14 +22,18 @@ type DoptimeReqCtx struct {
 	Params    map[string]interface{}
 	JwtClaims jwt.MapClaims
 	// case get
-	Cmd   string
-	Key   string
-	Field string
+	Cmd    string
+	Key    string
+	Fields []string
 
 	RedisDataSource string
 	RdsClient       *redis.Client
 
 	ReqID string
+}
+
+func (svc *DoptimeReqCtx) Field() string {
+	return lib.Ternary(len(svc.Fields) > 0, svc.Fields[0], "")
 }
 
 func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter) (svc *DoptimeReqCtx, err error, httpStatus int) {
@@ -39,8 +43,6 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 		ok                                     bool
 	)
 	svc = &DoptimeReqCtx{Ctx: ctx, JwtClaims: jwt.MapClaims{}}
-	// field is required for certain data cmds
-	svc.Field = r.FormValue("f")
 	//case redis data access
 	//i.g. https://url.com/rSvc/HGET-UserAvatar=fa4Y3oyQk2swURaJ?Queries=*&RspType=image/jpeg
 	//case api command
@@ -76,8 +78,12 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 	if ok && needed && svc.Key == "" {
 		return svc, errors.New("url  key required"), http.StatusBadRequest
 	}
+
+	// field is required for certain data cmds
+	r.ParseForm()
+	svc.Fields = r.Form["f"]
 	needed, ok = DataCmdRequireField[svc.Cmd]
-	if ok && needed && svc.Field == "" {
+	if ok && needed && svc.Field() == "" {
 		return svc, errors.New("url  field required"), http.StatusBadRequest
 	}
 
@@ -127,7 +133,6 @@ func (svc *DoptimeReqCtx) BuildParamIn(r *http.Request) {
 		}
 	}
 	//MergeFormParam
-	r.ParseForm()
 	for key, value := range r.Form {
 		if svc.Params[key] = value[0]; len(value) > 1 {
 			svc.Params[key] = value // Assign the single value directly
@@ -151,7 +156,7 @@ func (svc *DoptimeReqCtx) BuildParamIn(r *http.Request) {
 
 	//add key and field to paramIn
 	svc.Params["@key"] = svc.Key
-	svc.Params["@field"] = svc.Field
+	svc.Params["@field"] = svc.Field()
 	// copy request info
 	svc.Params["@remoteAddr"] = r.RemoteAddr
 	svc.Params["@host"] = r.Host

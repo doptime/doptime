@@ -40,6 +40,7 @@ func httpStart(path string, port int64) {
 	httpRoter.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		var (
 			result     interface{}
+			values     []interface{}
 			bs         []byte
 			ok         bool
 			err        error
@@ -255,7 +256,7 @@ func httpStart(path string, port int64) {
 			}
 			if strKey, err = svcCtx.StringCtxFromSchema(); err != nil {
 			} else {
-				result, err = strKey.Get(svcCtx.Field)
+				result, err = strKey.Get(svcCtx.Field())
 			}
 		case HGET:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HGet) {
@@ -263,7 +264,7 @@ func httpStart(path string, port int64) {
 			}
 			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
 			} else {
-				result, err = hkey.HGet(svcCtx.Field)
+				result, err = hkey.HGet(svcCtx.Field())
 			}
 		case HGETALL:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HGetAll) {
@@ -279,7 +280,7 @@ func httpStart(path string, port int64) {
 			}
 			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
 			} else {
-				var fields []interface{} = sliceToInterface(strings.Split(svcCtx.Field, ","))
+				var fields []interface{} = sliceToInterface(strings.Split(svcCtx.Field(), ","))
 				result, err = hkey.HMGET(fields...)
 			}
 
@@ -299,17 +300,26 @@ func httpStart(path string, port int64) {
 			}
 			result = 0
 			// not implemented yet
+			valuesInMsgpack := []string{}
+			results := []string{}
 
-			// if hkey, result, err = svcCtx.HashCtxFromSchema(svcCtx.MsgpackBody(r, true)); err != nil {
-			// } else {
-			// 	n, err = hkey.HMSet(svcCtx.Field, result)
-			// }
+			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			} else if err := msgpack.Unmarshal(svcCtx.MsgpackBody(r, true), &valuesInMsgpack); err != nil {
+			} else if len(results) != len(svcCtx.Fields) {
+				err = errors.New("fields count mismatch")
+			} else if values, err = svcCtx.ToValues(&hkey.RedisKey, valuesInMsgpack); err != nil {
+			} else {
+				for i, field := range svcCtx.Fields {
+					_, err = hkey.HSet(field, values[i])
+				}
+			}
+			result = svcCtx.Fields
 
 		case HDEL:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HDel) {
 				goto disallowedPermission
 			}
-			result, err = svcCtx.RdsClient.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field).Result()
+			result, err = svcCtx.RdsClient.HDel(svcCtx.Ctx, svcCtx.Key, svcCtx.Field()).Result()
 		case HKEYS:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HKeys) {
 				goto disallowedPermission
@@ -325,7 +335,7 @@ func httpStart(path string, port int64) {
 			result = false
 			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
 			} else {
-				result, err = hkey.HExists(svcCtx.Field)
+				result, err = hkey.HExists(svcCtx.Field())
 			}
 		case HRANDFIELD:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HRandField) {
@@ -629,7 +639,7 @@ func httpStart(path string, port int64) {
 			if strKey, err = svcCtx.StringCtxFromSchema(); err != nil {
 			} else if result, err = svcCtx.ToValue(&hkey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
-				err = strKey.Set(svcCtx.Key+":"+svcCtx.Field, result, 0)
+				err = strKey.Set(svcCtx.Key+":"+svcCtx.Field(), result, 0)
 			}
 		case DEL:
 			if !redisdb.IsAllowedStringOp(svcCtx.Key, redisdb.Del) {
@@ -693,7 +703,7 @@ func httpStart(path string, port int64) {
 			)
 			if incr, err = strconv.ParseInt(r.FormValue("Incr"), 10, 64); err != nil {
 				result, err = "false", errors.New("parse Incr error:"+err.Error())
-			} else if err = svcCtx.RdsClient.HIncrBy(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.HIncrBy(svcCtx.Ctx, svcCtx.Key, svcCtx.Field(), incr).Err(); err == nil {
 				result = "true"
 			}
 		case HINCRBYFLOAT:
@@ -705,7 +715,7 @@ func httpStart(path string, port int64) {
 			)
 			if incr, err = strconv.ParseFloat(r.FormValue("Incr"), 64); err != nil {
 				result, err = "false", errors.New("parse Incr error:"+err.Error())
-			} else if err = svcCtx.RdsClient.HIncrByFloat(svcCtx.Ctx, svcCtx.Key, svcCtx.Field, incr).Err(); err == nil {
+			} else if err = svcCtx.RdsClient.HIncrByFloat(svcCtx.Ctx, svcCtx.Key, svcCtx.Field(), incr).Err(); err == nil {
 				result = "true"
 			}
 		case XADD:

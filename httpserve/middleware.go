@@ -10,19 +10,13 @@ import (
 )
 
 func (svc *DoptimeReqCtx) ReplaceKeyFieldTagWithJwtClaims() (err error) {
-	//return if no @ in key or field to be replaced
-	if !strings.Contains(svc.Key, "@") && !strings.Contains(svc.Field, "@") {
-		return nil
-	}
-
-	if svc.JwtClaims == nil {
-		return fmt.Errorf("JWT token is nil")
-	}
 	if svc.Key, err = svc.replaceTags(svc.Key); err != nil {
 		return err
 	}
-	if svc.Field, err = svc.replaceTags(svc.Field); err != nil {
-		return err
+	for i, field := range svc.Fields {
+		if svc.Fields[i], err = svc.replaceTags(field); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -58,6 +52,9 @@ func (svc *DoptimeReqCtx) replaceTags(input string) (string, error) {
 			}
 			val = redisdb.NanoId(n)
 		default:
+			if svc.JwtClaims == nil {
+				return "", fmt.Errorf("JWT token is nil")
+			}
 			val, ok = svc.JwtClaims[tag]
 			if !ok {
 				return "", fmt.Errorf("jwt missing key: %s", tag)
