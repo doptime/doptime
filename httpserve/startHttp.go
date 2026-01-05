@@ -637,7 +637,7 @@ func httpStart(path string, port int64) {
 			}
 			result = "false"
 			if strKey, err = svcCtx.StringCtxFromSchema(); err != nil {
-			} else if result, err = svcCtx.ToValue(&hkey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
+			} else if result, err = svcCtx.ToValue(&strKey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
 				err = strKey.Set(svcCtx.Key+":"+svcCtx.Field(), result, 0)
 			}
