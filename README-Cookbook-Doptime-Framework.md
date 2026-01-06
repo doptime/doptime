@@ -1,4 +1,4 @@
-# Doptime Framework: Master Developer Context 
+# Doptime Framework: Master Developer Context
 
 **Core Philosophy:**
 
@@ -31,6 +31,14 @@
 ## 2. Frontend Development (`doptime-client`)
 
 **Pattern:** Object-Oriented. Instantiate a Key Class -> Call Methods.
+
+**0. Setup:**
+
+```bash
+npm install doptime-client
+
+```
+
 **Imports:** `import { configure, hashKey, listKey, zSetKey, createApi, urlGet, Opt } from "doptime-client"`.
 
 ### 2.1 Initialization (Entry Point)
@@ -165,6 +173,10 @@ type Profile struct {
     // msgpack: stores as "id".
     // validate: ensures it's not empty.
     ID string `json:"@@sub" msgpack:"id" validate:"required"` 
+    
+    // [Request Info Injection]
+    // Binds to the client's IP address injected by the framework
+    ClientIP string `json:"@@remoteAddr" msgpack:"-"`
 
     // [Implicit Mapping]
     // json: maps "Name" -> Name (implicit).
@@ -228,11 +240,16 @@ var AuthSyncApi = api.Api(func(req *AuthSyncReq) (*AuthSyncRes, error) {
 
 ### 4.2 Context Injection Pattern
 
-The "Zero-API" security model relies on the Framework and Mapper working together:
+The "Zero-API" security model relies on the Framework (specifically `httpContext.go`) and Mapper working together.
 
-1. **Tamper-Proofing:** `httpContext.go` **removes** any user-provided keys starting with `@` from the input map.
-2. **Injection:** The framework injects verified claims (e.g., `sub`) as keys with an `@` prefix (e.g., `{"@sub": "user_123"}`).
-3. **Binding:** The Go struct uses `json:"@@sub"` to bind this secure value.
+1. **Tamper-Proofing:** The framework **removes** any user-provided keys starting with `@` from the input parameters.
+2. **Injection:** The framework injects system context variables prefixed with `@`.
+* **Auth Context:** `@sub` (UserID), `@email`, `@role`, etc. (from JWT).
+* **Request Info:** `@remoteAddr` (IP), `@host`, `@method`, `@path`, `@rawQuery`.
+* **Target Metadata:** `@key` (Redis Key), `@field` (Hash/List Field).
+
+
+3. **Binding:** The Go struct uses `json:"@@variable"` (e.g., `json:"@@sub"`, `json:"@@remoteAddr"`) to safely bind these values.
 
 ---
 
@@ -241,16 +258,17 @@ The "Zero-API" security model relies on the Framework and Mapper working togethe
 **When generating code, strictly follow these rules:**
 
 1. **Frontend:**
+
+* Ensure `npm install doptime-client` is assumed.
 * Always generate `new [Type]Key("name")` instances.
 * Never generate global `hGet`/`hSet` calls.
 * Use `urlGet` for image sources.
 
-
 2. **Backend:**
+
 * Use `redisdb.NewHashKey` (or `NewListKey`, etc.).
 * **Struct Tags:** Include `json` (Mapper v2 syntax), `msgpack` (Storage), and `validate`/`mod` as needed.
 * **Syntax:** Use space separators for `json` tags. **Never use commas**.
-* **Context:** Use `@@` tags only for context injection (e.g., `@@sub`).
-
+* **Context:** Use `@@` tags only for context injection (e.g., `@@sub`, `@@remoteAddr`).
 
 3. **Imports:** Ensure `doptime-client` imports match exports (`hashKey`, `Opt`, `createApi`, `urlGet`).
