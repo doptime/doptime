@@ -15,7 +15,7 @@ func (a *ApiCtx[i, o]) GetDataSource() string {
 	return a.ApiSourceRds
 }
 
-func (a *ApiCtx[i, o]) CallByMap(_map map[string]interface{}) (ret interface{}, err error) {
+func (a *ApiCtx[i, o]) CallByMap(_map map[string]interface{}, msgpackNonstruct []byte, jsonpackNostruct []byte) (ret interface{}, err error) {
 	var (
 		in          i
 		pIn         interface{}
@@ -31,10 +31,10 @@ func (a *ApiCtx[i, o]) CallByMap(_map map[string]interface{}) (ret interface{}, 
 		pIn = reflect.New(vType).Interface()
 	}
 
-	if _msgpack, msgpackok := _map["_msgpack-nonstruct"]; msgpackok {
-		err = msgpack.Unmarshal(_msgpack.([]byte), pIn)
-	} else if _jsonpack, jsonok := _map["_jsonpack-nonstruct"]; jsonok {
-		err = json.Unmarshal(_jsonpack.([]byte), pIn)
+	if len(msgpackNonstruct) > 0 {
+		err = msgpack.Unmarshal(msgpackNonstruct, pIn)
+	} else if len(jsonpackNostruct) > 0 {
+		err = json.Unmarshal(jsonpackNostruct, pIn)
 	} else if decoder, errMapTostruct := utils.MapToStructDecoder(pIn); errMapTostruct != nil {
 		return nil, errMapTostruct
 	} else {

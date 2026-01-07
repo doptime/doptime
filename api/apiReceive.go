@@ -114,10 +114,11 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 		return fmt.Errorf("service %s not found", apiName)
 	}
 	var _map = map[string]interface{}{}
+	var msgpackNonstruct []byte
 	if err = msgpack.Unmarshal(s, &_map); err != nil {
-		return
+		msgpackNonstruct = s
 	}
-	if ret, err = service.CallByMap(_map); err != nil {
+	if ret, err = service.CallByMap(_map, msgpackNonstruct, nil); err != nil {
 		return err
 	}
 	if msgPackResult, err = msgpack.Marshal(ret); err != nil {

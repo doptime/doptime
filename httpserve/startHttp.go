@@ -77,8 +77,8 @@ func httpStart(path string, port int64) {
 				result, err = nil, fmt.Errorf("err no such api")
 				goto responseHttp
 			}
-
-			result, err = _api.CallByMap(svcCtx.Params)
+			msgpackNonstruct, jsonpackNostruct := svcCtx.BuildParamFromBody(r)
+			result, err = _api.CallByMap(svcCtx.Params, msgpackNonstruct, jsonpackNostruct)
 			goto responseHttp
 		}
 

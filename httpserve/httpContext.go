@@ -18,13 +18,15 @@ import (
 )
 
 type DoptimeReqCtx struct {
-	Ctx       context.Context
-	Params    map[string]interface{}
-	JwtClaims jwt.MapClaims
+	Ctx context.Context
 	// case get
 	Cmd    string
 	Key    string
 	Fields []string
+	// Parmesters
+	Queries   url.Values
+	Params    map[string]interface{}
+	JwtClaims jwt.MapClaims
 
 	RedisDataSource string
 	RdsClient       *redis.Client
@@ -80,15 +82,15 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 	}
 
 	// field is required for certain data cmds
-	r.ParseForm()
-	svc.Fields = r.Form["f"]
+	svc.Queries = r.URL.Query()
+	svc.Fields = svc.Queries["f"]
 	needed, ok = DataCmdRequireField[svc.Cmd]
 	if ok && needed && svc.Field() == "" {
 		return svc, errors.New("url  field required"), http.StatusBadRequest
 	}
 
 	//load redis datasource value from form
-	svc.RedisDataSource = lib.Ternary(r.FormValue("ds") == "", "default", r.FormValue("ds"))
+	svc.RedisDataSource = lib.Ternary(svc.Queries.Get("ds") == "", "default", svc.Queries.Get("ds"))
 	if svc.RdsClient, ok = cfgredis.Servers.Get(svc.RedisDataSource); !ok {
 		return svc, errors.New("redis datasource is unconfigured: " + svc.RedisDataSource), http.StatusBadRequest
 	}
@@ -102,13 +104,11 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 		return nil, err, http.StatusInternalServerError
 	}
 
-	svc.BuildParamIn(r)
+	svc.BuildParamFromHeaderQueryClaim(r)
 	return svc, nil, http.StatusOK
 }
-func (svc *DoptimeReqCtx) BuildParamIn(r *http.Request) {
-
-	svc.Params = lib.Ternary(svc.Params == nil, map[string]interface{}{}, svc.Params)
-
+func (svc *DoptimeReqCtx) BuildParamFromBody(r *http.Request) (msgpackNonstruct []byte, jsonpackNostruct []byte) {
+	var interfaceIn interface{}
 	paramIn, err := io.ReadAll(r.Body)
 
 	//merge body param
@@ -117,23 +117,28 @@ func (svc *DoptimeReqCtx) BuildParamIn(r *http.Request) {
 		case "application/octet-stream":
 			err = msgpack.Unmarshal(paramIn, &svc.Params)
 			if err != nil {
-				var interfaceIn interface{}
 				if err = msgpack.Unmarshal(paramIn, &interfaceIn); err == nil {
-					svc.Params["_msgpack-nonstruct"] = paramIn
+					msgpackNonstruct = paramIn
 				}
 			}
 		case "application/json":
 			err = json.Unmarshal(paramIn, &svc.Params)
 			if err != nil {
-				var interfaceIn interface{}
 				if err = json.Unmarshal(paramIn, &interfaceIn); err == nil {
-					svc.Params["_jsonpack-nonstruct"] = paramIn
+					jsonpackNostruct = paramIn
 				}
 			}
 		}
 	}
-	//MergeFormParam
-	for key, value := range r.Form {
+	return msgpackNonstruct, jsonpackNostruct
+}
+
+func (svc *DoptimeReqCtx) BuildParamFromHeaderQueryClaim(r *http.Request) {
+
+	svc.Params = lib.Ternary(svc.Params == nil, map[string]interface{}{}, svc.Params)
+
+	//MergeQueryParam
+	for key, value := range svc.Queries {
 		if svc.Params[key] = value[0]; len(value) > 1 {
 			svc.Params[key] = value // Assign the single value directly
 		}
