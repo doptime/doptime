@@ -2,6 +2,7 @@ package httpserve
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/doptime/doptime/utils/mapper"
 	"github.com/doptime/redisdb"
@@ -9,8 +10,8 @@ import (
 
 func (req *DoptimeReqCtx) CtxWithValueSchemaChecked(keyType redisdb.KeyType) (newkey *redisdb.RedisKey[string, interface{}], err error) {
 
-	keyScope := redisdb.KeyScope(req.Key)
-	hashInterface, exists := redisdb.RediskeyForWeb.Get(keyScope + ":" + req.RedisDataSource)
+	keyScope := strings.ToLower(redisdb.KeyScope(req.Key))
+	hashInterface, exists := redisdb.RediskeyInterfaceForWebVisit.Get(keyScope + ":" + req.RedisDataSource)
 	if hashInterface == nil && !exists {
 		return nil, fmt.Errorf("key schema is unconfigured: %s", keyScope)
 	}

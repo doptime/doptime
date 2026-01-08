@@ -7,7 +7,7 @@ toolchain go1.24.5
 require (
 	github.com/doptime/config v0.0.0-20250322030901-0115e7134058
 	github.com/doptime/logger v0.0.0-20241013090925-4b12ee9d0b17
-	github.com/doptime/redisdb v0.0.0-20260104032216-f2b1edfedd8a
+	github.com/doptime/redisdb v0.0.0-20260108022820-9f5ccbfe5b70
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
