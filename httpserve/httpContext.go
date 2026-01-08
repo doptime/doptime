@@ -44,7 +44,7 @@ func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter)
 		CmdKeyFieldsStr, pathStr, pathLastPart string
 		ok                                     bool
 	)
-	svc = &DoptimeReqCtx{Ctx: ctx, JwtClaims: jwt.MapClaims{}}
+	svc = &DoptimeReqCtx{Ctx: ctx, JwtClaims: jwt.MapClaims{}, Params: map[string]interface{}{}}
 	//case redis data access
 	//i.g. https://url.com/rSvc/HGET-UserAvatar=fa4Y3oyQk2swURaJ?Queries=*&RspType=image/jpeg
 	//case api command

@@ -31,7 +31,7 @@ func (req *DoptimeReqCtx) CtxWithValueSchemaChecked(keyType redisdb.KeyType) (ne
 
 func (req *DoptimeReqCtx) ToValue(key *redisdb.RedisKey[string, interface{}], msgpack []byte) (value interface{}, err error) {
 	value, err = key.DeserializeToInterface(msgpack)
-	mapper.Decode(map[string]interface{}(req.Params), &value)
+	mapper.Decode(req.Params, &value)
 	return value, err
 }
 func (req *DoptimeReqCtx) ToValues(key *redisdb.RedisKey[string, interface{}], msgpack []string) (value []interface{}, err error) {
@@ -39,7 +39,7 @@ func (req *DoptimeReqCtx) ToValues(key *redisdb.RedisKey[string, interface{}], m
 	for i, v := range value {
 		//这个地方有错误，fields 的值会不断变化
 		req.Params["@field"] = req.Fields[i]
-		err = mapper.Decode(map[string]interface{}(req.Params), &v)
+		err = mapper.Decode(req.Params, &v)
 		if err != nil {
 			return value, err
 		}
