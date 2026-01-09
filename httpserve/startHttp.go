@@ -46,11 +46,11 @@ func httpStart(path string, port int64) {
 			err        error
 			httpStatus int = http.StatusOK
 			svcCtx     *DoptimeReqCtx
-			hkey       *redisdb.HashKey[string, interface{}]
-			skey       *redisdb.SetKey[string, interface{}]
-			zkey       *redisdb.ZSetKey[string, interface{}]
-			lKey       *redisdb.ListKey[interface{}]
-			strKey     *redisdb.StringKey[string, interface{}]
+			hkey       redisdb.IHttpHashKey
+			skey       redisdb.IHttpSetKey
+			zkey       redisdb.IHttpZSetKey
+			lKey       redisdb.IHttpListKey
+			strKey     redisdb.IHttpStringKey
 			s          string = ""
 
 			//default response content type: application/json
@@ -143,7 +143,7 @@ func httpStart(path string, port int64) {
 			)
 
 			result = ""
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else if cursor, err = strconv.ParseUint(r.FormValue("Cursor"), 10, 64); err != nil {
 			} else if match = r.FormValue("Match"); match == "" {
 			} else if count, err = strconv.ParseInt(r.FormValue("Count"), 10, 64); err != nil {
@@ -180,9 +180,8 @@ func httpStart(path string, port int64) {
 			}
 			var (
 				start, stop int64 = 0, -1
-				hkey        *redisdb.ListKey[interface{}]
 			)
-			hkey, err = svcCtx.ListCtxFromSchema()
+			lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource)
 			if err != nil {
 				return
 			}
@@ -191,7 +190,7 @@ func httpStart(path string, port int64) {
 			} else if stop, err = strconv.ParseInt(r.FormValue("Stop"), 10, 64); err != nil {
 				result, err = "", errors.New("parse stop error:"+err.Error())
 			} else {
-				result, err = hkey.LRange(start, stop)
+				result, err = lKey.LRange(start, stop)
 			}
 		case XRANGE, XRANGEN:
 			if !redisdb.IsAllowedStreamOp(svcCtx.Key, redisdb.XRange) {
@@ -254,7 +253,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedStringOp(svcCtx.Key, redisdb.Get) {
 				goto disallowedPermission
 			}
-			if strKey, err = svcCtx.StringCtxFromSchema(); err != nil {
+			if strKey, err = redisdb.GetHttpStringKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				result, err = strKey.Get(svcCtx.Field())
 			}
@@ -262,7 +261,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HGet) {
 				goto disallowedPermission
 			}
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				result, err = hkey.HGet(svcCtx.Field())
 			}
@@ -270,7 +269,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HGetAll) {
 				goto disallowedPermission
 			}
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				result, err = hkey.HGetAll()
 			}
@@ -278,7 +277,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HMGET) {
 				goto disallowedPermission
 			}
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				var fields []interface{} = sliceToInterface(strings.Split(svcCtx.Field(), ","))
 				result, err = hkey.HMGET(fields...)
@@ -289,10 +288,10 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
-			} else if result, err = svcCtx.ToValue(&hkey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
+			} else if result, err = svcCtx.ToValue(hkey, svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
-				_, err = hkey.HSet(svcCtx.Field, result)
+				_, err = hkey.HSet(svcCtx.Field(), result)
 			}
 		case HMSET:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HSet) {
@@ -303,11 +302,11 @@ func httpStart(path string, port int64) {
 			valuesInMsgpack := []string{}
 			results := []string{}
 
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else if err := msgpack.Unmarshal(svcCtx.MsgpackBody(r, true), &valuesInMsgpack); err != nil {
 			} else if len(results) != len(svcCtx.Fields) {
 				err = errors.New("fields count mismatch")
-			} else if values, err = svcCtx.ToValues(&hkey.RedisKey, valuesInMsgpack); err != nil {
+			} else if values, err = svcCtx.ToValues(hkey, valuesInMsgpack); err != nil {
 			} else {
 				for i, field := range svcCtx.Fields {
 					_, err = hkey.HSet(field, values[i])
@@ -324,7 +323,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HKeys) {
 				goto disallowedPermission
 			}
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				result, err = hkey.HKeys()
 			}
@@ -333,7 +332,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = false
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				result, err = hkey.HExists(svcCtx.Field())
 			}
@@ -342,17 +341,28 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			var count int
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else if count, err = strconv.Atoi(r.FormValue("Count")); err != nil {
 				result, err = "", errors.New("parse count error:"+err.Error())
 			} else {
 				result, err = hkey.HRandField(count)
 			}
+		case HRANDFIELDWITHVALUES:
+			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HRandField) {
+				goto disallowedPermission
+			}
+			var count int
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
+			} else if count, err = strconv.Atoi(r.FormValue("Count")); err != nil {
+				result, err = "", errors.New("parse count error:"+err.Error())
+			} else {
+				result, err = hkey.HRandFieldWithValues(count)
+			}
 		case HVALS:
 			if !redisdb.IsAllowedHashOp(svcCtx.Key, redisdb.HVals) {
 				goto disallowedPermission
 			}
-			if hkey, err = svcCtx.HashCtxFromSchema(); err != nil {
+			if hkey, err = redisdb.GetHttpHashKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				result, err = hkey.HVals()
 			}
@@ -513,7 +523,7 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			var index int64
-			if lKey, err = svcCtx.ListCtxFromSchema(); err != nil {
+			if lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else if index, err = strconv.ParseInt(r.FormValue("Index"), 10, 64); err != nil {
 				result, err = "", errors.New("parse index error:"+err.Error())
 			} else {
@@ -523,7 +533,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedListOp(svcCtx.Key, redisdb.LPop) {
 				goto disallowedPermission
 			}
-			if lKey, err = svcCtx.ListCtxFromSchema(); err != nil {
+			if lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				result, err = lKey.LPop()
 			}
@@ -532,8 +542,8 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			if lKey, err = svcCtx.ListCtxFromSchema(); err != nil {
-			} else if result, err = svcCtx.ToValue(&lKey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
+			if lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
+			} else if result, err = svcCtx.ToValue(lKey, svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
 				err = lKey.LPush(result)
 			}
@@ -546,10 +556,10 @@ func httpStart(path string, port int64) {
 				result, err = "false", errors.New("parse count error:"+err.Error())
 				goto responseHttp
 			}
-			lKey, err = svcCtx.ListCtxFromSchema()
+			lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource)
 			if err != nil {
 				goto responseHttp
-			} else if result, err = svcCtx.ToValue(&lKey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
+			} else if result, err = svcCtx.ToValue(lKey, svcCtx.MsgpackBody(r, true)); err != nil {
 			}
 			if err = lKey.LRem(count, result); err == nil {
 				result = "true"
@@ -564,10 +574,10 @@ func httpStart(path string, port int64) {
 				err = errors.New("parse index error:" + err.Error())
 				goto responseHttp
 			}
-			lKey, err = svcCtx.ListCtxFromSchema()
+			lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource)
 			if err != nil {
 				goto responseHttp
-			} else if result, err = svcCtx.ToValue(&lKey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
+			} else if result, err = svcCtx.ToValue(lKey, svcCtx.MsgpackBody(r, true)); err != nil {
 			}
 			if err = lKey.LSet(index, result); err == nil {
 				result = "true"
@@ -588,7 +598,7 @@ func httpStart(path string, port int64) {
 			if !redisdb.IsAllowedListOp(svcCtx.Key, redisdb.RPop) {
 				goto disallowedPermission
 			}
-			if lKey, err = svcCtx.ListCtxFromSchema(); err != nil {
+			if lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
 			} else {
 				result, err = lKey.RPop()
 			}
@@ -597,10 +607,10 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			lKey, err = svcCtx.ListCtxFromSchema()
+			lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource)
 			if err != nil {
 				goto responseHttp
-			} else if result, err = svcCtx.ToValue(&lKey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
+			} else if result, err = svcCtx.ToValue(lKey, svcCtx.MsgpackBody(r, true)); err != nil {
 			}
 			if err = lKey.RPush(svcCtx.Ctx, svcCtx.Key, result); err == nil {
 				result = "true"
@@ -610,10 +620,10 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			lKey, err = svcCtx.ListCtxFromSchema()
+			lKey, err = redisdb.GetHttpListKey(svcCtx.Key, svcCtx.RedisDataSource)
 			if err != nil {
-			} else if result, err = svcCtx.ToValue(&lKey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
-			} else if err = lKey.RPushX(svcCtx.Ctx, svcCtx.Key, result); err == nil {
+			} else if result, err = svcCtx.ToValue(lKey, svcCtx.MsgpackBody(r, true)); err != nil {
+			} else if err = lKey.RPushX(result); err == nil {
 				result = "true"
 			}
 		case ZADD:
@@ -636,10 +646,10 @@ func httpStart(path string, port int64) {
 				goto disallowedPermission
 			}
 			result = "false"
-			if strKey, err = svcCtx.StringCtxFromSchema(); err != nil {
-			} else if result, err = svcCtx.ToValue(&strKey.RedisKey, svcCtx.MsgpackBody(r, true)); err != nil {
+			if strKey, err = redisdb.GetHttpStringKey(svcCtx.Key, svcCtx.RedisDataSource); err != nil {
+			} else if result, err = svcCtx.ToValue(strKey, svcCtx.MsgpackBody(r, true)); err != nil {
 			} else {
-				err = strKey.Set(svcCtx.Key+":"+svcCtx.Field(), result, 0)
+				err = strKey.Set(svcCtx.Field(), result, 0)
 			}
 		case DEL:
 			if !redisdb.IsAllowedStringOp(svcCtx.Key, redisdb.Del) {
