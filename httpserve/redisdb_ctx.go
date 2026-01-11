@@ -5,48 +5,52 @@ import (
 
 	"github.com/doptime/doptime/utils/mapper"
 	"github.com/doptime/redisdb"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
-func (req *DoptimeReqCtx) ToValue(key redisdb.IHttpKey, msgpack []byte) (value interface{}, err error) {
-	value, err = key.DeserializeValue(msgpack)
-	if err != nil {
-		return nil, err
+func (req *DoptimeReqCtx) ToValue(key redisdb.IHttpKey, _msgpack []byte) (interface{}, error) {
+	val := key.GetValue()
+
+	var dest interface{} = val
+	if !isPtr(val) {
+		dest = &val
 	}
 
-	// Avoid double reference if value is already a pointer
-	if isPtr(value) {
-		err = mapper.Decode(req.Params, value)
-	} else {
-		err = mapper.Decode(req.Params, &value)
+	if len(_msgpack) == 0 {
+		err := mapper.Decode(req.Params, dest)
+		return val, err
 	}
 
-	return value, err
+	tempMap := make(map[string]interface{})
+	if err := msgpack.Unmarshal(_msgpack, &tempMap); err == nil {
+		req.removeSuspiciousAtParam(tempMap)
+		for k, v := range req.Params {
+			tempMap[k] = v
+		}
+		err = mapper.Decode(tempMap, dest)
+		return val, err
+	}
+
+	err := msgpack.Unmarshal(_msgpack, dest)
+	return val, err
 }
 
-func (req *DoptimeReqCtx) ToValues(key redisdb.IHttpKey, msgpack []string) (value []interface{}, err error) {
-	value, err = key.DeserializeValues(msgpack)
-	if err != nil {
-		return nil, err
-	}
+func (req *DoptimeReqCtx) ToValues(key redisdb.IHttpKey, dataList []string) ([]interface{}, error) {
+	values := make([]interface{}, 0, len(dataList))
 
-	for i := range value {
+	for i, data := range dataList {
 		if i < len(req.Fields) {
 			req.Params["@field"] = req.Fields[i]
 		}
 
-		// Access via index to modify the actual element, not the loop copy
-		if isPtr(value[i]) {
-			err = mapper.Decode(req.Params, value[i])
-		} else {
-			err = mapper.Decode(req.Params, &value[i])
-		}
-
+		val, err := req.ToValue(key, []byte(data))
 		if err != nil {
-			return value, err
+			return nil, err
 		}
+		values = append(values, val)
 	}
 
-	return value, err
+	return values, nil
 }
 
 func isPtr(v interface{}) bool {

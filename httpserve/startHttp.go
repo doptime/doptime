@@ -905,3 +905,7 @@ func init() {
 	logger.Info().Any("port", cfghttp.Port).Any("path", cfghttp.Path).Msg("doptime http server is starting")
 	go httpStart(cfghttp.Path, cfghttp.Port)
 }
+
+var ErrOperationNotPermited = errors.New("error operation permission denied. In develop stage, turn on DangerousAutoWhitelist in toml to auto permit")
+
+var ErrBadCommand = errors.New("error bad command")

@@ -132,6 +132,13 @@ func (svc *DoptimeReqCtx) BuildParamFromBody(r *http.Request) (msgpackNonstruct 
 	}
 	return msgpackNonstruct, jsonpackNostruct
 }
+func (svc *DoptimeReqCtx) removeSuspiciousAtParam(mapParam map[string]interface{}) {
+	for k := range mapParam {
+		if strings.HasPrefix(k, "@") {
+			delete(mapParam, k)
+		}
+	}
+}
 
 func (svc *DoptimeReqCtx) BuildParamFromHeaderQueryClaim(r *http.Request) {
 
@@ -153,11 +160,7 @@ func (svc *DoptimeReqCtx) BuildParamFromHeaderQueryClaim(r *http.Request) {
 	}
 
 	//prevent forged jwt field: remove nay field that starts with "@"
-	for k := range svc.Params {
-		if strings.HasPrefix(k, "@") {
-			delete(svc.Params, k)
-		}
-	}
+	svc.removeSuspiciousAtParam(svc.Params)
 
 	//add key and field to paramIn
 	svc.Params["@key"] = svc.Key
