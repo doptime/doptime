@@ -52,7 +52,6 @@ func httpStart(path string, port int64) {
 			streamKey redisdb.IHttpStreamKey
 			vectorKey redisdb.IHttpVectorSetKey
 
-			s                   string = ""
 			ResponseContentType string = lib.Ternary(r.FormValue("rt") == "", "application/json", r.FormValue("rt"))
 		)
 
@@ -855,7 +854,7 @@ func httpStart(path string, port int64) {
 					httpStatus = http.StatusInternalServerError
 				}
 			} else if bs, ok = result.([]byte); ok {
-			} else if s, ok = result.(string); ok {
+			} else if s, ok := result.(string); ok {
 				bs = []byte(s)
 			} else {
 				bs, err = mapper.Marshal(result)
