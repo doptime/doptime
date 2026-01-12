@@ -1,9 +1,7 @@
 package httpserve
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +13,7 @@ import (
 	"github.com/doptime/config/cfghttp"
 	"github.com/doptime/doptime/httpserve/httpapi"
 	"github.com/doptime/doptime/lib"
+	"github.com/doptime/doptime/utils/mapper"
 	"github.com/doptime/logger"
 	"github.com/doptime/redisdb"
 	"github.com/redis/go-redis/v9"
@@ -859,12 +858,7 @@ func httpStart(path string, port int64) {
 			} else if s, ok = result.(string); ok {
 				bs = []byte(s)
 			} else {
-				if bs, err = json.Marshal(result); err == nil {
-					var dst *bytes.Buffer = bytes.NewBuffer([]byte{})
-					if err = json.Compact(dst, bs); err == nil {
-						bs = dst.Bytes()
-					}
-				}
+				bs, err = mapper.Marshal(result)
 			}
 		}
 		// Error handling
