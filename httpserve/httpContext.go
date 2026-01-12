@@ -35,7 +35,10 @@ type DoptimeReqCtx struct {
 }
 
 func (svc *DoptimeReqCtx) Field() string {
-	return lib.Ternary(len(svc.Fields) > 0, svc.Fields[0], "")
+	if len(svc.Fields) > 0 {
+		return svc.Fields[0]
+	}
+	return ""
 }
 
 func NewHttpContext(ctx context.Context, r *http.Request, w http.ResponseWriter) (svc *DoptimeReqCtx, err error, httpStatus int) {
