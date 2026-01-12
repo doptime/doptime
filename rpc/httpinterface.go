@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 
@@ -15,7 +16,7 @@ func (a *Context[i, o]) GetDataSource() string {
 	return a.ApiSourceRds
 }
 
-func (a *Context[i, o]) CallByMap(_map map[string]interface{}, msgpackNonstruct []byte, jsonpackNostruct []byte) (ret interface{}, err error) {
+func (a *Context[i, o]) CallByMap(ctx context.Context, _map map[string]interface{}, msgpackNonstruct []byte, jsonpackNostruct []byte) (ret interface{}, err error) {
 	var (
 		in          i
 		pIn         interface{}

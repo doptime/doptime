@@ -110,6 +110,8 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 		rds           *redis.Client
 		exists        bool
 	)
+	context, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	defer cancel()
 	if service, exists = httpapi.ApiViaHttp.Get(apiName); !exists {
 		return fmt.Errorf("service %s not found", apiName)
 	}
@@ -118,21 +120,20 @@ func CallApiLocallyAndSendBackResult(apiName, BackToID string, s []byte) (err er
 	if err = msgpack.Unmarshal(s, &_map); err != nil {
 		msgpackNonstruct = s
 	}
-	if ret, err = service.CallByMap(_map, msgpackNonstruct, nil); err != nil {
+	if ret, err = service.CallByMap(context, _map, msgpackNonstruct, nil); err != nil {
 		return err
 	}
 	if msgPackResult, err = msgpack.Marshal(ret); err != nil {
 		return
 	}
-	ctx := context.Background()
 	DataSource := service.GetDataSource()
 	if rds, exists = cfgredis.Servers.Get(DataSource); !exists {
 		logger.Error().Str("DataSource not defined in enviroment while CallApiLocallyAndSendBackResult", DataSource).Send()
 		return fmt.Errorf("DataSource not defined in enviroment %s", DataSource)
 	}
 	pipline := rds.Pipeline()
-	pipline.RPush(ctx, BackToID, msgPackResult)
-	pipline.Expire(ctx, BackToID, time.Second*20)
-	_, err = pipline.Exec(ctx)
+	pipline.RPush(context, BackToID, msgPackResult)
+	pipline.Expire(context, BackToID, time.Second*20)
+	_, err = pipline.Exec(context)
 	return err
 }

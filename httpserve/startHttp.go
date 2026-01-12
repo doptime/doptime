@@ -77,7 +77,7 @@ func httpStart(path string, port int64) {
 				goto responseHttp
 			}
 			msgpackNonstruct, jsonpackNostruct := svcCtx.BuildParamFromBody(r)
-			result, err = _api.CallByMap(svcCtx.Params, msgpackNonstruct, jsonpackNostruct)
+			result, err = _api.CallByMap(ctx, svcCtx.Params, msgpackNonstruct, jsonpackNostruct)
 			goto responseHttp
 		}
 
@@ -891,8 +891,9 @@ func httpStart(path string, port int64) {
 		Handler:           httpRoter,
 		ReadTimeout:       50 * time.Second,
 		ReadHeaderTimeout: 50 * time.Second,
-		WriteTimeout:      50 * time.Second,
-		IdleTimeout:       15 * time.Second,
+		WriteTimeout:      130 * time.Second,
+		// 120 seconds is a very safe value, allowing reuse without occupying resources for too long
+		IdleTimeout: 123 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {
 		logger.Error().Err(err).Msg("http server ListenAndServe error")
