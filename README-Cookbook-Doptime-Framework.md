@@ -99,11 +99,11 @@ const listProfiles = async () => {
 
 ```typescript
 // Shared Leaderboard (Sorted Set)
-const lb = new zSetKey<string>("game:leaderboard");
+const lb = new zSetKey<string>("game/leaderboard");
 await lb.zRevRange(0, 9, true); 
 
 // System Queue (List)
-const queue = new listKey<string>("system:tasks");
+const queue = new listKey<string>("system/tasks");
 await queue.lPush(JSON.stringify({ task: "cleanup" }));
 
 ```
@@ -118,7 +118,7 @@ type AuthSyncReq = { email: string };
 type AuthSyncRes = { status: string };
 
 // 2. Create Caller (matches Backend API name)
-const callAuthSync = createApi<AuthSyncReq, AuthSyncRes>("api:auth:sync");
+const callAuthSync = createApi<AuthSyncReq, AuthSyncRes>("api/auth/sync");
 
 // 3. Invoke
 await callAuthSync({ email: "user@example.com" });
