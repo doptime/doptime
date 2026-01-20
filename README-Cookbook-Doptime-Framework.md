@@ -121,6 +121,7 @@ type AuthSyncReq = { email: string };
 type AuthSyncRes = { status: string };
 
 // 2. Create Caller (matches Backend API name)
+// CORRECTION: Use '/' separator.
 const callAuthSync = createApi<AuthSyncReq, AuthSyncRes>("api/auth/sync");
 
 // 3. Invoke
@@ -241,13 +242,106 @@ Use `api.Api` to define logic callable by `createApi` in Frontend.
 ```go
 import "github.com/doptime/doptime/api"
 
-// Logic exposed as "/authsync", lowercase automatically with Req removed automatically.
+// Logic exposed as "/authsync", lowercase AuthSyncReq automatically with Req removed automatically.
+
 var AuthSyncApi = api.Api(func(req *AuthSyncReq) (*AuthSyncRes, error) {
     // req is auto-filled using Mapper v2
     return &AuthSyncRes{Status: "ok"}, nil
 })
 
 ```
+
+### 3.4 Key Methods Reference
+
+Complete list of methods for each Key type. **No `context.Context` required.**
+
+#### `HashKey[k, v]`
+
+* `HGet(field k) (v, error)`
+* `HSet(values ...interface{}) (int64, error)` // Supports `map[k]v` or `k, v, k, v`
+* `Save(value v) (int64, error)` // Auto-detects PK from struct
+* `HMSet(kvMap map[k]v) (int64, error)`
+* `HExists(field k) (bool, error)`
+* `HGetAll() (map[k]v, error)`
+* `HRandField(count int) ([]k, error)`
+* `HRandFieldWithValues(count int) ([]k, []v, error)`
+* `HMGET(fields ...interface{}) ([]v, error)`
+* `HLen() (int64, error)`
+* `HDel(fields ...k) error`
+* `HKeys() ([]k, error)`
+* `HVals() ([]v, error)`
+* `HIncrBy(field k, increment int64) error`
+* `HIncrByFloat(field k, increment float64) error`
+* `HSetNX(field k, value v) error`
+* `HScan(cursor uint64, match string, count int64) ([]k, []v, uint64, error)`
+
+#### `ListKey[v]`
+
+* `RPush(param ...v) error`
+* `LPush(param ...v) error`
+* `RPushX(param ...v) error`
+* `LPushX(param ...v) error`
+* `RPop() (v, error)`
+* `LPop() (v, error)`
+* `LRange(start, stop int64) ([]v, error)`
+* `LRem(count int64, param v) error`
+* `LSet(index int64, param v) error`
+* `LIndex(ind int64) (v, error)`
+* `BLPop(timeout time.Duration) (v, error)`
+* `BRPop(timeout time.Duration) (v, error)`
+* `BRPopLPush(dest string, timeout time.Duration) (v, error)`
+* `LInsertBefore(pivot, param v) error`
+* `LInsertAfter(pivot, param v) error`
+* `LTrim(start, stop int64) error`
+* `LLen() (int64, error)`
+
+#### `SetKey[k, v]`
+
+* `SAdd(members ...v) error` // Returns error only
+* `SCard() (int64, error)`
+* `SRem(members ...v) error`
+* `SIsMember(param v) (bool, error)`
+* `SMembers() ([]v, error)`
+* `SScan(cursor uint64, match string, count int64) ([]v, uint64, error)`
+
+#### `ZSetKey[k, v]`
+
+* `ZAdd(members ...redis.Z) error`
+* `ZRem(members ...interface{}) error`
+* `ZRange(start, stop int64) ([]v, error)`
+* `ZRangeWithScores(start, stop int64) ([]v, []float64, error)`
+* `ZRevRange(start, stop int64) ([]v, error)`
+* `ZRank(member interface{}) (int64, error)`
+* `ZRevRank(member interface{}) (int64, error)`
+* `ZScore(member interface{}) (float64, error)`
+* `ZCard() (int64, error)`
+* `ZCount(min, max string) (int64, error)`
+* `ZIncrBy(increment float64, member interface{}) (float64, error)`
+* `ZPopMax(count int64) ([]v, []float64, error)`
+* `ZPopMin(count int64) ([]v, []float64, error)`
+
+#### `StringKey[k, v]`
+
+* `Get(Field k) (v, error)`
+* `Set(key k, value v, expiration time.Duration) error`
+* `Del(key k) error`
+* `GetAll(match string) (map[k]v, error)`
+* `SetAll(_map map[k]v) error`
+
+#### `StreamKey[k, v]`
+
+* `XAdd(args *redis.XAddArgs) (string, error)`
+* `XDel(ids ...string) (int64, error)`
+* `XLen() (int64, error)`
+* `XRange(start, stop string) ([]redis.XMessage, error)`
+* `XRead(args *redis.XReadArgs) ([]redis.XStream, error)`
+
+#### `VectorSetKey[k, v]`
+
+* `Search(query string, params ...interface{}) (int64, []v, error)`
+* `Create(args ...interface{}) error`
+* `DropIndex(deleteDocs bool) error`
+* `Info() (map[string]interface{}, error)`
 
 ---
 
