@@ -2,10 +2,11 @@
 
 **Core Philosophy:**
 
-1. **Frontend-Driven Data:** The frontend (`doptime-client`) acts as the "Controller," defining data access paths using **Key Classes** (`hashKey`, `listKey`) and Context Placeholders (`@sub`).
+1. **Frontend-Driven Data:** The frontend (npm package `doptime-client`) acts as the "Controller," defining data access paths using **Key Classes** (`hashKey`, `listKey`) and Context Placeholders (`@sub`).
 2. **Dragonfly-Native:** The backend is stateless, relying on DragonflyDB (Redis-compatible) for high-performance storage.
 3. **String Keys Only:** Integers are **strictly forbidden** as keys to prevent JavaScript precision loss. Always cast IDs to Strings.
 4. **Implicit & Context-Aware:** Go structs use **Mapper v2** for input binding and automatic context injection.
+5. **Path-Style Keys:** **Strictly** use `/` as the separator for keys (e.g., `scope/key`). **NEVER** use `:`.
 
 ---
 
@@ -78,6 +79,7 @@ export interface Profile {
 // 1. Instantiate Key
 // The frontend sends "profiles:@sub". 
 // The backend replaces "@sub" with the UserID from the JWT Token.
+// CORRECTION:always Use ':' before '@'.
 export const keyProfile = new hashKey<Profile>("profiles:@sub");
 
 // 2. Usage
@@ -99,6 +101,7 @@ const listProfiles = async () => {
 
 ```typescript
 // Shared Leaderboard (Sorted Set)
+// CORRECTION: Use '/' separator.
 const lb = new zSetKey<string>("game/leaderboard");
 await lb.zRevRange(0, 9, true); 
 
@@ -199,15 +202,35 @@ type Profile struct {
 
 **Factory Pattern:** Use `redisdb.New{Type}Key` to define accessors.
 
+**CRITICAL RULE - Generics:**
+Most Key types (Hash, Set, ZSet, String, VectorSet, Stream) require **TWO** type parameters `[k, v]`.
+Only List requires **ONE** type parameter `[v]`.
+
 ```go
 import "github.com/doptime/redisdb"
 
-// Define Key Accessor Globally
-// "profiles" is the Key Scope prefix.
+// 1. HashKey [k, v]
 var ProfilesKey = redisdb.NewHashKey[string, *Profile](
     redisdb.WithKey("profiles"), 
     redisdb.WithRds("secondary-dragonfly-db"),
-).HttpOn(redisdb.HashAll) // Enable CRUD from Frontend
+).HttpOn(redisdb.HashAll)
+
+// 2. SetKey [k, v] - SUPPLEMENTED
+// Note: Must explicitly state [string, string] even if both are strings.
+var DirtyIndex = redisdb.NewSetKey[string, string](
+    redisdb.WithKey("sys/idx/sym"),
+)
+
+// 3. ZSetKey [k, v] - SUPPLEMENTED
+var LeaderboardKey = redisdb.NewZSetKey[string, string](
+    redisdb.WithKey("game/leaderboard"),
+)
+
+// 4. ListKey [v] - SUPPLEMENTED
+// Note: ListKey only takes one type parameter [v].
+var TaskQueue = redisdb.NewListKey[string](
+    redisdb.WithKey("sys/tasks"),
+)
 
 ```
 
@@ -218,7 +241,7 @@ Use `api.Api` to define logic callable by `createApi` in Frontend.
 ```go
 import "github.com/doptime/doptime/api"
 
-// Logic exposed as "api:auth:sync"
+// Logic exposed as "/authsync", lowercase automatically with Req removed automatically.
 var AuthSyncApi = api.Api(func(req *AuthSyncReq) (*AuthSyncRes, error) {
     // req is auto-filled using Mapper v2
     return &AuthSyncRes{Status: "ok"}, nil
@@ -244,12 +267,19 @@ The "Zero-API" security model relies on the Framework (specifically `httpContext
 
 1. **Tamper-Proofing:** The framework **removes** any user-provided keys starting with `@` from the input parameters.
 2. **Injection:** The framework injects system context variables prefixed with `@`.
+
 * **Auth Context:** `@sub` (UserID), `@email`, `@role`, etc. (from JWT).
 * **Request Info:** `@remoteAddr` (IP), `@host`, `@method`, `@path`, `@rawQuery`.
 * **Target Metadata:** `@key` (Redis Key), `@field` (Hash/List Field).
 
-
 3. **Binding:** The Go struct uses `json:"@@variable"` (e.g., `json:"@@sub"`, `json:"@@remoteAddr"`) to safely bind these values.
+
+### 4.3 No Context in Data Operations (SUPPLEMENTED)
+
+**Rule:** `redisdb` functions (`HSet`, `Get`, `Set`, etc.) do **NOT** accept a `context.Context` argument. The framework handles timeouts and context internally.
+
+* ❌ Incorrect: `key.HSet(ctx, k, v)`
+* ✅ Correct: `key.HSet(k, v)`
 
 ---
 
@@ -260,15 +290,20 @@ The "Zero-API" security model relies on the Framework (specifically `httpContext
 1. **Frontend:**
 
 * Ensure `npm install doptime-client` is assumed.
-* Always generate `new [Type]Key("name")` instances.
+* Always generate `new [Type]Key("scope/key")`. **Separator is `/`.**
 * Never generate global `hGet`/`hSet` calls.
 * Use `urlGet` for image sources.
 
 2. **Backend:**
 
-* Use `redisdb.NewHashKey` (or `NewListKey`, etc.).
-* **Struct Tags:** Include `json` (Mapper v2 syntax), `msgpack` (Storage), and `validate`/`mod` as needed.
+* Use `redisdb.NewHashKey[k, v]`, `NewSetKey[k, v]`, `NewZSetKey[k, v]`, `NewListKey[v]`.
+* **Generics:** Be precise. `SetKey` and `ZSetKey` need `[k, v]`. `ListKey` needs `[v]`.
+* **Struct Tags:** Include `json` (Mapper v2 syntax), `msgpack` (Storage), and `validate`/`mod`.
 * **Syntax:** Use space separators for `json` tags. **Never use commas**.
-* **Context:** Use `@@` tags only for context injection (e.g., `@@sub`, `@@remoteAddr`).
+* **Context:** Use `@@` tags for context injection. **Do not pass `ctx` variable to DB methods.**
 
 3. **Imports:** Ensure `doptime-client` imports match exports (`hashKey`, `Opt`, `createApi`, `urlGet`).
+
+```
+
+```
